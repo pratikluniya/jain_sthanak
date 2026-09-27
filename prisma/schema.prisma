@@ -1,0 +1,212 @@
+// Jain Sangh Nashik Road: member and voter dashboard
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN      // everything, incl. users, settings, full Aadhaar view
+  OPERATOR   // add / edit / update everything, approve KYC and panth
+  DATA_ENTRY // upload forms, verify extraction, edit families
+  VIEWER     // view and search only
+}
+
+enum Panth {
+  STHANAKVASI
+  MANDIRMARGI
+  TERAPANTH
+  DIGAMBAR
+  UNKNOWN
+}
+
+enum PanthStatus {
+  CONFIRMED
+  TO_VERIFY
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  UNKNOWN
+}
+
+enum MemberStatus {
+  ACTIVE
+  DECEASED
+  MARRIED_OUT
+  MOVED_OUT
+}
+
+enum FamilyStatus {
+  ACTIVE
+  MOVED_OUT
+  INACTIVE
+}
+
+enum UploadStatus {
+  UPLOADED   // image stored, not yet read
+  EXTRACTED  // AI has read it, waiting for human check
+  VERIFIED   // saved to a family
+  REJECTED
+  FAILED     // AI call failed
+}
+
+enum PaymentMode {
+  CASH
+  UPI
+  CHEQUE
+  BANK_TRANSFER
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  mobile       String   @unique
+  passwordHash String
+  role         Role     @default(VIEWER)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  auditLogs AuditLog[]
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+// Atomic counters: family codes, voter numbers, receipt numbers
+model Counter {
+  name  String @id
+  value Int    @default(0)
+}
+
+model Family {
+  id          String       @id @default(cuid())
+  code        String       @unique // NR-0001
+  headName    String       // as written on the form
+  address     String       @default("")
+  area        String       @default("")
+  panth       Panth        @default(UNKNOWN)
+  panthStatus PanthStatus  @default(TO_VERIFY)
+  status      FamilyStatus @default(ACTIVE)
+  notes       String       @default("")
+  formDate    DateTime?    // date the census form was filled / received
+
+  // A separate household that belongs to the same larger family (volunteer decides)
+  parentFamilyId String?
+  parentFamily   Family?  @relation("FamilyLink", fields: [parentFamilyId], references: [id])
+  linkedFamilies Family[] @relation("FamilyLink")
+
+  members   Member[]
+  uploads   FormUpload[]
+  payments  Payment[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([headName])
+}
+
+model Member {
+  id       String @id @default(cuid())
+  familyId String
+  family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  serial   Int    @default(0) // order within family, as on form
+
+  title       String  @default("") // सौ. / कु. / श्रीमती / श्री / चि.
+  firstName   String
+  middleName  String  @default("") // father's or husband's name
+  surname     String  @default("")
+  nameRaw     String  @default("") // exactly as read from the form
+  searchKey   String  @default("") // phonetic key for fuzzy search
+
+  isHead      Boolean @default(false)
+  relation    String  @default("OTHER") // code from src/lib/relations.ts
+  relationRaw String  @default("")      // as written (बायको, सून, नातू...)
+  gender      Gender  @default(UNKNOWN)
+
+  age           Int?
+  ageRecordedOn DateTime? // age was true on this date
+  dob           DateTime?
+
+  education  String @default("")
+  occupation String @default("")
+  mobile     String @default("") // 10 digits, English numerals
+  bloodGroup String @default("") // A+, B-, O+, AB+ ...
+
+  status MemberStatus @default(ACTIVE)
+
+  voterNo Int? @unique // fixed voter number, assigned once
+
+  // KYC (Aadhaar). Number stored encrypted; last 4 kept for display.
+  aadhaarEnc    String?
+  aadhaarLast4  String?
+  kycFileKey    String?
+  kycVerified   Boolean   @default(false)
+  kycVerifiedBy String?
+  kycVerifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([familyId])
+  @@index([searchKey])
+  @@index([surname])
+}
+
+model FormUpload {
+  id         String       @id @default(cuid())
+  imageKeys  String[]     // storage keys, one per page
+  status     UploadStatus @default(UPLOADED)
+  extracted  Json?        // AI result
+  error      String?
+  aiCostUsd  Float?
+  familyId   String?
+  family     Family?      @relation(fields: [familyId], references: [id], onDelete: SetNull)
+  uploadedBy String
+  verifiedBy String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([status])
+}
+
+model Payment {
+  id            String      @id @default(cuid())
+  receiptNo     String      @unique // 2026-27/0001
+  financialYear String      // 2026-27
+  familyId      String
+  family        Family      @relation(fields: [familyId], references: [id], onDelete: Restrict)
+  paidBy        String      // name printed on receipt
+  date          DateTime
+  items         Json        // [{ purpose: string, amount: number }]
+  total         Int         // rupees
+  mode          PaymentMode
+  reference     String      @default("") // UPI ref / cheque no.
+  cancelled     Boolean     @default(false)
+  createdBy     String
+  createdAt     DateTime    @default(now())
+
+  @@index([familyId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String   // create / update / delete / verify / export / login
+  entity    String   // Family / Member / Payment / User / Upload
+  entityId  String?
+  detail    Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
