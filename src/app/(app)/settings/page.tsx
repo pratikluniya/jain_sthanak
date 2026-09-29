@@ -13,6 +13,7 @@ async function save(fd: FormData) {
   await setSetting("applyStatusRules", fd.get("applyStatusRules") === "on" ? "true" : "false");
   await setSetting("sanghName", String(fd.get("sanghName") ?? "").trim());
   await setSetting("sanghAddress", String(fd.get("sanghAddress") ?? "").trim());
+  await setSetting("sanghRegNo", String(fd.get("sanghRegNo") ?? "").trim());
   await setSetting("receiptPurposes", JSON.stringify(purposes));
   await audit(s.uid, "update", "Settings", null, { electionDate, purposes });
   revalidatePath("/", "layout");
@@ -42,6 +43,10 @@ export default async function SettingsPage() {
         <div>
           <label className="label">संघाचा पत्ता (पावतीवर)</label>
           <textarea name="sanghAddress" className="input" rows={2} defaultValue={s.sanghAddress} />
+        </div>
+        <div>
+          <label className="label">नोंदणी क्रमांक (पावतीवर)</label>
+          <input name="sanghRegNo" className="input" defaultValue={s.sanghRegNo} />
         </div>
         <div>
           <label className="label">पावती तपशील (एका ओळीत एक)</label>

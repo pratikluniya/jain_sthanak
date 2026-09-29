@@ -6,6 +6,7 @@ import type { DuplicateCandidate } from "@/lib/uploads";
 import { saveVerified } from "../actions";
 
 export interface Row {
+  key: string; // stable id so KYC links survive row deletes
   nameRaw: string;
   title: string;
   firstName: string;
@@ -22,9 +23,19 @@ export interface Row {
   low: boolean;
 }
 
+export interface KycInfo {
+  idx: number;
+  docType: string;
+  holderName: string;
+  last4: string | null;
+  dob: string | null;
+  notes: string;
+  defaultKey: string | null;
+}
+
 type Panth = "STHANAKVASI" | "MANDIRMARGI" | "TERAPANTH" | "DIGAMBAR" | "UNKNOWN";
 
-const EMPTY: Row = {
+const EMPTY: Omit<Row, "key"> = {
   nameRaw: "", title: "", firstName: "", middleName: "", surname: "", age: "", relation: "OTHER", relationRaw: "",
   education: "", occupation: "", mobile: "", bloodGroup: "", uncertain: [], low: false,
 };
@@ -34,6 +45,7 @@ export default function Verifier(props: {
   images: string[];
   initial: { headName: string; address: string; panth: Panth; panthEvidence: string; notes: string; rows: Row[] };
   duplicates: DuplicateCandidate[];
+  kyc: KycInfo[];
   relations: { code: string; label: string }[];
   t: Dict;
 }) {
@@ -43,13 +55,16 @@ export default function Verifier(props: {
   const [address, setAddress] = useState(props.initial.address);
   const [panth, setPanth] = useState<Panth>(props.initial.panth);
   const [notes, setNotes] = useState(props.initial.notes);
-  const [rows, setRows] = useState<Row[]>(props.initial.rows.length ? props.initial.rows : [{ ...EMPTY, relation: "SELF" }]);
+  const [rows, setRows] = useState<Row[]>(props.initial.rows.length ? props.initial.rows : [{ ...EMPTY, key: "n0", relation: "SELF" }]);
   const [mode, setMode] = useState<"new" | "merge" | "linked">("new");
   const [target, setTarget] = useState(props.duplicates[0]?.id ?? "");
   const [imgIdx, setImgIdx] = useState(0);
   const [zoom, setZoom] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [kycTo, setKycTo] = useState<Record<number, string>>(() =>
+    Object.fromEntries(props.kyc.map((k) => [k.idx, k.defaultKey ?? ""])),
+  );
 
   const upd = (i: number, k: keyof Row, v: string) =>
     setRows((rs) => rs.map((r, j) => (j === i ? { ...r, [k]: v, uncertain: r.uncertain.filter((u) => !fieldMatches(u, k)) } : r)));
@@ -75,6 +90,9 @@ export default function Verifier(props: {
         panthConfirmed: panth !== "UNKNOWN",
         notes,
         members: rows.map(({ uncertain: _u, low: _l, ...r }) => r),
+        kycAssign: Object.entries(kycTo)
+          .filter(([, key]) => key && rows.some((r) => r.key === key))
+          .map(([idx, key]) => ({ idx: Number(idx), key })),
       });
       if (res.error) throw new Error(res.error);
       router.push(`/families/${res.familyId}`);
@@ -188,7 +206,29 @@ export default function Verifier(props: {
             </div>
           </div>
         ))}
-        <button type="button" className="btn-secondary w-full" onClick={() => setRows((rs) => [...rs, { ...EMPTY }])}>+ {t.addMember}</button>
+        <button type="button" className="btn-secondary w-full" onClick={() => setRows((rs) => [...rs, { ...EMPTY, key: `n${Date.now()}` }])}>+ {t.addMember}</button>
+
+        {props.kyc.length > 0 && (
+          <div className="card p-3 border-sky-200 bg-sky-50 space-y-2 text-sm">
+            <p className="font-semibold">🪪 {t.kyc}</p>
+            {props.kyc.map((k) => (
+              <div key={k.idx} className="space-y-1">
+                <div>
+                  <b>{k.docType === "AADHAAR" ? t.aadhaar : k.docType}</b>
+                  {k.last4 && <> · XXXX XXXX {k.last4}</>} · {k.holderName}
+                  {k.dob && <> · {t.dob}: {k.dob}</>}
+                </div>
+                {k.notes && <div className="text-amber-800">⚠ {k.notes}</div>}
+                <select className="input" value={kycTo[k.idx] ?? ""} onChange={(e) => setKycTo((m) => ({ ...m, [k.idx]: e.target.value }))}>
+                  <option value="">-</option>
+                  {rows.map((r) => (
+                    <option key={r.key} value={r.key}>{[r.title, r.firstName, r.middleName, r.surname].filter(Boolean).join(" ") || r.nameRaw}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
 
         {props.duplicates.length > 0 && (
           <div className="card p-3 border-amber-300 bg-amber-50 space-y-2">

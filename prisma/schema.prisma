@@ -149,6 +149,7 @@ model Member {
   aadhaarEnc    String?
   aadhaarLast4  String?
   kycFileKey    String?
+  kycDocType    String?   // AADHAAR / PAN / VOTER_ID / OTHER
   kycVerified   Boolean   @default(false)
   kycVerifiedBy String?
   kycVerifiedAt DateTime?

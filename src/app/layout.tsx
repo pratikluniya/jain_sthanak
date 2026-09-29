@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   description: "श्री जैन स्थानकवासी श्रावक संघ, नाशिकरोड",
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#c4650a" };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#a51b23" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -5,6 +5,7 @@ export interface AppSettings {
   applyStatusRules: boolean;
   sanghName: string;
   sanghAddress: string;
+  sanghRegNo: string;
   receiptPurposes: string[];
 }
 
@@ -12,7 +13,8 @@ export const DEFAULTS: Record<string, string> = {
   electionDate: "",
   applyStatusRules: "false",
   sanghName: "श्री जैन स्थानकवासी श्रावक संघ, नाशिकरोड",
-  sanghAddress: "",
+  sanghAddress: "दुर्गा उद्यान समोर, महावीर नगर, नाशिकरोड, देवळाली - 422101",
+  sanghRegNo: "PTA Reg. No. A577-NSK",
   receiptPurposes: JSON.stringify(["चातुर्मास गौतम प्रसादी", "महावीर जन्मकल्याणक", "देणगी"]),
 };
 
@@ -31,6 +33,7 @@ export async function getSettings(): Promise<AppSettings> {
     applyStatusRules: m.applyStatusRules === "true",
     sanghName: m.sanghName,
     sanghAddress: m.sanghAddress,
+    sanghRegNo: m.sanghRegNo,
     receiptPurposes: purposes,
   };
 }

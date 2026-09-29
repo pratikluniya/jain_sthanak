@@ -135,9 +135,11 @@ export default async function FamilyPage({ params }: { params: { id: string } })
                   </form>
                 )}
                 {can(s.role, "viewAadhaar") && m.kycFileKey && (
-                  <a href={`/api/files/kyc/${m.kycFileKey}`} target="_blank" className="btn-secondary btn-sm">{t.aadhaar} 📄</a>
+                  <a href={`/api/files/kyc/${m.kycFileKey}`} target="_blank" className="btn-secondary btn-sm">{m.kycDocType && m.kycDocType !== "AADHAAR" ? m.kycDocType : t.aadhaar} 📄</a>
                 )}
                 {m.aadhaarLast4 && <span className="text-xs text-stone-500 self-center">{t.aadhaar}: XXXX XXXX {m.aadhaarLast4}</span>}
+                {m.kycDocType && m.kycDocType !== "AADHAAR" && <span className="text-xs text-stone-500 self-center">KYC: {m.kycDocType}</span>}
+                {m.dob && <span className="text-xs text-stone-500 self-center">{t.dob}: {m.dob.toLocaleDateString("en-IN")}</span>}
                 {can(s.role, "delete") && (
                   <form action={deleteMember}>
                     <input type="hidden" name="memberId" value={m.id} />

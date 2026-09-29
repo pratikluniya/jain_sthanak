@@ -24,11 +24,16 @@ export default async function PrintPage({ searchParams }: { searchParams: { list
       <div className="no-print mb-4 flex gap-2">
         <PrintButton />
       </div>
-      <h1 className="text-lg font-bold text-center">{data.title}</h1>
+      <div className="flex items-center gap-3 justify-center" style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="" className="h-14 w-auto" />
+        <h1 className="text-lg font-bold text-center">{data.title}</h1>
+      </div>
+      <div className="jain-stripe my-2" style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }} />
       <p className="text-center text-sm mb-3">{data.subtitle}</p>
       <table>
         <thead>
-          <tr className="bg-orange-50">{data.headers.map((h) => <th key={h}>{h}</th>)}</tr>
+          <tr className="bg-red-50">{data.headers.map((h) => <th key={h}>{h}</th>)}</tr>
         </thead>
         <tbody>
           {data.rows.map((r, i) => (

@@ -20,6 +20,20 @@ export const ExtractedMember = z.object({
   uncertainFields: z.array(z.string()),
 });
 
+// KYC document attached to a form at bulk import. The ID number is NEVER stored in
+// plain text here: import encrypts it (enc) and keeps only the last 4 digits.
+export const ImportedKyc = z.object({
+  fileKey: z.string(),
+  docType: z.enum(["AADHAAR", "PAN", "VOTER_ID", "OTHER"]),
+  holderName: z.string(),
+  memberSerial: z.number().int().nullable(),
+  enc: z.string().nullable(),
+  last4: z.string().nullable(),
+  dob: z.string().nullable(), // YYYY-MM-DD when the document shows a full date of birth
+  notes: z.string(),
+});
+export type ImportedKyc = z.infer<typeof ImportedKyc>;
+
 export const ExtractedForm = z.object({
   headName: z.string(),
   address: z.string(),
@@ -29,6 +43,7 @@ export const ExtractedForm = z.object({
   isContinuationPage: z.boolean(),
   members: z.array(ExtractedMember),
   notes: z.string(),
+  kyc: z.array(ImportedKyc).optional(),
 });
 export type ExtractedForm = z.infer<typeof ExtractedForm>;
 

@@ -28,9 +28,10 @@ export default async function VerifyPage({ params }: { params: { id: string } })
   const manual = !up.extracted;
   const blank = { serial: 0, nameRaw: "", age: "", relationRaw: "", education: "", occupation: "", mobile: "", bloodGroup: "", confidence: "high" as const, uncertainFields: [] as string[] };
   const members = manual ? Array.from({ length: 6 }, (_, i) => ({ ...blank, serial: i + 1, relationRaw: i === 0 ? "स्वतः" : "" })) : x.members;
-  const rows: Row[] = members.map((m) => {
+  const rows: Row[] = members.map((m, i) => {
     const n = splitName(m.nameRaw);
     return {
+      key: `r${i}`,
       nameRaw: m.nameRaw,
       title: n.title,
       firstName: n.firstName,
@@ -46,6 +47,10 @@ export default async function VerifyPage({ params }: { params: { id: string } })
       uncertain: [...m.uncertainFields, ...(m.mobile && !normalizeMobile(m.mobile).valid ? ["mobile"] : [])],
       low: m.confidence === "low",
     };
+  });
+  const kyc = (x.kyc ?? []).map((k, idx) => {
+    const row = members.findIndex((m) => m.serial === k.memberSerial);
+    return { idx, docType: k.docType, holderName: k.holderName, last4: k.last4, dob: k.dob, notes: k.notes, defaultKey: row >= 0 ? `r${row}` : null };
   });
   const dups = x.headName || x.members.length ? await findDuplicates(x) : [];
 
@@ -74,6 +79,7 @@ export default async function VerifyPage({ params }: { params: { id: string } })
           rows,
         }}
         duplicates={dups}
+        kyc={kyc}
         relations={RELATIONS.map((r) => ({ code: r.code, label: r[lang] }))}
         t={t}
       />

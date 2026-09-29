@@ -33,15 +33,20 @@ export default async function ReceiptPrint({ params }: { params: { id: string } 
         {p.cancelled && (
           <div className="absolute inset-0 flex items-center justify-center text-6xl font-bold text-red-500/40 rotate-[-20deg] pointer-events-none">{t.cancelled}</div>
         )}
-        <div className="flex items-center gap-3 border-b-2 border-stone-800 pb-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="" className="h-14 w-14 object-contain" />
-          <div className="flex-1 text-center">
-            <div className="text-lg font-bold">{s.sanghName}</div>
-            {s.sanghAddress && <div className="text-xs">{s.sanghAddress}</div>}
-            <div className="font-semibold mt-1">पावती</div>
+        <div style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}>
+          <div className="text-center text-[11px] text-jain-red">॥ श्री महावीराय नमः ॥</div>
+          <div className="flex items-center gap-3 pb-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="" className="h-20 w-auto object-contain" />
+            <div className="flex-1 text-center">
+              <div className="text-xl font-bold text-jain-red">{s.sanghName}</div>
+              {s.sanghAddress && <div className="text-xs text-jain-blue">{s.sanghAddress}</div>}
+              {s.sanghRegNo && <div className="text-[10px] text-stone-600">{s.sanghRegNo}</div>}
+            </div>
+            <div className="w-16" />
           </div>
-          <div className="w-14" />
+          <div className="jain-stripe" />
+          <div className="text-center font-semibold mt-2">पावती</div>
         </div>
         <div className="flex justify-between mt-3">
           <span>{t.receiptNo}: <b>{p.receiptNo}</b></span>

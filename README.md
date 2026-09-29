@@ -30,7 +30,7 @@ Stack: Next.js 14 · PostgreSQL (Supabase) · Prisma · Claude API (form reading
 | Confirm panth, approve KYC, voter numbers | ✔ | ✔ | | |
 | Export Excel / PDF | ✔ | ✔ | | |
 | Receipts | ✔ | ✔ | | |
-| Full Aadhaar / scan | ✔ | | | |
+| Full Aadhaar / scan | ✔ | ✔ | | |
 | Users, settings | ✔ | | | |
 
 ## Rules (decided 27 Sep 2026)

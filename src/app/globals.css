@@ -6,6 +6,8 @@
 body { @apply bg-stone-50 text-stone-900 antialiased; }
 
 @layer components {
+  /* Jain flag band (5 colours, as on the Sangh letterhead): red, yellow, white, green, blue */
+  .jain-stripe { height: 10px; background: linear-gradient(to bottom, #d7262b 0 20%, #f5c518 20% 40%, #ffffff 40% 60%, #1f9d4c 60% 80%, #2b3990 80% 100%); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .card { @apply bg-white rounded-xl border border-stone-200 shadow-sm; }
   .btn { @apply inline-flex items-center justify-center gap-1 rounded-lg px-4 py-2 text-sm font-medium transition disabled:opacity-50 disabled:cursor-not-allowed; }
   .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }

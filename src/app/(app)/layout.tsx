@@ -25,6 +25,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen flex flex-col">
       <header className="no-print bg-brand-700 text-white">
         <div className="max-w-6xl mx-auto px-4 py-2 flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="" className="h-11 w-auto rounded bg-white p-0.5 shrink-0" />
           <Link href="/" className="font-bold leading-tight flex-1 min-w-0">
             <span className="block truncate text-sm sm:text-base">{t.sangh}</span>
             <span className="block text-xs text-brand-100">{t.appName}</span>
@@ -35,6 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </form>
         </div>
         <NavLinks links={links.map(({ href, label }) => ({ href, label }))} />
+        <div className="jain-stripe" />
       </header>
       <main className="flex-1 w-full max-w-6xl mx-auto px-3 sm:px-4 py-4">{children}</main>
       <footer className="no-print text-center text-xs text-stone-400 py-3">{s.name} · {t[s.role]}</footer>

@@ -31,7 +31,7 @@ export async function GET(req: Request) {
     const c = header.getCell(i + 1);
     c.value = h;
     c.font = { bold: true };
-    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFEFD4" } };
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFBE0E0" } };
     c.border = { bottom: { style: "thin" } };
   });
   data.rows.forEach((r) => ws.addRow(r));

@@ -14,7 +14,7 @@ export type Permission =
 
 const MATRIX: Record<Role, Permission[]> = {
   ADMIN: ["view", "edit", "delete", "upload", "approve", "export", "receipts", "viewAadhaar", "users", "settings"],
-  OPERATOR: ["view", "edit", "delete", "upload", "approve", "export", "receipts"],
+  OPERATOR: ["view", "edit", "delete", "upload", "approve", "export", "receipts", "viewAadhaar"],
   DATA_ENTRY: ["view", "edit", "upload"],
   VIEWER: ["view"],
 };
