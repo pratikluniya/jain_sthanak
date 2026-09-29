@@ -8,6 +8,7 @@ import { RELATIONS, relationFromRaw } from "@/lib/relations";
 import { normalizeBloodGroup, normalizeMobile, parseAge, splitName } from "@/lib/normalize";
 import Verifier, { type Row } from "./Verifier";
 import { rejectUpload, retryUpload } from "../actions";
+import { formImageUrls } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +64,7 @@ export default async function VerifyPage({ params }: { params: { id: string } })
       )}
       <Verifier
         uploadId={up.id}
-        images={up.imageKeys.map((k) => `/api/files/forms/${k}`)}
+        images={await formImageUrls(up.imageKeys)}
         initial={{
           headName: x.headName,
           address: x.address,

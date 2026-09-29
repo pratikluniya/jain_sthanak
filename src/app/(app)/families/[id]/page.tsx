@@ -10,6 +10,7 @@ import { effectiveElectionDate, getSettings } from "@/lib/settings";
 import { memberFullName } from "@/lib/members";
 import { approveKyc, confirmPanth, deleteFamily, deleteMember } from "../actions";
 import ConfirmButton from "@/components/ConfirmButton";
+import { formImageUrls } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,9 @@ export default async function FamilyPage({ params }: { params: { id: string } })
   if (!fam) notFound();
   const settings = await getSettings();
   const electionDate = effectiveElectionDate(settings);
+  const allKeys = fam.uploads.flatMap((u) => u.imageKeys);
+  const urls = await formImageUrls(allKeys);
+  const urlOf = new Map(allKeys.map((k, i) => [k, urls[i]]));
 
   return (
     <div className="space-y-4">
@@ -152,9 +156,9 @@ export default async function FamilyPage({ params }: { params: { id: string } })
           <div className="flex flex-wrap gap-2">
             {fam.uploads.flatMap((u) =>
               u.imageKeys.map((k, i) => (
-                <a key={k} href={`/api/files/forms/${k}`} target="_blank" className="block">
+                <a key={k} href={urlOf.get(k)} target="_blank" className="block">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/api/files/forms/${k}`} alt={`form ${i + 1}`} className="h-28 w-auto rounded border" />
+                  <img src={urlOf.get(k)} alt={`form ${i + 1}`} loading="lazy" className="h-28 w-auto rounded border" />
                 </a>
               )),
             )}

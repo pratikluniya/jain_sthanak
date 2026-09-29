@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getDict } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
 import type { ExtractedForm } from "@/lib/extract";
+import { formImageUrls } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,8 @@ export default async function UploadList() {
     where: { status: { in: ["EXTRACTED", "FAILED", "UPLOADED"] } },
     orderBy: { createdAt: "asc" },
   });
+  const thumbs = await formImageUrls(pending.map((u) => u.imageKeys[0]).filter(Boolean));
+  const thumbOf = new Map(pending.filter((u) => u.imageKeys[0]).map((u, i) => [u.id, thumbs[i]]));
   const done = await prisma.formUpload.count({ where: { status: "VERIFIED" } });
   const cost = await prisma.formUpload.aggregate({ _sum: { aiCostUsd: true } });
 
@@ -33,7 +36,7 @@ export default async function UploadList() {
             <li key={u.id}>
               <Link href={`/upload/${u.id}`} className="card p-3 flex gap-3 hover:border-brand-500">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {u.imageKeys[0] && <img src={`/api/files/forms/${u.imageKeys[0]}`} alt="" className="h-20 w-16 object-cover rounded border" />}
+                {thumbOf.get(u.id) && <img src={thumbOf.get(u.id)} alt="" loading="lazy" className="h-20 w-16 object-cover rounded border" />}
                 <div className="min-w-0 text-sm">
                   <div className="font-semibold truncate">{x?.headName || "नवीन फॉर्म"}</div>
                   <div className="text-stone-500">{x ? `${x.members.length} ${t.members}` : "✍ manual"}</div>

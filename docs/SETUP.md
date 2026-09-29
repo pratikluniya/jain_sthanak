@@ -40,7 +40,7 @@ Done: all domains allowed (27 Sep).
    - Plan: Free
 3. When the project is ready, open **Connect** (top bar) > **ORMs** > choose **Prisma**:
    - It shows a `.env` block with `DATABASE_URL` (port 6543) and `DIRECT_URL` (port 5432). Copy both lines into `.env`.
-   - If `DATABASE_URL` does not already end with `?pgbouncer=true`, add `?pgbouncer=true&connection_limit=1`.
+   - If `DATABASE_URL` does not already end with `?pgbouncer=true`, add `?pgbouncer=true&connection_limit=3`.
    - Replace `[YOUR-PASSWORD]` in both with the password from step 2.
 4. **Storage** > **New bucket**:
    - `forms` (Private) for form photos
@@ -80,7 +80,7 @@ Done: all domains allowed (27 Sep).
 Create a file named `.env` inside `JainStanak/jainsangh/` with:
 
 ```
-DATABASE_URL="postgresql://...:6543/postgres?pgbouncer=true&connection_limit=1"
+DATABASE_URL="postgresql://...:6543/postgres?pgbouncer=true&connection_limit=3"
 DIRECT_URL="postgresql://...:5432/postgres"
 SUPABASE_URL="https://xxxx.supabase.co"
 SUPABASE_SERVICE_ROLE_KEY="..."

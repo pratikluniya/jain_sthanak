@@ -42,3 +42,17 @@ export async function getFile(bucket: Bucket, key: string): Promise<Buffer> {
   }
   return fs.readFile(path.join(LOCAL_ROOT, bucket, key));
 }
+
+/**
+ * URL the browser can load a form photo from.
+ * Production: a private Supabase link valid for 1 hour (photo goes straight from Supabase to the phone).
+ * Local: through our own authenticated route.
+ */
+export async function formImageUrls(keys: string[]): Promise<string[]> {
+  if (keys.length === 0) return [];
+  if (!supabaseEnabled()) return keys.map((k) => `/api/files/forms/${k}`);
+  const sb = await supabase();
+  const { data, error } = await sb.storage.from("forms").createSignedUrls(keys.map(safeKey), 60 * 60);
+  if (error || !data) return keys.map((k) => `/api/files/forms/${k}`);
+  return data.map((d, i) => d.signedUrl || `/api/files/forms/${keys[i]}`);
+}
