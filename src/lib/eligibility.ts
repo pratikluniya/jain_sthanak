@@ -1,5 +1,5 @@
 // Voter eligibility rules (confirmed by the Sangh, 27 Sep 2026):
-//   1. Age 18 or more on election day
+//   1. Age 18 or more as on the age cut-off date (Settings; default 01/10/2026)
 //   2. Family panth = Sthanakvasi, and confirmed (blank panth = "to verify")
 // Membership cancellation rules printed on the form (moved out, deceased,
 // married daughters) are NOT applied for now. They can be switched on with the
@@ -58,7 +58,7 @@ export interface EligibilityResult {
 }
 
 export interface EligibilityOptions {
-  electionDate: Date;
+  asOfDate: Date; // age is calculated as on this date
   applyStatusRules?: boolean;
 }
 
@@ -68,7 +68,7 @@ export function checkVoter(
   opts: EligibilityOptions,
 ): EligibilityResult {
   const reasons: Reason[] = [];
-  const age = ageOn(member, opts.electionDate);
+  const age = ageOn(member, opts.asOfDate);
 
   if (age.min === null) reasons.push("AGE_UNKNOWN");
   else if (age.min >= VOTING_AGE) {

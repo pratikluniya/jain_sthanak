@@ -15,7 +15,7 @@ export default async function VotersPage({ searchParams }: { searchParams: { q?:
   const t = getDict();
   const tab = searchParams.tab === "pending" ? "pending" : "eligible";
   const q = (searchParams.q ?? "").trim();
-  const { rows, electionDate, electionDateSet } = await evaluateAll();
+  const { rows, ageDate, electionDate } = await evaluateAll();
 
   const eligible = rows.filter((r) => r.result.eligible);
   const pending = rows.filter((r) => !r.result.eligible && r.result.reasons.some((x) => x === "AGE_BORDERLINE" || x === "PANTH_TO_VERIFY" || x === "AGE_UNKNOWN"));
@@ -29,7 +29,8 @@ export default async function VotersPage({ searchParams }: { searchParams: { q?:
     <div className="space-y-3">
       <h1 className="text-xl font-bold">{t.voterList}</h1>
       <div className="card p-3 text-sm space-y-1">
-        <div><b>{t.electionDate}:</b> {electionDateSet ? electionDate.toLocaleDateString("en-IN") : <span className="text-amber-700">{t.electionDateNotSet}</span>}</div>
+        <div><b>{t.ageCutoffDate}:</b> {ageDate.toLocaleDateString("en-IN")}</div>
+        <div><b>{t.electionDate}:</b> {electionDate ? electionDate.toLocaleDateString("en-IN") : <span className="text-amber-700">{t.electionDateNotSet}</span>}</div>
         <div className="flex flex-wrap gap-2 pt-1">
           <span className="badge-green">{t.eligibleCount}: {eligible.length}</span>
           {[...reasonCounts.entries()].map(([k, v]) => (

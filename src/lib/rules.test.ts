@@ -68,7 +68,7 @@ test("age and eligibility", () => {
   assert.deepEqual([r17.min, r17.max], [17, 18]);
 
   const fam = { panth: "STHANAKVASI", panthStatus: "CONFIRMED" };
-  const opts = { electionDate: election };
+  const opts = { asOfDate: election };
   assert.equal(checkVoter({ age: 45, ageRecordedOn: recorded, dob: null, status: "ACTIVE" }, fam, opts).eligible, true);
   assert.deepEqual(checkVoter({ age: 17, ageRecordedOn: recorded, dob: null, status: "ACTIVE" }, fam, opts).reasons, ["AGE_BORDERLINE"]);
   assert.deepEqual(checkVoter({ age: 15, ageRecordedOn: recorded, dob: null, status: "ACTIVE" }, fam, opts).reasons, ["UNDER_AGE"]);
@@ -96,4 +96,13 @@ test("amount in words", () => {
   assert.equal(rupeesInMarathi(5101), "पाच हजार एकशे एक रुपये फक्त");
   assert.equal(rupeesInMarathi(2500), "दोन हजार पाचशे रुपये फक्त");
   assert.equal(rupeesInMarathi(151000), "एक लाख एक्कावन्न हजार रुपये फक्त");
+});
+
+test("age as on cut-off date 01/10/2026", () => {
+  const fam = { panth: "STHANAKVASI", panthStatus: "CONFIRMED" };
+  const cutoff = new Date("2026-10-01");
+  // DOB 2 Oct 2008: turns 18 one day after the cut-off -> not eligible
+  assert.deepEqual(checkVoter({ age: null, ageRecordedOn: null, dob: new Date("2008-10-02"), status: "ACTIVE" }, fam, { asOfDate: cutoff }).reasons, ["UNDER_AGE"]);
+  // DOB 1 Oct 2008: exactly 18 on the cut-off -> eligible
+  assert.equal(checkVoter({ age: null, ageRecordedOn: null, dob: new Date("2008-10-01"), status: "ACTIVE" }, fam, { asOfDate: cutoff }).eligible, true);
 });

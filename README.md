@@ -13,7 +13,7 @@ Stack: Next.js 14 · PostgreSQL (Supabase) · Prisma · Claude API (form reading
 | Families | List, search, add / edit, panth "to verify" queue, linked households |
 | Members | Search by name (spelling-tolerant: लुणिया = लुनिया, दीपिका = दिपिका), mobile, family no., blood group |
 | Form upload | Phone photo (1-4 pages) > rotate > AI reads > volunteer checks (unclear fields in yellow) > save as new / add to existing / linked family. Duplicate warning by name, mobile, address |
-| Voter list | 18+ on election day + Sthanakvasi (confirmed). Blank panth = excluded until confirmed. Borderline 17/18 flagged. Fixed voter numbers |
+| Voter list | 18+ as on the age cut-off date (default 01/10/2026, editable in Settings) + Sthanakvasi (confirmed). Blank panth = excluded until confirmed. Borderline 17/18 flagged. Fixed voter numbers |
 | Exports | Voter list / all members, choose columns, Excel + print-ready PDF (Marathi, English digits, sorted by surname) |
 | Receipts | वर्गणी receipts, auto number per financial year (2026-27/0001), amount in words, print |
 | KYC | Aadhaar number stored encrypted (AES-256-GCM), only last 4 digits shown; scan viewable by Admin only; approval by Admin / Operator |
@@ -35,8 +35,8 @@ Stack: Next.js 14 · PostgreSQL (Supabase) · Prisma · Claude API (form reading
 
 ## Rules (decided 27 Sep 2026)
 
-- Voter: age 18+ on the election date (set in Settings), family panth Sthanakvasi and confirmed.
-- Forms have only age, no DOB. Age is stored with the form date. If someone could be 17 or 18 on election day, they are flagged "needs DOB".
+- Voter: age 18+ as on the age cut-off date (Settings > आयु गणना तिथि, default 01/10/2026), family panth Sthanakvasi and confirmed.
+- Forms have only age, no DOB. Age is stored with the form date. If someone could be 17 or 18 on the cut-off date, they are flagged "needs DOB".
 - Membership cancellation rules printed on the form (moved out, deceased, married daughters) are OFF. A switch in Settings turns them on.
 
 ## Run locally

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function Dashboard() {
   const s = await requireSession("view");
   const t = getDict();
-  const [families, members, toVerify, pendingUploads, { rows, electionDate, electionDateSet }] = await Promise.all([
+  const [families, members, toVerify, pendingUploads, { rows, ageDate, electionDate }] = await Promise.all([
     prisma.family.count(),
     prisma.member.count(),
     prisma.family.count({ where: { panthStatus: "TO_VERIFY" } }),
@@ -39,9 +39,8 @@ export default async function Dashboard() {
         ))}
       </div>
       <div className="card p-4 text-sm space-y-1">
-        <div>
-          <b>{t.electionDate}:</b> {electionDateSet ? electionDate.toLocaleDateString("en-IN") : <span className="text-amber-700">{t.electionDateNotSet}</span>}
-        </div>
+        <div><b>{t.ageCutoffDate}:</b> {ageDate.toLocaleDateString("en-IN")}</div>
+        <div><b>{t.electionDate}:</b> {electionDate ? electionDate.toLocaleDateString("en-IN") : <span className="text-amber-700">{t.electionDateNotSet}</span>}</div>
         {borderline > 0 && (
           <div className="text-amber-700">
             {t.AGE_BORDERLINE}: {borderline}

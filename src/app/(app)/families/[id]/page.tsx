@@ -6,7 +6,7 @@ import { requireSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import { relationLabel } from "@/lib/relations";
 import { checkVoter } from "@/lib/eligibility";
-import { effectiveElectionDate, getSettings } from "@/lib/settings";
+import { effectiveAgeDate, getSettings } from "@/lib/settings";
 import { memberFullName } from "@/lib/members";
 import { approveKyc, confirmPanth, deleteFamily, deleteMember } from "../actions";
 import ConfirmButton from "@/components/ConfirmButton";
@@ -30,7 +30,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
   });
   if (!fam) notFound();
   const settings = await getSettings();
-  const electionDate = effectiveElectionDate(settings);
+  const ageDate = effectiveAgeDate(settings);
   const allKeys = fam.uploads.flatMap((u) => u.imageKeys);
   const urls = await formImageUrls(allKeys);
   const urlOf = new Map(allKeys.map((k, i) => [k, urls[i]]));
@@ -95,7 +95,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
       <section className="space-y-2">
         <h2 className="font-semibold">{t.members} ({fam.members.length})</h2>
         {fam.members.map((m) => {
-          const r = checkVoter(m, fam, { electionDate, applyStatusRules: settings.applyStatusRules });
+          const r = checkVoter(m, fam, { asOfDate: ageDate, applyStatusRules: settings.applyStatusRules });
           return (
             <div key={m.id} className="card p-3">
               <div className="flex items-start justify-between gap-2">

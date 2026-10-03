@@ -2,6 +2,7 @@ import { prisma } from "./db";
 
 export interface AppSettings {
   electionDate: Date | null;
+  ageCutoffDate: Date | null;
   applyStatusRules: boolean;
   sanghName: string;
   sanghAddress: string;
@@ -11,6 +12,7 @@ export interface AppSettings {
 
 export const DEFAULTS: Record<string, string> = {
   electionDate: "",
+  ageCutoffDate: "2026-10-01",
   applyStatusRules: "false",
   sanghName: "श्री जैन स्थानकवासी श्रावक संघ, नाशिकरोड",
   sanghAddress: "दुर्गा उद्यान समोर, महावीर नगर, नाशिकरोड, देवळाली - 422101",
@@ -30,6 +32,7 @@ export async function getSettings(): Promise<AppSettings> {
   }
   return {
     electionDate: m.electionDate ? new Date(m.electionDate) : null,
+    ageCutoffDate: m.ageCutoffDate ? new Date(m.ageCutoffDate) : null,
     applyStatusRules: m.applyStatusRules === "true",
     sanghName: m.sanghName,
     sanghAddress: m.sanghAddress,
@@ -42,7 +45,7 @@ export async function setSetting(key: string, value: string) {
   await prisma.setting.upsert({ where: { key }, create: { key, value }, update: { value } });
 }
 
-/** Election date if set, otherwise today (so the voter list still works before the date is fixed). */
-export function effectiveElectionDate(s: AppSettings): Date {
-  return s.electionDate ?? new Date();
+/** Date on which the 18+ age rule is checked: age cut-off date, else election date, else today. */
+export function effectiveAgeDate(s: AppSettings): Date {
+  return s.ageCutoffDate ?? s.electionDate ?? new Date();
 }

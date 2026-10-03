@@ -63,10 +63,10 @@ export interface ExportData {
 }
 
 export async function buildExport(list: ListKind, fields: Field[]): Promise<ExportData> {
-  const { rows, electionDate, electionDateSet } = await evaluateAll();
+  const { rows, ageDate } = await evaluateAll();
   const picked = list === "voters" ? rows.filter((r) => r.result.eligible) : rows;
   const sorted = sortBySurname(picked);
-  const dateStr = electionDate.toLocaleDateString("en-IN");
+  const dateStr = ageDate.toLocaleDateString("en-IN");
 
   const out = sorted.map((r, i) => {
     const m = r.member;
@@ -97,7 +97,7 @@ export async function buildExport(list: ListKind, fields: Field[]): Promise<Expo
     title: list === "voters" ? t.voterList : t.allMembers,
     subtitle:
       list === "voters"
-        ? `${t.sangh} · ${t.electionDate}: ${electionDateSet ? dateStr : "-"} · ${t.total}: ${out.length}`
+        ? `${t.sangh} · ${t.ageRuleShort} ${dateStr} · ${t.total}: ${out.length}`
         : `${t.sangh} · ${t.total}: ${out.length}`,
     headers: fields.map((k) => FIELD_LABEL[k]),
     rows: out,

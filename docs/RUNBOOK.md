@@ -29,7 +29,7 @@ How to run, update and look after the app. Keep this file up to date when someth
 | Voter list, voter numbers, exports | Operator, Admin | मतदार यादी / निर्यात |
 | Receipts | Operator, Admin | पावत्या |
 | Users (add, disable, reset password) | Admin | वापरकर्ते |
-| Election date, Sangh name/address, receipt purposes | Admin | सेटिंग्ज |
+| Age cut-off date (18+), election date, Sangh name/address, receipt purposes | Admin | सेटिंग्ज |
 
 Every create / edit / delete / export / Aadhaar view is recorded in the `AuditLog` table.
 
@@ -122,7 +122,7 @@ Never paste secrets into chat, WhatsApp or email. Never commit `.env` (it is in 
 | Every 3 months | Security updates: `npm outdated`, update Next.js within the 14.2.x line (`npm install next@14 eslint-config-next@14`), run tests, push. Check GitHub > Security tab for alerts |
 | Every 3 months | GitHub token expires (90 days): create a new one when push asks for a password |
 | Yearly (April) | Receipt numbers restart automatically for the new financial year (e.g. 2027-28/0001). Update receipt purposes in सेटिंग्ज if needed |
-| Before election | Set election date in सेटिंग्ज, clear the "पंथ तपासणी बाकी" and "जन्मतारीख हवी" lists, assign voter numbers, export and print the final list |
+| Before election | Check the age cut-off date and set the election date in सेटिंग्ज, clear the "पंथ तपासणी बाकी" and "जन्मतारीख हवी" lists, assign voter numbers, export and print the final list |
 
 ---
 

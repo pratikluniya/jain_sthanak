@@ -3,7 +3,7 @@ import { prisma } from "./db";
 import { fullName, normalizeBloodGroup, normalizeMobile, parseAge, searchKey, splitName } from "./normalize";
 import { genderFromRelation, genderFromTitle, relationFromRaw } from "./relations";
 import { checkVoter, type EligibilityResult } from "./eligibility";
-import { effectiveElectionDate, getSettings } from "./settings";
+import { effectiveAgeDate, getSettings } from "./settings";
 
 export const collator = new Intl.Collator("mr", { sensitivity: "base", numeric: true });
 
@@ -83,17 +83,17 @@ export interface VoterRow {
 }
 
 /** Evaluate every member against the voter rules. */
-export async function evaluateAll(): Promise<{ rows: VoterRow[]; electionDate: Date; electionDateSet: boolean; applyStatusRules: boolean }> {
+export async function evaluateAll(): Promise<{ rows: VoterRow[]; ageDate: Date; electionDate: Date | null; applyStatusRules: boolean }> {
   const settings = await getSettings();
-  const electionDate = effectiveElectionDate(settings);
+  const ageDate = effectiveAgeDate(settings);
   const families = await prisma.family.findMany({ include: { members: true } });
   const rows: VoterRow[] = [];
   for (const f of families) {
     for (const m of f.members) {
-      rows.push({ member: m, family: f, result: checkVoter(m, f, { electionDate, applyStatusRules: settings.applyStatusRules }) });
+      rows.push({ member: m, family: f, result: checkVoter(m, f, { asOfDate: ageDate, applyStatusRules: settings.applyStatusRules }) });
     }
   }
-  return { rows, electionDate, electionDateSet: !!settings.electionDate, applyStatusRules: settings.applyStatusRules };
+  return { rows, ageDate, electionDate: settings.electionDate, applyStatusRules: settings.applyStatusRules };
 }
 
 /** Voter list order: surname, then first name, then middle name (Marathi alphabetical). */

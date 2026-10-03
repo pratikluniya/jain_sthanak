@@ -10,12 +10,14 @@ async function save(fd: FormData) {
   const electionDate = String(fd.get("electionDate") ?? "");
   const purposes = String(fd.get("receiptPurposes") ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
   await setSetting("electionDate", electionDate);
+  const ageCutoffDate = String(fd.get("ageCutoffDate") ?? "");
+  await setSetting("ageCutoffDate", ageCutoffDate);
   await setSetting("applyStatusRules", fd.get("applyStatusRules") === "on" ? "true" : "false");
   await setSetting("sanghName", String(fd.get("sanghName") ?? "").trim());
   await setSetting("sanghAddress", String(fd.get("sanghAddress") ?? "").trim());
   await setSetting("sanghRegNo", String(fd.get("sanghRegNo") ?? "").trim());
   await setSetting("receiptPurposes", JSON.stringify(purposes));
-  await audit(s.uid, "update", "Settings", null, { electionDate, purposes });
+  await audit(s.uid, "update", "Settings", null, { electionDate, ageCutoffDate, purposes });
   revalidatePath("/", "layout");
 }
 
@@ -28,9 +30,14 @@ export default async function SettingsPage() {
       <h1 className="text-xl font-bold">{t.settings}</h1>
       <form action={save} className="card p-4 space-y-3">
         <div>
+          <label className="label">{t.ageCutoffDate}</label>
+          <input type="date" name="ageCutoffDate" className="input" required defaultValue={s.ageCutoffDate ? s.ageCutoffDate.toISOString().slice(0, 10) : ""} />
+          <p className="text-xs text-stone-500 mt-1">{t.ageCutoffHelp}</p>
+        </div>
+        <div>
           <label className="label">{t.electionDate}</label>
           <input type="date" name="electionDate" className="input" defaultValue={s.electionDate ? s.electionDate.toISOString().slice(0, 10) : ""} />
-          <p className="text-xs text-stone-500 mt-1">१८+ वय या तारखेला मोजले जाते.</p>
+          
         </div>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="applyStatusRules" defaultChecked={s.applyStatusRules} className="mt-1" />
