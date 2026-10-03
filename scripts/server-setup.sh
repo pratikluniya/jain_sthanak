@@ -38,8 +38,21 @@ ufw --force enable
 echo "== 5. App folder"
 mkdir -p /opt/jainsangh
 chown deploy:deploy /opt/jainsangh
+# data/uploads = form photos + KYC scans (written by the app, which runs as user id 1001 inside its container)
+# data/backups = nightly database copies
+mkdir -p /opt/jainsangh/data/uploads /opt/jainsangh/data/backups
+chown 1001:1001 /opt/jainsangh/data/uploads
+chmod 700 /opt/jainsangh/data /opt/jainsangh/data/uploads /opt/jainsangh/data/backups
 
-echo "== 6. Docker log size limit (logs cannot fill the disk)"
+echo "== 6. rclone (weekly encrypted copy to Google Drive) + weekly schedule"
+DEBIAN_FRONTEND=noninteractive apt-get install -y rclone
+mkdir -p /opt/jainsangh/scripts
+# Every Sunday 04:00 India time (server clock is UTC: Saturday 22:30 UTC). Does nothing useful until
+# rclone is configured (docs/SERVER-SETUP.md, "Google Drive backup"); failures are written to the log.
+echo "30 22 * * 6 root bash /opt/jainsangh/scripts/drive-backup.sh" > /etc/cron.d/jainsangh-drive-backup
+chmod 644 /etc/cron.d/jainsangh-drive-backup
+
+echo "== 7. Docker log size limit (logs cannot fill the disk)"
 if [ ! -f /etc/docker/daemon.json ]; then
   echo '{ "log-driver": "json-file", "log-opts": { "max-size": "10m", "max-file": "3" } }' | tee /etc/docker/daemon.json
   systemctl restart docker

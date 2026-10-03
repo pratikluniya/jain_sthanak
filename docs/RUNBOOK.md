@@ -14,8 +14,8 @@ How to run, update and look after the app. Keep this file up to date when someth
 | Server | DigitalOcean Droplet `jainsangh-prod`, Bangalore (BLR1), 2 GB, Ubuntu 24.04 | Account nashikroadjainsthanak@gmail.com, billed to TechShree |
 | Website | Docker container `app` on the server, behind Caddy (HTTPS) | Address: the techshree.com subdomain in `.env` (`APP_DOMAIN`) |
 | Database | Docker container `db` (PostgreSQL 16) on the server | Not reachable from the internet. Data in the Docker volume `pgdata` |
-| Files (form photos, Aadhaar scans) | DigitalOcean Space (BLR1), prefixes `forms/` and `kyc/` | Private (file listing Restricted). Never make it public |
-| Backups | Nightly `pg_dump` to the Space `backups/` (30 days) + DigitalOcean weekly Droplet backups | See section 5 |
+| Files (form photos, Aadhaar scans) | Server disk `/opt/jainsangh/data/uploads` (`forms/`, `kyc/`) | Only reachable through the logged-in app |
+| Backups | Nightly database copy on the server (14 days) + weekly encrypted copy of everything to the Sangh's Google Drive | See section 5 |
 | Deploys | GitHub Actions `test-build-deploy` | Every push to `main`: test > build image > deploy |
 | Secrets | `/opt/jainsangh/.env` on the server + a copy in the password manager | Never in git |
 
@@ -101,23 +101,26 @@ Each form goes to the check queue; nothing is saved to families until a voluntee
 
 ## 5. Backups
 
-| What | When | Kept | Where |
-|---|---|---|---|
-| Database dump (`pg_dump`, gzip) | Every night 03:00 IST | 30 days | Bucket `backups/` |
-| Whole server backup | Weekly (DigitalOcean backups) | 4 weeks [Unverified] | Droplet > Backups |
-| Photos and scans | Stored once in the bucket | Until deleted | Bucket `forms/`, `kyc/` |
+| What | When | Kept | Where | Protects against |
+|---|---|---|---|---|
+| Database copy (`pg_dump`, gzip) | Every night 03:00 IST | 14 days | Server: `/opt/jainsangh/data/backups` | Mistakes: bad import, deleted family |
+| Database copies + photos + scans, **encrypted** | Every Sunday 04:00 IST | Copies: same 14 days. Photos/scans: never deleted on Drive | Google Drive of nashikroadjainsthanak@gmail.com, folder `jainsangh-backup` | Losing the whole server |
+
+No paid DigitalOcean backups (decided 4 Oct 2026, to keep the bill at $12).
 
 Backup by hand (before any risky change): `docker compose exec backup backup.sh`
+Drive copy by hand: `bash /opt/jainsangh/scripts/drive-backup.sh`
 
-Restore the database from a dump (replaces ALL current data; take a fresh dump first):
+Restore the database from a server copy (replaces ALL current data; take a fresh copy first):
 ```
 cd /opt/jainsangh
-docker compose exec backup sh -c '. /etc/backup.env; aws --endpoint-url $S3_ENDPOINT s3 cp s3://$S3_BUCKET/backups/<file>.sql.gz - | gunzip | psql'
+gunzip -c data/backups/<file>.sql.gz | docker compose exec -T db psql -U jainsangh -d jainsangh
 docker compose restart app
 ```
-Restore the whole server: Droplet > **Backups** > **Restore Droplet** (or create a new Droplet from a backup and point the Cloudflare A record at its IP).
+Restore after losing the server: new Droplet (SERVER-SETUP steps 3-7), put back `/root/.config/rclone/rclone.conf`
+and `.env` from the password manager, then SERVER-SETUP section 11e.
 
-The `AADHAAR_ENC_KEY` is not in any backup. Keep the `.env` copy in the password manager.
+The `AADHAAR_ENC_KEY` and the rclone passwords are not in any backup. Keep them in the password manager.
 
 ---
 
@@ -127,7 +130,7 @@ The `AADHAAR_ENC_KEY` is not in any backup. Keep the `.env` copy in the password
 |---|---|---|
 | `AADHAAR_ENC_KEY` | Stored Aadhaar numbers can never be read again. **Never change it.** | Rotate is not possible without re-entering Aadhaar numbers: treat as serious, inform the committee |
 | `AUTH_SECRET` | Generate a new one; everyone just logs in again | Change it in `.env`, `docker compose up -d app`: all sessions end |
-| Spaces key (`S3_*`) | Create a new key in DigitalOcean > API > Spaces Keys | Delete the old key there, create a new one, update `.env`, `docker compose up -d` |
+| rclone crypt passwords (Drive backup) | Drive copies can never be decrypted: keep them in the password manager | Re-run `rclone config` with new passwords; old Drive copies stay readable only with the old ones |
 | `POSTGRES_PASSWORD` | It is in `.env` and the password manager | Ask Claude for the steps: the password is also stored inside the database volume |
 | Deploy SSH key (`SSH_KEY` secret) | Make a new key pair (SERVER-SETUP step 9) | Remove its line from `~/.ssh/authorized_keys` on the server, make a new one |
 | GitHub token (Mac) | Create a new fine-grained token (Contents: Read and write, only this repo) | Delete it on GitHub > Settings > Developer settings |
@@ -142,8 +145,8 @@ Never paste secrets into chat, WhatsApp or email. Never commit `.env` (it is in 
 
 | When | What |
 |---|---|
-| Weekly | Glance at फॉर्म अपलोड for forms stuck in the queue. Check the Space has last night's backup |
-| Monthly | Check the DigitalOcean bill (Billing). Expected about $19.40 + tax [Unverified: GST on DigitalOcean invoices] |
+| Weekly | Glance at फॉर्म अपलोड for forms stuck in the queue. Monday: check `tail /var/log/jainsangh-drive-backup.log` ends with `done` |
+| Monthly | Check the DigitalOcean bill (Billing). Expected $12 + tax [Unverified: GST on DigitalOcean invoices] |
 | Monthly | Review users: disable volunteers who no longer help |
 | Every 3 months | Security updates: `npm outdated`, update Next.js within the 14.2.x line (`npm install next@14 eslint-config-next@14`), run tests, push. Check GitHub > Security tab for alerts. Ubuntu security updates install themselves; reboot the server once (`sudo reboot`) if `/var/run/reboot-required` exists |
 | Every 3 months | Test a restore: download one backup and check it opens |
@@ -173,7 +176,7 @@ Never paste secrets into chat, WhatsApp or email. Never commit `.env` (it is in 
 | Site does not open, HTTPS error | DNS not pointing at the Droplet IP, or port 443 closed | `dig +short <domain>`; DigitalOcean firewall `jainsangh-web` must allow 443; `docker compose logs caddy` |
 | App shows an error on every page | Database or app container stopped | `docker compose ps`; `docker compose logs app`; `docker compose up -d` |
 | App container keeps restarting | `prisma db push` refused a change that would delete data, or a wrong `.env` value | `docker compose logs app`, read the first error |
-| Photos do not load | Bucket name or access key wrong | Check `S3_*` in `.env`; the key must belong to that bucket |
+| Photos do not load / upload fails | Folder `data/uploads` not writable by the app (user id 1001) | `chown -R 1001:1001 /opt/jainsangh/data/uploads` |
 | `git push` asks for password / 403 | GitHub token expired | New fine-grained token with Contents: Read and write |
 | Login fails for everyone | `AUTH_SECRET` missing or shorter than 32 characters | Fix in `.env`, `docker compose up -d app` |
 | Person missing from voter list | Panth to verify, age borderline, or panth not Sthanakvasi | मतदार यादी > तपासणी बाकी tab shows the reason |

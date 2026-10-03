@@ -59,7 +59,7 @@ Bulk import of forms read outside the app (goes to the check queue, never straig
 
 Full steps: `docs/SERVER-SETUP.md`. Day-to-day running: `docs/RUNBOOK.md`.
 
-1. One-time: Droplet (2 GB, Bangalore) + Space + firewall + Cloudflare DNS, `scripts/server-setup.sh`, `/opt/jainsangh/.env`, GitHub secrets `SSH_HOST`, `SSH_USER`, `SSH_KEY`.
+1. One-time: Droplet (2 GB, Bangalore, $12/month) + firewall + Cloudflare DNS + Google Drive backup (rclone), `scripts/server-setup.sh`, `/opt/jainsangh/.env`, GitHub secrets `SSH_HOST`, `SSH_USER`, `SSH_KEY`.
 2. Every push to `main`: GitHub Actions runs the tests, builds the Docker image (pushed to ghcr.io) and restarts the app on the server.
 3. On start the app container runs `prisma db push` (adds new tables/columns, refuses data loss) and creates the first admin from `SEED_ADMIN_*` if there are no users.
 
@@ -68,7 +68,8 @@ Full steps: `docs/SERVER-SETUP.md`. Day-to-day running: `docs/RUNBOOK.md`.
 | `Dockerfile` | Builds the app image (Next.js standalone) |
 | `docker-compose.yml` | Server services: `db`, `app`, `caddy`, `backup` |
 | `Caddyfile` | HTTPS front door |
-| `docker/backup/` | Nightly database dump to the Space |
+| `docker/backup/` | Nightly database copy on the server (14 days) |
+| `scripts/drive-backup.sh` | Weekly encrypted copy to the Sangh's Google Drive |
 | `.github/workflows/deploy.yml` | CI/CD |
 | `scripts/server-setup.sh` | One-time server preparation |
 
@@ -81,7 +82,7 @@ src/lib/relations.ts        relation words (बायको, सून, ना�
 src/lib/eligibility.ts      voter rules
 src/lib/extract.ts          Claude vision prompt + schema
 src/lib/translit.ts         Devanagari name -> English spelling
-src/lib/storage.ts          files: DigitalOcean Space (S3 API) or local folder
+src/lib/storage.ts          files: server disk (local) or optional S3-compatible storage
 src/lib/importBatch.ts      batch import of forms read outside the app
 src/lib/uploads.ts          extraction run, duplicate finder
 src/lib/exportRows.ts       voter / member export columns

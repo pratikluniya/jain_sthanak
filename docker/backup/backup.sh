@@ -1,23 +1,16 @@
 #!/bin/sh
-# Dumps the whole database, compresses it and uploads it to the Space (bucket) $S3_BUCKET, folder backups/.
-# Keeps the last $KEEP_DAYS days of backups; older ones are deleted from the bucket.
+# Dumps the whole database, compresses it and saves it in /backups
+# (= /opt/jainsangh/data/backups on the server). Keeps the last $KEEP_DAYS days.
+# This protects against mistakes (bad import, deleted family), NOT against losing the server:
+# for that, copy the folder off the server every week (scripts/pull-backup.sh on the Mac).
 # Run by hand:  docker compose exec backup backup.sh
 set -eu
+# fail if pg_dump fails, not only if gzip fails (otherwise an empty file would look like a good backup)
+set -o pipefail
 [ -f /etc/backup.env ] && . /etc/backup.env
-# DigitalOcean Spaces (or any S3-compatible store) needs its endpoint; plain AWS S3 does not.
-EP=""
-[ -n "${S3_ENDPOINT:-}" ] && EP="--endpoint-url $S3_ENDPOINT"
 STAMP=$(date +%Y-%m-%d_%H%M)
-FILE=/tmp/jainsangh_$STAMP.sql.gz
-pg_dump --no-owner --clean --if-exists | gzip -9 > "$FILE"
-aws $EP s3 cp "$FILE" "s3://$S3_BUCKET/backups/jainsangh_$STAMP.sql.gz" --only-show-errors
-echo "[backup] uploaded jainsangh_$STAMP.sql.gz ($(du -h "$FILE" | cut -f1))"
-rm -f "$FILE"
-
-CUTOFF=$(date -d "@$(( $(date +%s) - ${KEEP_DAYS:-30} * 86400 ))" +%Y-%m-%d)
-aws $EP s3 ls "s3://$S3_BUCKET/backups/" | awk '{print $4}' | while read -r name; do
-  d=$(echo "$name" | sed -n 's/^jainsangh_\([0-9-]*\)_.*/\1/p')
-  if [ -n "$d" ] && [ "$d" \< "$CUTOFF" ]; then
-    aws $EP s3 rm "s3://$S3_BUCKET/backups/$name" --only-show-errors && echo "[backup] removed old $name"
-  fi
-done
+FILE=/backups/jainsangh_$STAMP.sql.gz
+pg_dump --no-owner --clean --if-exists | gzip -9 > "$FILE.part" || { rm -f "$FILE.part"; echo "[backup] FAILED: database dump did not complete"; exit 1; }
+mv "$FILE.part" "$FILE"
+echo "[backup] saved $(basename "$FILE") ($(du -h "$FILE" | cut -f1))"
+find /backups -name 'jainsangh_*.sql.gz' -mtime +"${KEEP_DAYS:-14}" -print -delete | sed 's/^/[backup] removed old /'

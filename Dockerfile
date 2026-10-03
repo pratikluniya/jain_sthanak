@@ -22,7 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-cert
  && npm install -g prisma@5.22.0 && npm cache clean --force \
  # download the database engines now, while building, not at first start
  && prisma --version
-ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 \
+    STORAGE_DRIVER=local LOCAL_UPLOADS_DIR=/data/uploads
 # the "standalone" build: server.js + only the node_modules the app uses
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
@@ -32,7 +33,8 @@ COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma/client ./node_modules/@prisma/client
 COPY --from=build /app/node_modules/bcryptjs ./node_modules/bcryptjs
 COPY docker/start.sh docker/bootstrap-admin.mjs ./docker/
-RUN chmod +x docker/start.sh && useradd --system --uid 1001 app && chown -R app /app
+RUN chmod +x docker/start.sh && useradd --system --uid 1001 app && chown -R app /app \
+ && mkdir -p /data/uploads && chown app /data/uploads
 USER app
 EXPOSE 3000
 CMD ["./docker/start.sh"]

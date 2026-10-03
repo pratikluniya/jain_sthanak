@@ -73,7 +73,7 @@ jobs:
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
       - name: Copy server files
         run: |
-          scp -i ~/.ssh/id_deploy -r docker-compose.yml Caddyfile docker "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/jainsangh/"
+          scp -i ~/.ssh/id_deploy -r docker-compose.yml Caddyfile docker scripts "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}:/opt/jainsangh/"
       - name: Pull the new image and restart
         run: |
           ssh -i ~/.ssh/id_deploy "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" bash -s <<SCRIPT
