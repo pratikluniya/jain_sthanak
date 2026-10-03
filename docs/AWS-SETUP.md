@@ -23,7 +23,7 @@ GitHub push to main ──> GitHub Actions: test ──> build image ──> dep
 ## 1. AWS account (once)
 
 1. Go to https://aws.amazon.com and click **Create an AWS account**.
-   - Email: a TechShree address used only for this client (e.g. `jainsangh-aws@techshree.com`).
+   - Email: **nashikroadjainsthanak@gmail.com** (decided 3 Oct 2026: one email for all Sangh services). Turn on 2-step verification on this Gmail too; whoever controls this inbox can reset the AWS password.
    - Account name: `Jain Sangh Nashik Road`.
    - Payment: TechShree card. AWS verifies the card with a small temporary charge [Unverified: amount varies].
    - Support plan: **Basic (free)**.
