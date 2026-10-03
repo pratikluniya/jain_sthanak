@@ -10,6 +10,7 @@ const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-5";
 export const ExtractedMember = z.object({
   serial: z.number().int(),
   nameRaw: z.string(),
+  nameEn: z.string().optional(), // English spelling, e.g. "Sau. Nirmalabai Kachardasji Chordiya"
   age: z.string(),
   relationRaw: z.string(),
   education: z.string(),
@@ -36,6 +37,7 @@ export type ImportedKyc = z.infer<typeof ImportedKyc>;
 
 export const ExtractedForm = z.object({
   headName: z.string(),
+  headNameEn: z.string().optional(),
   address: z.string(),
   panth: z.enum(["STHANAKVASI", "MANDIRMARGI", "TERAPANTH", "DIGAMBAR", "BLANK"]),
   panthEvidence: z.string(),
@@ -61,6 +63,8 @@ Form layout:
 
 Rules:
 - Copy names EXACTLY as written, in Devanagari, including titles like सौ., कु., श्रीमती and the suffix जी. Do not translate or "correct" spellings.
+- ALSO give each name in English letters (nameEn, headNameEn), the way Marathi Jain families usually spell it:
+  title + first + middle + surname in the same order and word count as the Devanagari, e.g. "सौ. निर्मलाबाई कचरदासजी चोरडिया" -> "Sau. Nirmalabai Kachardasji Chordiya", "प्रविणकुमार लुणिया" -> "Pravinkumar Luniya". Do not add or drop words.
 - Digits may be Devanagari (०-९) or English. Copy them as written; do not convert.
 - Keep relation words as written (बायको, सून, नातू, पोती, मम्मी, भाई, भाभी, स्वतः, स्वयं...).
 - Education and occupation: copy as written (may be English like "B.Com", "Kirana").
@@ -78,6 +82,7 @@ const TOOL: Anthropic.Tool = {
     type: "object",
     properties: {
       headName: { type: "string" },
+      headNameEn: { type: "string", description: "headName in English letters" },
       address: { type: "string" },
       panth: { type: "string", enum: ["STHANAKVASI", "MANDIRMARGI", "TERAPANTH", "DIGAMBAR", "BLANK"] },
       panthEvidence: { type: "string" },
@@ -90,6 +95,7 @@ const TOOL: Anthropic.Tool = {
           properties: {
             serial: { type: "integer" },
             nameRaw: { type: "string" },
+            nameEn: { type: "string", description: "nameRaw in English letters, same words" },
             age: { type: "string" },
             relationRaw: { type: "string" },
             education: { type: "string" },
@@ -99,12 +105,12 @@ const TOOL: Anthropic.Tool = {
             confidence: { type: "string", enum: ["high", "medium", "low"] },
             uncertainFields: { type: "array", items: { type: "string" } },
           },
-          required: ["serial", "nameRaw", "age", "relationRaw", "education", "occupation", "mobile", "bloodGroup", "confidence", "uncertainFields"],
+          required: ["serial", "nameRaw", "nameEn", "age", "relationRaw", "education", "occupation", "mobile", "bloodGroup", "confidence", "uncertainFields"],
         },
       },
       notes: { type: "string" },
     },
-    required: ["headName", "address", "panth", "panthEvidence", "continuesOnNextPage", "isContinuationPage", "members", "notes"],
+    required: ["headName", "headNameEn", "address", "panth", "panthEvidence", "continuesOnNextPage", "isContinuationPage", "members", "notes"],
   },
 };
 

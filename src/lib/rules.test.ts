@@ -106,3 +106,25 @@ test("age as on cut-off date 01/10/2026", () => {
   // DOB 1 Oct 2008: exactly 18 on the cut-off -> eligible
   assert.equal(checkVoter({ age: null, ageRecordedOn: null, dob: new Date("2008-10-01"), status: "ACTIVE" }, fam, { asOfDate: cutoff }).eligible, true);
 });
+
+import { toEnglishName, titleToEnglish } from "./translit";
+import { latinFold } from "./normalize";
+test("English spelling of names", () => {
+  const cases: [string, string][] = [
+    ["कांतिलालजी", "Kantilalji"], ["सुगनचंदजी", "Suganchandji"], ["निर्मलाबाई", "Nirmalabai"], ["चोरडिया", "Chordiya"],
+    ["लुणिया", "Luniya"], ["दीपिका", "Deepika"], ["प्रविणकुमार", "Pravinkumar"], ["महावीर", "Mahavir"], ["राजेंद्र", "Rajendra"],
+    ["ज्ञानेश्वर", "Dnyaneshwar"], ["रश्मी", "Rashmi"], ["शांतीलाल", "Shantilal"], ["पूजा", "Pooja"], ["संजय", "Sanjay"],
+    ["चंपालाल", "Champalal"], ["Pratik", "Pratik"],
+  ];
+  for (const [dev, en] of cases) assert.equal(toEnglishName(dev), en, dev);
+  assert.equal(titleToEnglish("सौ."), "Sau.");
+});
+
+test("English search tolerates spelling variation", () => {
+  assert.equal(latinFold("Chordiya"), latinFold("Chordia"));
+  assert.equal(latinFold("Deepika"), latinFold("Dipika"));
+  assert.equal(latinFold("Oswal"), latinFold("Osval"));
+  assert.equal(latinFold("Kantilalji"), latinFold("Kantilal"));
+  const key = searchKey("Nirmalabai Kachardasji Chordiya");
+  assert.ok(matchesSearch(key, "nirmala chordia"));
+});

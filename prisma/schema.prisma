@@ -6,8 +6,7 @@ generator client {
 
 datasource db {
   provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -92,6 +91,7 @@ model Family {
   id          String       @id @default(cuid())
   code        String       @unique // NR-0001
   headName    String       // as written on the form
+  headNameEn  String       @default("") // English spelling
   address     String       @default("")
   area        String       @default("")
   panth       Panth        @default(UNKNOWN)
@@ -125,6 +125,10 @@ model Member {
   middleName  String  @default("") // father's or husband's name
   surname     String  @default("")
   nameRaw     String  @default("") // exactly as read from the form
+  // English spelling of the name: filled automatically, corrected by a volunteer
+  firstNameEn  String @default("")
+  middleNameEn String @default("")
+  surnameEn    String @default("")
   searchKey   String  @default("") // phonetic key for fuzzy search
 
   isHead      Boolean @default(false)

@@ -2,21 +2,24 @@
 
 How to run, update and look after the app. Keep this file up to date when something changes.
 
-> Items marked [Unverified] are based on the service's documentation as I understood it on 29 Sep 2026 and should be checked on the provider's site.
+> Updated 3 Oct 2026 for the AWS Lightsail setup. Items marked [Unverified] should be checked on the provider's site.
 
 ---
 
 ## 1. What runs where
 
-| Part | Service | Account owner | Notes |
-|---|---|---|---|
-| Code | GitHub `pratikluniya/jain_sthanak` (private) | TechShree / Pratik | `main` branch = live app |
-| Website | Vercel (`*.vercel.app`) | TechShree / Pratik | Deploys automatically on every push to `main` |
-| Database | Supabase Postgres, Mumbai | TechShree / Pratik | Row Level Security ON for all tables |
-| Files (form photos, Aadhaar scans) | Supabase Storage buckets `forms`, `kyc` (private) | same | Never make these buckets public |
-| Secrets | `.env` on Pratik's Mac + Vercel Environment Variables | Pratik | Copy of `.env` kept in password manager |
+| Part | Where | Notes |
+|---|---|---|
+| Code | GitHub `pratikluniya/jain_sthanak` (private) | `main` branch = live app |
+| Server | AWS Lightsail `jainsangh-prod`, Mumbai, 2 GB, Ubuntu 24.04 | Account owned and billed by TechShree for the Sangh |
+| Website | Docker container `app` on the server, behind Caddy (HTTPS) | Address: the techshree.com subdomain in `.env` (`APP_DOMAIN`) |
+| Database | Docker container `db` (PostgreSQL 16) on the server | Not reachable from the internet. Data in the Docker volume `pgdata` |
+| Files (form photos, Aadhaar scans) | Lightsail bucket, prefixes `forms/` and `kyc/` | Private. Never make it public |
+| Backups | Nightly `pg_dump` to the bucket `backups/` (30 days) + Lightsail daily snapshots (7 days) | See section 5 |
+| Deploys | GitHub Actions `test-build-deploy` | Every push to `main`: test > build image > deploy |
+| Secrets | `/opt/jainsangh/.env` on the server + a copy in the password manager | Never in git |
 
----
+Full setup steps: `docs/AWS-SETUP.md`.
 
 ## 2. Day-to-day use (no coding)
 
@@ -37,11 +40,12 @@ Every create / edit / delete / export / Aadhaar view is recorded in the `AuditLo
 Admin opens वापरकर्ते, types a new password (min 8 characters) on that user's row, clicks जतन करा.
 
 ### Admin locked out
-From the Mac, in the project folder:
+Putting `SEED_ADMIN_PASSWORD` back in `.env` does not help: it only works when there are no users at all. Reset the password on the server instead:
 ```
-SEED_ADMIN_MOBILE=7755998862 SEED_ADMIN_PASSWORD='NewStrongPass1' SEED_ADMIN_NAME='Pratik Luniya' npm run db:seed
+cd /opt/jainsangh
+docker compose exec app node -e "const b=require('bcryptjs');const {PrismaClient}=require('@prisma/client');const p=new PrismaClient();b.hash(process.argv[1],10).then(h=>p.user.update({where:{mobile:'7755998862'},data:{passwordHash:h,active:true}})).then(()=>console.log('ok')).finally(()=>p.\$disconnect())" 'NewStrongPass1'
 ```
-This resets the admin password. It does not touch any other data.
+It changes only that user's password.
 
 ---
 
@@ -54,46 +58,66 @@ This resets the admin password. It does not touch any other data.
 4. Publish:
    ```
    cd ~/Downloads/Clients/JainStanak/jainsangh
-   git add . && git commit -m "short description of change" && git push
+   git add -A && git commit -m "short description of change" && git push origin main
    ```
-5. Vercel builds and goes live in about 2 minutes. Check the Vercel dashboard > Deployments for a green "Ready".
+5. GitHub > **Actions** shows the run. About 5 to 8 minutes later the new version is live. If the tests fail, nothing is deployed and the server keeps the old version.
 
-### Safer change (recommended for big features)
-```
-git checkout -b feature-name
-git add . && git commit -m "..." && git push -u origin feature-name
-```
-Vercel gives this branch its own preview link. Test there. When happy, merge into `main` on GitHub (Pull request > Merge). Note: preview links use the same live database, so do not test deletes on real data.
+### Bigger change
+Work on a branch (`git switch -c feature-name`, push it), open a Pull request on GitHub, merge into `main` when ready. Only `main` deploys.
 
 ### Change that adds or alters database fields
-After editing `prisma/schema.prisma`:
-```
-npx prisma db push      # updates the live database structure
-npm run db:secure       # re-applies Row Level Security (always run after db push)
-```
-Then push the code as usual. `db push` warns before any change that would delete data: read the warning, do not accept data loss.
+Edit `prisma/schema.prisma` and push as usual. When the app container starts, it runs `prisma db push`: new tables and columns are added automatically. A change that would delete data is refused and the container stops with an error in the logs (section 9); nothing is lost. Such a change needs a planned step: take a backup first (section 5), then ask Claude for a migration.
 
 ### Roll back a bad deploy
-Vercel > Project > Deployments > pick the last working deployment > "..." > **Promote to Production**. Takes seconds. Data is not affected. Then fix the code and push again.
+Each deploy is a Docker image tagged with its git commit. On the server:
+```
+cd /opt/jainsangh
+cat deploys.log                       # list of deployed images, newest last
+APP_IMAGE=ghcr.io/pratikluniya/jain_sthanak:<older commit> docker compose up -d app
+```
+To pull an older image, log in to GitHub's registry once with a token that has `read:packages`:
+`echo <token> | docker login ghcr.io -u pratikluniya --password-stdin`. Then fix the code and push again.
+
+### Look at the server
+```
+ssh -i ~/.ssh/<key> ubuntu@<static IP>
+cd /opt/jainsangh
+docker compose ps                     # what is running
+docker compose logs --tail 100 app    # app messages and errors
+docker compose logs --tail 50 caddy   # HTTPS / certificate messages
+docker compose restart app            # restart the website
+free -h ; df -h /                     # memory and disk
+```
 
 ---
 
 ## 4. Importing forms read outside the app
 
-Forms read by Claude in a Cowork session are delivered as a folder containing `forms.json` and the photos. Import them into the check queue (they are never saved to families without a volunteer checking them):
-```
-npm run import:forms -- ../import/batch-01
-```
-Re-running the same batch is safe: already imported photos are skipped.
+Forms read by Claude in a Cowork session are delivered as a folder with `forms.json` and the photos (F1.jpg = form, F1_1.jpg = KYC document).
+Admin: **फॉर्म अपलोड** > **Import batch** > batch name (e.g. `forms-batch-02`) > choose `forms.json` > choose all photos > **Import**.
+Each form goes to the check queue; nothing is saved to families until a volunteer checks it. Importing the same batch again skips forms already imported. Aadhaar numbers are encrypted on the server before saving; delete the local `forms.json` afterwards because it holds plain numbers.
 
 ---
 
 ## 5. Backups
 
-[Unverified] The Supabase free plan may not include backups you can download. Until confirmed:
-- **Weekly:** निर्यात > सर्व सदस्य यादी > tick all columns > Excel. Save the file with the date in its name, in a safe place (not only on the Mac).
-- **Before any database change (section 3):** take the same export.
-- **Before the election:** consider the Supabase paid plan for automatic daily backups, and check that the project is not at risk of pausing.
+| What | When | Kept | Where |
+|---|---|---|---|
+| Database dump (`pg_dump`, gzip) | Every night 03:00 IST | 30 days | Bucket `backups/` |
+| Whole server snapshot | Daily (Lightsail automatic) | 7 days | Lightsail > Snapshots |
+| Photos and scans | Stored once in the bucket | Until deleted | Bucket `forms/`, `kyc/` |
+
+Backup by hand (before any risky change): `docker compose exec backup backup.sh`
+
+Restore the database from a dump (replaces ALL current data; take a fresh dump first):
+```
+cd /opt/jainsangh
+docker compose exec backup sh -c '. /etc/backup.env; aws s3 cp s3://$S3_BUCKET/backups/<file>.sql.gz - | gunzip | psql'
+docker compose restart app
+```
+Restore the whole server: Lightsail > Snapshots > **Create new instance** from a snapshot, move the static IP to it.
+
+The `AADHAAR_ENC_KEY` is not in any backup. Keep the `.env` copy in the password manager.
 
 ---
 
@@ -102,12 +126,13 @@ Re-running the same batch is safe: already imported photos are skipped.
 | Secret | If lost | If leaked |
 |---|---|---|
 | `AADHAAR_ENC_KEY` | Stored Aadhaar numbers can never be read again. **Never change it.** | Rotate is not possible without re-entering Aadhaar numbers: treat as serious, inform the committee |
-| `AUTH_SECRET` | Generate a new one; everyone just logs in again | Change it in Vercel and `.env`, redeploy: all sessions end |
-| `SUPABASE_SERVICE_ROLE_KEY` | Get it again from Supabase > Project Settings > API | Supabase > API > roll the key, update Vercel and `.env`, redeploy |
-| Database password | Reset in Supabase > Project Settings > Database | Reset it, update `DATABASE_URL` and `DIRECT_URL` in Vercel and `.env`, redeploy |
-| GitHub token | Create a new fine-grained token (Contents: Read and write, only this repo) | Delete it on GitHub > Settings > Developer settings |
+| `AUTH_SECRET` | Generate a new one; everyone just logs in again | Change it in `.env`, `docker compose up -d app`: all sessions end |
+| Bucket access key (`S3_*`) | Create a new key in Lightsail > bucket > Permissions | Delete the old key in Lightsail, create a new one, update `.env`, `docker compose up -d` |
+| `POSTGRES_PASSWORD` | It is in `.env` and the password manager | Ask Claude for the steps: the password is also stored inside the database volume |
+| Deploy SSH key (`SSH_KEY` secret) | Make a new key pair (AWS-SETUP step 8) | Remove its line from `~/.ssh/authorized_keys` on the server, make a new one |
+| GitHub token (Mac) | Create a new fine-grained token (Contents: Read and write, only this repo) | Delete it on GitHub > Settings > Developer settings |
 
-After changing any variable in Vercel: Deployments > latest > "..." > **Redeploy**, otherwise the old value stays in use.
+After changing `.env`, run `docker compose up -d` in `/opt/jainsangh` so the containers pick up the new values.
 
 Never paste secrets into chat, WhatsApp or email. Never commit `.env` (it is in `.gitignore`).
 
@@ -117,9 +142,11 @@ Never paste secrets into chat, WhatsApp or email. Never commit `.env` (it is in 
 
 | When | What |
 |---|---|
-| Weekly | Excel backup (section 5). Glance at फॉर्म अपलोड for forms stuck in the queue |
+| Weekly | Glance at फॉर्म अपलोड for forms stuck in the queue. Check the bucket has last night's backup |
+| Monthly | Check the AWS bill (Billing > Bills). Expected about $15 + GST [Unverified: GST on AWS invoices] |
 | Monthly | Review users: disable volunteers who no longer help |
-| Every 3 months | Security updates: `npm outdated`, update Next.js within the 14.2.x line (`npm install next@14 eslint-config-next@14`), run tests, push. Check GitHub > Security tab for alerts |
+| Every 3 months | Security updates: `npm outdated`, update Next.js within the 14.2.x line (`npm install next@14 eslint-config-next@14`), run tests, push. Check GitHub > Security tab for alerts. Ubuntu security updates install themselves; reboot the server once (`sudo reboot`) if `/var/run/reboot-required` exists |
+| Every 3 months | Test a restore: download one backup and check it opens |
 | Every 3 months | GitHub token expires (90 days): create a new one when push asks for a password |
 | Yearly (April) | Receipt numbers restart automatically for the new financial year (e.g. 2027-28/0001). Update receipt purposes in सेटिंग्ज if needed |
 | Before election | Check the age cut-off date and set the election date in सेटिंग्ज, clear the "पंथ तपासणी बाकी" and "जन्मतारीख हवी" lists, assign voter numbers, export and print the final list |
@@ -128,10 +155,11 @@ Never paste secrets into chat, WhatsApp or email. Never commit `.env` (it is in 
 
 ## 8. Known limits and watch points
 
-- [Unverified] Supabase free projects pause after about a week without activity. Opening the app regularly prevents it; a paused project can be resumed from the Supabase dashboard.
-- [Unverified] Vercel's free Hobby plan is for non-commercial use. Check whether TechShree hosting for the Sangh needs the Pro plan.
-- In-app AI form reading is OFF (no `ANTHROPIC_API_KEY`). Adding the key in Vercel + redeploy switches it on; set a monthly spend limit in the Anthropic console first.
+- One server: if it fails, the app is down until it is rebuilt from a snapshot (about 30 minutes). Acceptable for this use.
+- 2 GB memory: enough for the Sangh's ~350 families. If `free -h` shows swap used heavily, move to the 4 GB plan (Lightsail > Snapshots > new instance from snapshot with a bigger plan).
+- In-app AI form reading is OFF until `ANTHROPIC_API_KEY` is set in `.env`. Set a monthly spend limit in the Anthropic console first, then `docker compose up -d app`.
 - PDF export uses the browser's Print > Save as PDF (keeps Marathi text correct).
+- English name spellings are made automatically and should be checked by volunteers.
 - Marathi amount-in-words spellings on receipts should be checked once by the committee.
 
 ---
@@ -140,9 +168,12 @@ Never paste secrets into chat, WhatsApp or email. Never commit `.env` (it is in 
 
 | Problem | Likely cause | Fix |
 |---|---|---|
-| Vercel build fails | Code error or missing env variable | Open the failed deployment log; compare Environment Variables with `.env.example` |
-| App shows an error on every page | Database unreachable or paused | Supabase dashboard: is the project paused? Resume it. Check database password in Vercel |
-| Photos do not load | Storage key or bucket issue | Check `SUPABASE_URL` is exactly `https://<ref>.supabase.co` (no `/rest/v1/`) and buckets `forms`, `kyc` exist |
-| `git push` asks for password / 403 | GitHub token expired or wrong permission | New fine-grained token with Contents: Read and write; clear old one: `printf "protocol=https\nhost=github.com\n\n" \| git credential-osxkeychain erase` |
-| Login fails for everyone | `AUTH_SECRET` missing or shorter than 32 characters | Fix in Vercel, redeploy |
+| GitHub Action "test" fails | Code error | Open the run, read the red step, fix and push |
+| GitHub Action "deploy" fails at SSH | `SSH_HOST` / `SSH_KEY` secret wrong, or server off | Check the secrets; check the instance is running in Lightsail |
+| Site does not open, HTTPS error | DNS not pointing at the static IP, or port 443 closed | `dig +short <domain>`; Lightsail firewall must allow 443; `docker compose logs caddy` |
+| App shows an error on every page | Database or app container stopped | `docker compose ps`; `docker compose logs app`; `docker compose up -d` |
+| App container keeps restarting | `prisma db push` refused a change that would delete data, or a wrong `.env` value | `docker compose logs app`, read the first error |
+| Photos do not load | Bucket name or access key wrong | Check `S3_*` in `.env`; the key must belong to that bucket |
+| `git push` asks for password / 403 | GitHub token expired | New fine-grained token with Contents: Read and write |
+| Login fails for everyone | `AUTH_SECRET` missing or shorter than 32 characters | Fix in `.env`, `docker compose up -d app` |
 | Person missing from voter list | Panth to verify, age borderline, or panth not Sthanakvasi | मतदार यादी > तपासणी बाकी tab shows the reason |

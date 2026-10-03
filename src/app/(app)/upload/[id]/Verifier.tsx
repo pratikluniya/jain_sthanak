@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import type { Dict } from "@/lib/i18n";
 import type { DuplicateCandidate } from "@/lib/uploads";
 import { saveVerified } from "../actions";
+import { toEnglishName } from "@/lib/translit";
 
 export interface Row {
   key: string; // stable id so KYC links survive row deletes
@@ -12,6 +13,10 @@ export interface Row {
   firstName: string;
   middleName: string;
   surname: string;
+  firstNameEn: string;
+  middleNameEn: string;
+  surnameEn: string;
+  enTouched?: boolean; // volunteer typed the English spelling: stop auto-filling it
   age: string;
   relation: string;
   relationRaw: string;
@@ -36,14 +41,14 @@ export interface KycInfo {
 type Panth = "STHANAKVASI" | "MANDIRMARGI" | "TERAPANTH" | "DIGAMBAR" | "UNKNOWN";
 
 const EMPTY: Omit<Row, "key"> = {
-  nameRaw: "", title: "", firstName: "", middleName: "", surname: "", age: "", relation: "OTHER", relationRaw: "",
+  nameRaw: "", title: "", firstName: "", middleName: "", surname: "", firstNameEn: "", middleNameEn: "", surnameEn: "", age: "", relation: "OTHER", relationRaw: "",
   education: "", occupation: "", mobile: "", bloodGroup: "", uncertain: [], low: false,
 };
 
 export default function Verifier(props: {
   uploadId: string;
   images: string[];
-  initial: { headName: string; address: string; panth: Panth; panthEvidence: string; notes: string; rows: Row[] };
+  initial: { headName: string; headNameEn: string; address: string; panth: Panth; panthEvidence: string; notes: string; rows: Row[] };
   duplicates: DuplicateCandidate[];
   kyc: KycInfo[];
   relations: { code: string; label: string }[];
@@ -52,6 +57,8 @@ export default function Verifier(props: {
   const { t } = props;
   const router = useRouter();
   const [head, setHead] = useState(props.initial.headName);
+  const [headEn, setHeadEn] = useState(props.initial.headNameEn);
+  const [headEnTouched, setHeadEnTouched] = useState(false);
   const [address, setAddress] = useState(props.initial.address);
   const [panth, setPanth] = useState<Panth>(props.initial.panth);
   const [notes, setNotes] = useState(props.initial.notes);
@@ -66,8 +73,19 @@ export default function Verifier(props: {
     Object.fromEntries(props.kyc.map((k) => [k.idx, k.defaultKey ?? ""])),
   );
 
+  const EN_OF: Partial<Record<keyof Row, keyof Row>> = { firstName: "firstNameEn", middleName: "middleNameEn", surname: "surnameEn" };
   const upd = (i: number, k: keyof Row, v: string) =>
-    setRows((rs) => rs.map((r, j) => (j === i ? { ...r, [k]: v, uncertain: r.uncertain.filter((u) => !fieldMatches(u, k)) } : r)));
+    setRows((rs) =>
+      rs.map((r, j) => {
+        if (j !== i) return r;
+        const next: Row = { ...r, [k]: v, uncertain: r.uncertain.filter((u) => !fieldMatches(u, k)) };
+        // Devanagari name changed and the English spelling was not typed by hand: spell it again
+        const enKey = EN_OF[k];
+        if (enKey && !r.enTouched) (next as unknown as Record<string, string>)[enKey] = toEnglishName(v);
+        if (k === "firstNameEn" || k === "middleNameEn" || k === "surnameEn") next.enTouched = true;
+        return next;
+      }),
+    );
 
   function fieldMatches(u: string, k: keyof Row) {
     if (u === "name") return ["firstName", "middleName", "surname", "title"].includes(k);
@@ -85,11 +103,12 @@ export default function Verifier(props: {
         mode,
         targetFamilyId: mode === "new" ? undefined : target,
         headName: head,
+        headNameEn: headEn,
         address,
         panth,
         panthConfirmed: panth !== "UNKNOWN",
         notes,
-        members: rows.map(({ uncertain: _u, low: _l, ...r }) => r),
+        members: rows.map(({ uncertain: _u, low: _l, enTouched: _e, ...r }) => r),
         kycAssign: Object.entries(kycTo)
           .filter(([, key]) => key && rows.some((r) => r.key === key))
           .map(([idx, key]) => ({ idx: Number(idx), key })),
@@ -132,7 +151,18 @@ export default function Verifier(props: {
         <div className="card p-3 space-y-2">
           <div>
             <label className="label">{t.headName}</label>
-            <input className="input" value={head} onChange={(e) => setHead(e.target.value)} />
+            <input
+              className="input"
+              value={head}
+              onChange={(e) => {
+                setHead(e.target.value);
+                if (!headEnTouched) setHeadEn(toEnglishName(e.target.value));
+              }}
+            />
+          </div>
+          <div>
+            <label className="label">{t.headNameEn}</label>
+            <input className="input" value={headEn} onChange={(e) => { setHeadEn(e.target.value); setHeadEnTouched(true); }} />
           </div>
           <div>
             <label className="label">{t.address}</label>
@@ -163,7 +193,7 @@ export default function Verifier(props: {
         {rows.map((r, i) => (
           <div key={i} className={`card p-3 space-y-2 ${r.low ? "border-amber-300" : ""}`}>
             <div className="flex justify-between items-center">
-              <span className="text-xs text-stone-500">#{i + 1} · फॉर्मवर: <b>{r.nameRaw || "-"}</b></span>
+              <span className="text-xs text-stone-500">#{i + 1} · {t.onForm}: <b>{r.nameRaw || "-"}</b></span>
               <button type="button" className="text-xs text-red-600" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}>{t.delete}</button>
             </div>
             <div className="grid grid-cols-4 gap-2">
@@ -173,6 +203,14 @@ export default function Verifier(props: {
               <input className={`input col-span-3 ${warn(r, "name")}`} placeholder={t.firstName} value={r.firstName} onChange={(e) => upd(i, "firstName", e.target.value)} />
               <input className={`input col-span-2 ${warn(r, "name")}`} placeholder={t.middleName} value={r.middleName} onChange={(e) => upd(i, "middleName", e.target.value)} />
               <input className={`input col-span-2 ${warn(r, "name")}`} placeholder={t.surname} value={r.surname} onChange={(e) => upd(i, "surname", e.target.value)} />
+            </div>
+            <div>
+              <label className="label text-xs">{t.nameEnglish}</label>
+              <div className="grid grid-cols-3 gap-2">
+                <input className="input" placeholder={t.firstName} value={r.firstNameEn} onChange={(e) => upd(i, "firstNameEn", e.target.value)} />
+                <input className="input" placeholder={t.middleName} value={r.middleNameEn} onChange={(e) => upd(i, "middleNameEn", e.target.value)} />
+                <input className="input" placeholder={t.surname} value={r.surnameEn} onChange={(e) => upd(i, "surnameEn", e.target.value)} />
+              </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <div>
@@ -244,7 +282,7 @@ export default function Verifier(props: {
             <div className="flex flex-col gap-1 text-sm pt-1">
               <label className="flex gap-2"><input type="radio" name="mode" checked={mode === "new"} onChange={() => setMode("new")} /> {t.saveAsNew}</label>
               <label className="flex gap-2"><input type="radio" name="mode" checked={mode === "merge"} onChange={() => setMode("merge")} /> {t.addToExisting}</label>
-              <label className="flex gap-2"><input type="radio" name="mode" checked={mode === "linked"} onChange={() => setMode("linked")} /> {t.saveAsNew} + जोडलेले कुटुंब (link)</label>
+              <label className="flex gap-2"><input type="radio" name="mode" checked={mode === "linked"} onChange={() => setMode("linked")} /> {t.saveAsNew} + {t.linkedFamily}</label>
             </div>
           </div>
         )}

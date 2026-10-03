@@ -7,7 +7,7 @@ import { can } from "@/lib/rbac";
 import { relationLabel } from "@/lib/relations";
 import { checkVoter } from "@/lib/eligibility";
 import { effectiveAgeDate, getSettings } from "@/lib/settings";
-import { memberFullName } from "@/lib/members";
+import { memberFullName, headLabel } from "@/lib/members";
 import { approveKyc, confirmPanth, deleteFamily, deleteMember } from "../actions";
 import ConfirmButton from "@/components/ConfirmButton";
 import { formImageUrls } from "@/lib/storage";
@@ -18,6 +18,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
   const s = await requireSession("view");
   const t = getDict();
   const lang = getLang();
+  const en = lang === "en";
   const fam = await prisma.family.findUnique({
     where: { id: params.id },
     include: {
@@ -44,7 +45,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
       <section className="card p-4 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h1 className="text-xl font-bold">{fam.headName}</h1>
+            <h1 className="text-xl font-bold">{headLabel(fam, en)}</h1>
             <p className="text-stone-600 text-sm">{fam.address}</p>
             {fam.area && <p className="text-stone-500 text-xs">{t.area}: {fam.area}</p>}
           </div>
@@ -73,9 +74,9 @@ export default async function FamilyPage({ params }: { params: { id: string } })
         {fam.notes && <p className="text-sm text-stone-600 whitespace-pre-wrap">{t.notes}: {fam.notes}</p>}
         {(fam.parentFamily || fam.linkedFamilies.length > 0) && (
           <div className="text-sm">
-            {fam.parentFamily && <Link className="text-brand-700 underline" href={`/families/${fam.parentFamily.id}`}>↑ {fam.parentFamily.code} {fam.parentFamily.headName}</Link>}
+            {fam.parentFamily && <Link className="text-brand-700 underline" href={`/families/${fam.parentFamily.id}`}>↑ {fam.parentFamily.code} {headLabel(fam.parentFamily, en)}</Link>}
             {fam.linkedFamilies.map((l) => (
-              <Link key={l.id} className="text-brand-700 underline mr-3" href={`/families/${l.id}`}>↳ {l.code} {l.headName}</Link>
+              <Link key={l.id} className="text-brand-700 underline mr-3" href={`/families/${l.id}`}>↳ {l.code} {headLabel(l, en)}</Link>
             ))}
           </div>
         )}
@@ -101,7 +102,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="font-semibold">
-                    {memberFullName(m)} {m.isHead && <span className="badge-gray ml-1">{t.isHead}</span>}
+                    {memberFullName(m, true, en)} {m.isHead && <span className="badge-gray ml-1">{t.isHead}</span>}
                   </div>
                   <div className="text-sm text-stone-600">
                     {relationLabel(m.relation, lang)}

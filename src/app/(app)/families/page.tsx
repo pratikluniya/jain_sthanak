@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { getDict } from "@/lib/i18n";
+import { getDict, getLang } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import { matchesSearch, searchKey } from "@/lib/normalize";
-import { collator } from "@/lib/members";
+import { collator, headLabel } from "@/lib/members";
 import SearchBox from "@/components/SearchBox";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +12,8 @@ export const dynamic = "force-dynamic";
 export default async function FamiliesPage({ searchParams }: { searchParams: { q?: string; panth?: string } }) {
   const s = await requireSession("view");
   const t = getDict();
+  const lang = getLang();
+  const en = lang === "en";
   const q = (searchParams.q ?? "").trim();
   const onlyToVerify = searchParams.panth === "TO_VERIFY";
 
@@ -23,7 +25,7 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
   const filtered = families
     .filter((f) => {
       if (!q) return true;
-      const key = [searchKey(f.headName), searchKey(f.address), f.code.toLowerCase(), ...f.members.map((m) => m.searchKey)].join(" | ");
+      const key = [searchKey(f.headName), searchKey(f.headNameEn), searchKey(f.address), f.code.toLowerCase(), ...f.members.map((m) => m.searchKey)].join(" | ");
       return matchesSearch(key, q) || f.code.toLowerCase().includes(q.toLowerCase());
     })
     .sort((a, b) => collator.compare(a.code, b.code));
@@ -46,7 +48,7 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
             <Link href={`/families/${f.id}`} className="card p-3 block hover:border-brand-500">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="font-semibold truncate">{f.headName || "?"}</div>
+                  <div className="font-semibold truncate">{headLabel(f, en) || "?"}</div>
                   <div className="text-xs text-stone-500 truncate">{f.address}</div>
                 </div>
                 <span className="badge-gray shrink-0 whitespace-nowrap">{f.code}</span>

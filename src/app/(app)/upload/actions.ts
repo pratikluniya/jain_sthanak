@@ -8,6 +8,7 @@ import { audit } from "@/lib/audit";
 import { nextFamilyCode } from "@/lib/counters";
 import { inferHeadGender, prepareMember } from "@/lib/members";
 import { runExtraction } from "@/lib/uploads";
+import { toEnglishName } from "@/lib/translit";
 import type { ExtractedForm } from "@/lib/extract";
 
 const Payload = z.object({
@@ -15,6 +16,7 @@ const Payload = z.object({
   mode: z.enum(["new", "merge", "linked"]),
   targetFamilyId: z.string().optional(),
   headName: z.string(),
+  headNameEn: z.string().default(""),
   address: z.string(),
   panth: z.enum(["STHANAKVASI", "MANDIRMARGI", "TERAPANTH", "DIGAMBAR", "UNKNOWN"]),
   panthConfirmed: z.boolean(),
@@ -28,6 +30,9 @@ const Payload = z.object({
       firstName: z.string(),
       middleName: z.string(),
       surname: z.string(),
+      firstNameEn: z.string().default(""),
+      middleNameEn: z.string().default(""),
+      surnameEn: z.string().default(""),
       age: z.string(),
       relation: z.string(),
       relationRaw: z.string(),
@@ -64,6 +69,7 @@ export async function saveVerified(raw: VerifyPayload): Promise<{ familyId?: str
         data: {
           code,
           headName: p.headName,
+          headNameEn: p.headNameEn.trim() || toEnglishName(p.headName),
           address: p.address,
           panth: p.panth,
           panthStatus: p.panth !== "UNKNOWN" && p.panthConfirmed ? "CONFIRMED" : "TO_VERIFY",

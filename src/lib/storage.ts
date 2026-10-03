@@ -1,58 +1,89 @@
-// File storage: Supabase Storage in production, local ./uploads folder in development.
+// File storage for form photos and KYC scans.
+//   STORAGE_DRIVER="s3"    -> AWS Lightsail bucket (or any S3-compatible store). Used in production.
+//   STORAGE_DRIVER="local" -> ./uploads folder on disk. Used in development.
+// One private bucket holds both kinds of files, kept apart by a prefix: "forms/..." and "kyc/...".
 import { promises as fs } from "fs";
 import path from "path";
+import type { S3Client } from "@aws-sdk/client-s3";
 
 type Bucket = "forms" | "kyc";
-const LOCAL_ROOT = path.join(process.cwd(), "uploads");
+const LOCAL_ROOT = process.env.LOCAL_UPLOADS_DIR || path.join(process.cwd(), "uploads");
+const LINK_SECONDS = 60 * 60; // private photo links work for 1 hour
 
-function supabaseEnabled() {
-  return process.env.STORAGE_DRIVER !== "local" && !!process.env.SUPABASE_URL && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+function s3Enabled() {
+  return process.env.STORAGE_DRIVER === "s3";
 }
 
-async function supabase() {
-  const { createClient } = await import("@supabase/supabase-js");
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+let client: S3Client | null = null;
+async function s3() {
+  if (client) return client;
+  const { S3Client } = await import("@aws-sdk/client-s3");
+  client = new S3Client({
+    region: process.env.S3_REGION || "ap-south-1",
+    endpoint: process.env.S3_ENDPOINT || undefined, // only for testing with an S3 look-alike
+    forcePathStyle: !!process.env.S3_ENDPOINT,
+    credentials: {
+      accessKeyId: process.env.S3_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
+    },
+  });
+  return client;
+}
+
+function bucketName() {
+  const b = process.env.S3_BUCKET;
+  if (!b) throw new Error("S3_BUCKET is not set");
+  return b;
 }
 
 function safeKey(key: string) {
-  if (key.includes("..") || key.startsWith("/")) throw new Error("bad key");
+  if (!key || key.includes("..") || key.startsWith("/") || key.includes("\\")) throw new Error("bad key");
   return key;
 }
 
+const objectKey = (bucket: Bucket, key: string) => `${bucket}/${safeKey(key)}`;
+
 export async function putFile(bucket: Bucket, key: string, data: Buffer, contentType: string): Promise<void> {
-  safeKey(key);
-  if (supabaseEnabled()) {
-    const sb = await supabase();
-    const { error } = await sb.storage.from(bucket).upload(key, data, { contentType, upsert: true });
-    if (error) throw error;
+  if (s3Enabled()) {
+    const { PutObjectCommand } = await import("@aws-sdk/client-s3");
+    await (await s3()).send(
+      new PutObjectCommand({ Bucket: bucketName(), Key: objectKey(bucket, key), Body: data, ContentType: contentType }),
+    );
     return;
   }
-  const p = path.join(LOCAL_ROOT, bucket, key);
+  const p = path.join(LOCAL_ROOT, bucket, safeKey(key));
   await fs.mkdir(path.dirname(p), { recursive: true });
   await fs.writeFile(p, data);
 }
 
 export async function getFile(bucket: Bucket, key: string): Promise<Buffer> {
-  safeKey(key);
-  if (supabaseEnabled()) {
-    const sb = await supabase();
-    const { data, error } = await sb.storage.from(bucket).download(key);
-    if (error || !data) throw error ?? new Error("not found");
-    return Buffer.from(await data.arrayBuffer());
+  if (s3Enabled()) {
+    const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+    const res = await (await s3()).send(new GetObjectCommand({ Bucket: bucketName(), Key: objectKey(bucket, key) }));
+    if (!res.Body) throw new Error("not found");
+    return Buffer.from(await res.Body.transformToByteArray());
   }
-  return fs.readFile(path.join(LOCAL_ROOT, bucket, key));
+  return fs.readFile(path.join(LOCAL_ROOT, bucket, safeKey(key)));
 }
 
 /**
- * URL the browser can load a form photo from.
- * Production: a private Supabase link valid for 1 hour (photo goes straight from Supabase to the phone).
- * Local: through our own authenticated route.
+ * URLs the browser can load form photos from.
+ * Production: a private pre-signed bucket link valid for 1 hour (photo goes straight from the bucket to the phone).
+ * Local: through our own logged-in route /api/files/forms/...
+ * KYC scans never use this: they always go through /api/files/kyc so every view is permission-checked and logged.
  */
 export async function formImageUrls(keys: string[]): Promise<string[]> {
   if (keys.length === 0) return [];
-  if (!supabaseEnabled()) return keys.map((k) => `/api/files/forms/${k}`);
-  const sb = await supabase();
-  const { data, error } = await sb.storage.from("forms").createSignedUrls(keys.map(safeKey), 60 * 60);
-  if (error || !data) return keys.map((k) => `/api/files/forms/${k}`);
-  return data.map((d, i) => d.signedUrl || `/api/files/forms/${keys[i]}`);
+  const fallback = (k: string) => `/api/files/forms/${k}`;
+  if (!s3Enabled()) return keys.map(fallback);
+  try {
+    const { GetObjectCommand } = await import("@aws-sdk/client-s3");
+    const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
+    const c = await s3();
+    return await Promise.all(
+      keys.map((k) => getSignedUrl(c, new GetObjectCommand({ Bucket: bucketName(), Key: objectKey("forms", k) }), { expiresIn: LINK_SECONDS })),
+    );
+  } catch {
+    return keys.map(fallback);
+  }
 }

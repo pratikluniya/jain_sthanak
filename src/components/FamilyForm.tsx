@@ -11,6 +11,11 @@ export default function FamilyForm({ t, fam }: { t: Dict; fam?: Family | null })
         <input name="headName" className="input" defaultValue={fam?.headName ?? ""} required />
       </div>
       <div>
+        <label className="label">{t.headNameEn}</label>
+        <input name="headNameEn" className="input" defaultValue={fam?.headNameEn ?? ""} />
+        <p className="text-xs text-stone-500 mt-1">{t.englishAutoHelp}</p>
+      </div>
+      <div>
         <label className="label">{t.address}</label>
         <textarea name="address" className="input" rows={2} defaultValue={fam?.address ?? ""} />
       </div>

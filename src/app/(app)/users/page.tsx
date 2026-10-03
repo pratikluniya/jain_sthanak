@@ -24,7 +24,7 @@ export default async function UsersPage() {
             <select name="role" defaultValue={u.role} className="input">
               {ROLES.map((r) => <option key={r} value={r}>{t[r]}</option>)}
             </select>
-            <input name="password" type="password" placeholder={`${t.password} (नवीन)`} className="input" autoComplete="new-password" />
+            <input name="password" type="password" placeholder={`${t.password} ${t.newPasswordHint}`} className="input" autoComplete="new-password" />
             <label className="flex items-center gap-1"><input type="checkbox" name="active" defaultChecked={u.active} /> {t.ACTIVE}</label>
             <button className="btn-secondary btn-sm">{t.save}</button>
           </form>

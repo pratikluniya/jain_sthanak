@@ -1,21 +1,23 @@
 import { requireSession } from "@/lib/session";
 import { buildExport, parseFields, type ListKind } from "@/lib/exportRows";
 import { audit } from "@/lib/audit";
+import { asLang } from "@/lib/i18n";
 import PrintButton from "@/components/PrintButton";
 
 export const dynamic = "force-dynamic";
 
 // Print-ready A4 page. The browser renders Devanagari correctly; "Save as PDF" in the print dialog gives the PDF.
-export default async function PrintPage({ searchParams }: { searchParams: { list?: string; fields?: string } }) {
+export default async function PrintPage({ searchParams }: { searchParams: { list?: string; fields?: string; lang?: string } }) {
   const s = await requireSession("export");
   const list: ListKind = searchParams.list === "members" ? "members" : "voters";
   const fields = parseFields(searchParams.fields, list);
-  const data = await buildExport(list, fields);
-  await audit(s.uid, "export", list, null, { format: "print", fields, rows: data.rows.length });
+  const lang = asLang(searchParams.lang);
+  const data = await buildExport(list, fields, lang);
+  await audit(s.uid, "export", list, null, { format: "print", lang, fields, rows: data.rows.length });
   const landscape = fields.length > 7;
 
   return (
-    <div className="bg-white min-h-screen p-4 print:p-0">
+    <div lang={lang} className="bg-white min-h-screen p-4 print:p-0">
       <style>{`@page { size: A4 ${landscape ? "landscape" : "portrait"}; margin: 12mm 10mm; }
         table { border-collapse: collapse; width: 100%; font-size: 11px; }
         th, td { border: 1px solid #999; padding: 3px 5px; vertical-align: top; }

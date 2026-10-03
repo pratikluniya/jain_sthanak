@@ -112,6 +112,23 @@ const TITLE_WORDS = new Set(["श्री", "श्रीमती", "सौ", 
  *   लुणिया = लुनिया, कांतिलाल = कान्तिलाल, सुगनचंदजी = सुगनचंद,
  *   दीपिका = दिपिका, सूरज = सुरज, शाह = साह.
  */
+/**
+ * English spellings of the same name differ (Chordiya / Chordia, Deepika / Dipika, Oswal / Osval),
+ * so English words are folded to a rough sound key before matching.
+ */
+export function latinFold(w: string): string {
+  let s = w.toLowerCase().replace(/[^a-z]/g, "");
+  if (s.length > 4 && s.endsWith("ji")) s = s.slice(0, -2); // Kantilalji -> Kantilal
+  if (s.length > 5 && s.endsWith("bai")) s = s.slice(0, -3); // Nirmalabai -> Nirmala
+  return s
+    .replace(/ee/g, "i")
+    .replace(/oo/g, "u")
+    .replace(/aa/g, "a")
+    .replace(/w/g, "v")
+    .replace(/iya/g, "ia")
+    .replace(/([bcdgjkpstd])h/g, "$1"); // kh, chh, bh, sh, th, dh -> k, c, b, s, t, d
+}
+
 export function searchKey(raw: string): string {
   let s = (raw || "").normalize("NFC").toLowerCase();
   s = toEnglishDigits(s);
@@ -135,7 +152,8 @@ export function searchKey(raw: string): string {
     .filter(Boolean)
     .filter((w) => !TITLE_WORDS.has(w))
     .map((w) => (w.length > 3 && w.endsWith("जि") ? w.slice(0, -2) : w)) // सुगनचंदजी -> सुगनचंद (after ी->ि)
-    .map((w) => w.replace(/बाइ$/, "")); // निर्मलाबाई -> निर्मला
+    .map((w) => w.replace(/बाइ$/, "")) // निर्मलाबाई -> निर्मला
+    .map((w) => (/^[a-z]+$/.test(w) ? latinFold(w) : w));
   return words.join(" ");
 }
 

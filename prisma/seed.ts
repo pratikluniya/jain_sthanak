@@ -1,6 +1,7 @@
 // Usage:
 //   SEED_ADMIN_MOBILE=98xxxxxxxx SEED_ADMIN_PASSWORD='...' npm run db:seed            -> creates the admin user
 //   ... npm run db:seed -- --demo   -> also loads the sample forms from ./demo (not in Git)
+import { toEnglishName } from "../src/lib/translit";
 import { readFileSync, existsSync } from "fs";
 import path from "path";
 import bcrypt from "bcryptjs";
@@ -57,7 +58,7 @@ async function main() {
     const fam = await prisma.$transaction(async (tx) => {
       const code = await nextFamilyCode(tx);
       return tx.family.create({
-        data: { code, headName: f.headName, address: f.address, panth, panthStatus: panth === "UNKNOWN" ? "TO_VERIFY" : "CONFIRMED", notes: f.notes, formDate },
+        data: { code, headName: f.headName, headNameEn: toEnglishName(f.headName), address: f.address, panth, panthStatus: panth === "UNKNOWN" ? "TO_VERIFY" : "CONFIRMED", notes: f.notes, formDate },
       });
     });
     for (const m of f.members) {

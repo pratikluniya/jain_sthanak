@@ -14,6 +14,7 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
   await requireSession("view");
   const t = getDict();
   const lang = getLang();
+  const en = lang === "en";
   const q = (searchParams.q ?? "").trim();
   const blood = searchParams.blood ?? "";
   const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
@@ -57,7 +58,7 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
           <tbody>
             {shown.map((m) => (
               <tr key={m.id}>
-                <td><Link href={`/families/${m.family.id}`} className="text-brand-700">{memberFullName(m)}</Link></td>
+                <td><Link href={`/families/${m.family.id}`} className="text-brand-700">{memberFullName(m, true, en)}</Link></td>
                 <td>{m.age ?? ""}</td>
                 <td>{relationLabel(m.relation, lang)}</td>
                 <td>{m.mobile && <a href={`tel:${m.mobile}`}>{m.mobile}</a>}</td>

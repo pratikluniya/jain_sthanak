@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import { buildExport, parseFields, type ListKind } from "@/lib/exportRows";
 import { audit } from "@/lib/audit";
+import { asLang, exportDictFor } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +14,13 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const list: ListKind = url.searchParams.get("list") === "members" ? "members" : "voters";
   const fields = parseFields(url.searchParams.get("fields"), list);
-  const data = await buildExport(list, fields);
+  const lang = asLang(url.searchParams.get("lang"));
+  const data = await buildExport(list, fields, lang);
+  const t = exportDictFor(lang);
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "Jain Sangh Nashik Road";
-  const ws = wb.addWorksheet(list === "voters" ? "मतदार यादी" : "सदस्य यादी", {
+  const ws = wb.addWorksheet(list === "voters" ? t.voterList : t.memberListShort, {
     pageSetup: { paperSize: 9, orientation: fields.length > 7 ? "landscape" : "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
     views: [{ state: "frozen", ySplit: 3 }],
   });
@@ -43,7 +46,7 @@ export async function GET(req: Request) {
   ws.pageSetup.printTitlesRow = "3:3";
 
   const buf = await wb.xlsx.writeBuffer();
-  await audit(s.uid, "export", list, null, { format: "xlsx", fields, rows: data.rows.length });
+  await audit(s.uid, "export", list, null, { format: "xlsx", lang, fields, rows: data.rows.length });
   const name = `${list === "voters" ? "voter-list" : "member-list"}-${new Date().toISOString().slice(0, 10)}.xlsx`;
   return new NextResponse(buf as ArrayBuffer, {
     headers: {

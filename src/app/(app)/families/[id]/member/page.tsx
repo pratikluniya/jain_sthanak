@@ -4,6 +4,7 @@ import { getDict, getLang } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
 import { RELATIONS } from "@/lib/relations";
 import { saveMember } from "../../actions";
+import { headLabel } from "@/lib/members";
 
 export default async function MemberFormPage({ params, searchParams }: { params: { id: string }; searchParams: { m?: string } }) {
   await requireSession("edit");
@@ -22,8 +23,8 @@ export default async function MemberFormPage({ params, searchParams }: { params:
 
   return (
     <div className="space-y-3 max-w-xl">
-      <h1 className="text-xl font-bold">{m ? t.edit : t.addMember} <span className="text-base text-stone-500">· {fam.code} {fam.headName}</span></h1>
-      {m?.nameRaw && <p className="text-sm text-stone-500">फॉर्मवर: {m.nameRaw} {m.relationRaw && `· ${m.relationRaw}`}</p>}
+      <h1 className="text-xl font-bold">{m ? t.edit : t.addMember} <span className="text-base text-stone-500">· {fam.code} {headLabel(fam, lang === "en")}</span></h1>
+      {m?.nameRaw && <p className="text-sm text-stone-500">{t.onForm}: {m.nameRaw} {m.relationRaw && `· ${m.relationRaw}`}</p>}
       <form action={saveMember} className="card p-4 space-y-3" encType="multipart/form-data">
         <input type="hidden" name="familyId" value={fam.id} />
         {m && <input type="hidden" name="memberId" value={m.id} />}
@@ -40,6 +41,15 @@ export default async function MemberFormPage({ params, searchParams }: { params:
           {field("middleName", t.middleName, m?.middleName ?? "")}
           {field("surname", t.surname, m?.surname ?? fam.headName.split(" ").slice(-1)[0] ?? "")}
         </div>
+        <fieldset className="border rounded-lg p-3 space-y-2">
+          <legend className="text-sm font-semibold px-1">{t.nameEnglish}</legend>
+          <div className="grid grid-cols-3 gap-2">
+            {field("firstNameEn", t.firstName, m?.firstNameEn ?? "")}
+            {field("middleNameEn", t.middleName, m?.middleNameEn ?? "")}
+            {field("surnameEn", t.surname, m?.surnameEn ?? "")}
+          </div>
+          <p className="text-xs text-stone-500">{t.englishAutoHelp}</p>
+        </fieldset>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">{t.relation}</label>
@@ -75,7 +85,7 @@ export default async function MemberFormPage({ params, searchParams }: { params:
         </div>
         <fieldset className="border rounded-lg p-3 space-y-2">
           <legend className="text-sm font-semibold px-1">{t.kyc}</legend>
-          {field("aadhaar", `${t.aadhaar}${m?.aadhaarLast4 ? ` (XXXX XXXX ${m.aadhaarLast4})` : ""}`, "", { inputMode: "numeric", placeholder: "12 अंक", autoComplete: "off" })}
+          {field("aadhaar", `${t.aadhaar}${m?.aadhaarLast4 ? ` (XXXX XXXX ${m.aadhaarLast4})` : ""}`, "", { inputMode: "numeric", placeholder: t.aadhaarPlaceholder, autoComplete: "off" })}
           <div>
             <label className="label">{t.aadhaar} scan</label>
             <input type="file" name="kycFile" accept="image/*,application/pdf" className="text-sm" />

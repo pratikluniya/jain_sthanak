@@ -41,22 +41,22 @@ export default async function SettingsPage() {
         </div>
         <label className="flex items-start gap-2 text-sm">
           <input type="checkbox" name="applyStatusRules" defaultChecked={s.applyStatusRules} className="mt-1" />
-          <span>सदस्यत्व रद्द नियम लागू करा (निधन, विवाहानंतर बाहेर, कार्यक्षेत्राबाहेर सदस्य मतदार यादीतून वगळा). सध्या बंद.</span>
+          <span>{t.statusRulesLabel}</span>
         </label>
         <div>
-          <label className="label">संघाचे नाव (पावतीवर)</label>
+          <label className="label">{t.sanghNameLabel}</label>
           <input name="sanghName" className="input" defaultValue={s.sanghName} />
         </div>
         <div>
-          <label className="label">संघाचा पत्ता (पावतीवर)</label>
+          <label className="label">{t.sanghAddressLabel}</label>
           <textarea name="sanghAddress" className="input" rows={2} defaultValue={s.sanghAddress} />
         </div>
         <div>
-          <label className="label">नोंदणी क्रमांक (पावतीवर)</label>
+          <label className="label">{t.regNoLabel}</label>
           <input name="sanghRegNo" className="input" defaultValue={s.sanghRegNo} />
         </div>
         <div>
-          <label className="label">पावती तपशील (एका ओळीत एक)</label>
+          <label className="label">{t.receiptPurposesLabel}</label>
           <textarea name="receiptPurposes" className="input" rows={4} defaultValue={s.receiptPurposes.join("\n")} />
         </div>
         <button className="btn-primary">{t.save}</button>

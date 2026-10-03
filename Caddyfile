@@ -1,0 +1,15 @@
+# Caddy = the front door. It gets a free HTTPS certificate for the domain automatically
+# and passes every request to the app container.
+{$APP_DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 25MB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+	reverse_proxy app:3000
+}

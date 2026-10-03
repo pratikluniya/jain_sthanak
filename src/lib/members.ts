@@ -3,18 +3,54 @@ import { prisma } from "./db";
 import { fullName, normalizeBloodGroup, normalizeMobile, parseAge, searchKey, splitName } from "./normalize";
 import { genderFromRelation, genderFromTitle, relationFromRaw } from "./relations";
 import { checkVoter, type EligibilityResult } from "./eligibility";
+import { titleToEnglish, toEnglishName } from "./translit";
 import { effectiveAgeDate, getSettings } from "./settings";
 
 export const collator = new Intl.Collator("mr", { sensitivity: "base", numeric: true });
 
-export function memberFullName(m: Pick<Member, "title" | "firstName" | "middleName" | "surname">, withTitle = true) {
-  return fullName(m, withTitle);
+type NameFields = Pick<Member, "title" | "firstName" | "middleName" | "surname"> &
+  Partial<Pick<Member, "firstNameEn" | "middleNameEn" | "surnameEn">>;
+
+/** Full name in Devanagari, or in English when english=true (falls back to an automatic spelling if none is saved). */
+export function memberFullName(m: NameFields, withTitle = true, english = false) {
+  if (!english) return fullName(m, withTitle);
+  return fullName(
+    {
+      title: titleToEnglish(m.title),
+      firstName: m.firstNameEn || toEnglishName(m.firstName),
+      middleName: m.middleNameEn || toEnglishName(m.middleName),
+      surname: m.surnameEn || toEnglishName(m.surname),
+    },
+    withTitle,
+  );
 }
 
-export function computeSearchKey(m: { firstName: string; middleName?: string; surname?: string; mobile?: string }, familyCode?: string) {
-  return [searchKey([m.firstName, m.middleName, m.surname].filter(Boolean).join(" ")), m.mobile ?? "", (familyCode ?? "").toLowerCase()]
+export function computeSearchKey(
+  m: { firstName: string; middleName?: string; surname?: string; mobile?: string; firstNameEn?: string; middleNameEn?: string; surnameEn?: string },
+  familyCode?: string,
+) {
+  return [
+    searchKey([m.firstName, m.middleName, m.surname].filter(Boolean).join(" ")),
+    searchKey([m.firstNameEn, m.middleNameEn, m.surnameEn].filter(Boolean).join(" ")),
+    m.mobile ?? "",
+    (familyCode ?? "").toLowerCase(),
+  ]
     .filter(Boolean)
     .join(" ");
+}
+
+/** Head of family name for display, in English when asked. */
+export function headLabel(f: Pick<Family, "headName"> & Partial<Pick<Family, "headNameEn">>, english = false) {
+  return english ? f.headNameEn || toEnglishName(f.headName) : f.headName;
+}
+
+/** English spelling for each name part: what the volunteer typed, otherwise the automatic one. */
+export function englishParts(p: { firstName: string; middleName: string; surname: string }, typed: { firstNameEn?: string; middleNameEn?: string; surnameEn?: string }) {
+  return {
+    firstNameEn: (typed.firstNameEn ?? "").trim() || toEnglishName(p.firstName),
+    middleNameEn: (typed.middleNameEn ?? "").trim() || toEnglishName(p.middleName),
+    surnameEn: (typed.surnameEn ?? "").trim() || toEnglishName(p.surname),
+  };
 }
 
 /** Input as typed by a volunteer or read from a form. */
@@ -24,6 +60,9 @@ export interface MemberInput {
   firstName?: string;
   middleName?: string;
   surname?: string;
+  firstNameEn?: string;
+  middleNameEn?: string;
+  surnameEn?: string;
   age?: string | number | null;
   dob?: string | null;
   relationRaw?: string;
@@ -51,13 +90,15 @@ export function prepareMember(input: MemberInput, familyCode: string, ageRecorde
   const mobile = normalizeMobile(input.mobile ?? "").value;
   const age = parseAge(input.age ?? null);
   const status = (input.status as Member["status"]) || (parts.deceasedHint ? "DECEASED" : "ACTIVE");
+  const en = englishParts(parts, input);
   return {
     title: parts.title,
     firstName: parts.firstName,
     middleName: parts.middleName,
     surname: parts.surname,
+    ...en,
     nameRaw: input.nameRaw ?? fullName(parts),
-    searchKey: computeSearchKey({ ...parts, mobile }, familyCode),
+    searchKey: computeSearchKey({ ...parts, ...en, mobile }, familyCode),
     isHead: !!input.isHead || relation === "SELF",
     relation,
     relationRaw: input.relationRaw ?? "",

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getDict } from "@/lib/i18n";
+import { getDict, getLang } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import { evaluateAll, memberFullName, sortBySurname } from "@/lib/members";
@@ -13,6 +13,8 @@ export const dynamic = "force-dynamic";
 export default async function VotersPage({ searchParams }: { searchParams: { q?: string; tab?: string } }) {
   const s = await requireSession("view");
   const t = getDict();
+  const lang = getLang();
+  const en = lang === "en";
   const tab = searchParams.tab === "pending" ? "pending" : "eligible";
   const q = (searchParams.q ?? "").trim();
   const { rows, ageDate, electionDate } = await evaluateAll();
@@ -74,7 +76,7 @@ export default async function VotersPage({ searchParams }: { searchParams: { q?:
               <tr key={r.member.id}>
                 <td>{i + 1}</td>
                 <td>{r.member.voterNo ?? ""}</td>
-                <td><Link className="text-brand-700" href={`/families/${r.family.id}`}>{memberFullName(r.member)}</Link></td>
+                <td><Link className="text-brand-700" href={`/families/${r.family.id}`}>{memberFullName(r.member, true, en)}</Link></td>
                 <td>{r.result.reasons.includes("AGE_BORDERLINE") ? `${r.result.age.min}-${r.result.age.max}` : r.result.age.min}</td>
                 <td>{r.family.code}</td>
                 {tab === "pending" && (

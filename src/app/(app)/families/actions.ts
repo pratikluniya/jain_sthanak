@@ -8,6 +8,7 @@ import { nextFamilyCode } from "@/lib/counters";
 import { computeSearchKey, inferHeadGender, prepareMember } from "@/lib/members";
 import { cleanAadhaar, encrypt } from "@/lib/crypto";
 import { putFile } from "@/lib/storage";
+import { toEnglishName } from "@/lib/translit";
 import type { Panth, PanthStatus, FamilyStatus } from "@prisma/client";
 
 const PANTHS: Panth[] = ["STHANAKVASI", "MANDIRMARGI", "TERAPANTH", "DIGAMBAR", "UNKNOWN"];
@@ -16,12 +17,25 @@ function str(fd: FormData, k: string) {
   return String(fd.get(k) ?? "").trim();
 }
 
+/**
+ * English spelling the volunteer left unchanged while changing the Devanagari name is out of date,
+ * so it is dropped and filled again automatically.
+ */
+function freshEnglish(postedEn: string, postedDev: string, old?: { en: string; dev: string } | null) {
+  if (old && postedEn === old.en && postedDev !== old.dev) return "";
+  return postedEn;
+}
+
 export async function saveFamily(fd: FormData) {
   const s = await requireSession("edit");
   const id = str(fd, "id");
+  const old = id ? await prisma.family.findUnique({ where: { id }, select: { headName: true, headNameEn: true } }) : null;
   const panth = (PANTHS.includes(str(fd, "panth") as Panth) ? str(fd, "panth") : "UNKNOWN") as Panth;
   const data = {
     headName: str(fd, "headName"),
+    headNameEn:
+      freshEnglish(str(fd, "headNameEn"), str(fd, "headName"), old && { en: old.headNameEn, dev: old.headName }) ||
+      toEnglishName(str(fd, "headName")),
     address: str(fd, "address"),
     area: str(fd, "area"),
     panth,
@@ -84,6 +98,9 @@ export async function saveMember(fd: FormData) {
       firstName: str(fd, "firstName"),
       middleName: str(fd, "middleName"),
       surname: str(fd, "surname"),
+      firstNameEn: freshEnglish(str(fd, "firstNameEn"), str(fd, "firstName"), existing && { en: existing.firstNameEn, dev: existing.firstName }),
+      middleNameEn: freshEnglish(str(fd, "middleNameEn"), str(fd, "middleName"), existing && { en: existing.middleNameEn, dev: existing.middleName }),
+      surnameEn: freshEnglish(str(fd, "surnameEn"), str(fd, "surname"), existing && { en: existing.surnameEn, dev: existing.surname }),
       age: ageStr,
       dob: str(fd, "dob") || null,
       relation: str(fd, "relation"),

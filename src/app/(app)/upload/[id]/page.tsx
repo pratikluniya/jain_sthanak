@@ -7,6 +7,24 @@ import type { ExtractedForm } from "@/lib/extract";
 import { RELATIONS, relationFromRaw } from "@/lib/relations";
 import { normalizeBloodGroup, normalizeMobile, parseAge, splitName } from "@/lib/normalize";
 import Verifier, { type Row } from "./Verifier";
+import { toEnglishName } from "@/lib/translit";
+
+/**
+ * English spelling for the name parts. Uses the AI's English name when its words line up with the
+ * Devanagari parts (same count after the title), otherwise the built-in converter.
+ */
+function englishFor(n: { title: string; firstName: string; middleName: string; surname: string }, aiEn?: string) {
+  const parts = [n.firstName, n.middleName, n.surname];
+  const filled = parts.filter(Boolean).length;
+  let words = (aiEn ?? "").trim().split(/\s+/).filter(Boolean);
+  if (n.title && words.length > filled) words = words.slice(words.length - filled);
+  if (words.length === filled && filled > 0) {
+    let w = 0;
+    const out = parts.map((p) => (p ? words[w++] : ""));
+    return { firstNameEn: out[0], middleNameEn: out[1], surnameEn: out[2] };
+  }
+  return { firstNameEn: toEnglishName(n.firstName), middleNameEn: toEnglishName(n.middleName), surnameEn: toEnglishName(n.surname) };
+}
 import { rejectUpload, retryUpload } from "../actions";
 import { formImageUrls } from "@/lib/storage";
 
@@ -26,7 +44,7 @@ export default async function VerifyPage({ params }: { params: { id: string } })
     headName: "", address: "", panth: "BLANK" as const, panthEvidence: "", continuesOnNextPage: false, isContinuationPage: false, members: [], notes: "",
   };
   const manual = !up.extracted;
-  const blank = { serial: 0, nameRaw: "", age: "", relationRaw: "", education: "", occupation: "", mobile: "", bloodGroup: "", confidence: "high" as const, uncertainFields: [] as string[] };
+  const blank = { serial: 0, nameRaw: "", nameEn: "", age: "", relationRaw: "", education: "", occupation: "", mobile: "", bloodGroup: "", confidence: "high" as const, uncertainFields: [] as string[] };
   const members = manual ? Array.from({ length: 6 }, (_, i) => ({ ...blank, serial: i + 1, relationRaw: i === 0 ? "स्वतः" : "" })) : x.members;
   const rows: Row[] = members.map((m, i) => {
     const n = splitName(m.nameRaw);
@@ -37,6 +55,7 @@ export default async function VerifyPage({ params }: { params: { id: string } })
       firstName: n.firstName,
       middleName: n.middleName,
       surname: n.surname,
+      ...englishFor(n, m.nameEn),
       age: parseAge(m.age)?.toString() ?? "",
       relation: relationFromRaw(m.relationRaw),
       relationRaw: m.relationRaw,
@@ -59,7 +78,7 @@ export default async function VerifyPage({ params }: { params: { id: string } })
       <h1 className="text-xl font-bold">{t.verifyTitle}</h1>
       <p className="text-sm text-stone-600">{t.verifyHelp}</p>
       {manual && up.status !== "FAILED" && (
-        <div className="card p-3 border-sky-200 bg-sky-50 text-sm">फोटो पाहून माहिती टाइप करा. रिकाम्या ओळी जतन होणार नाहीत.</div>
+        <div className="card p-3 border-sky-200 bg-sky-50 text-sm">{t.manualEntryHelp}</div>
       )}
       {up.status === "FAILED" && process.env.ANTHROPIC_API_KEY && (
         <div className="card p-3 border-red-200 bg-red-50 text-sm flex items-center justify-between gap-2">
@@ -72,6 +91,7 @@ export default async function VerifyPage({ params }: { params: { id: string } })
         images={await formImageUrls(up.imageKeys)}
         initial={{
           headName: x.headName,
+          headNameEn: x.headNameEn || toEnglishName(x.headName),
           address: x.address,
           panth: PANTH_MAP[x.panth],
           panthEvidence: x.panthEvidence,
