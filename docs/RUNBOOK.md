@@ -2,7 +2,7 @@
 
 How to run, update and look after the app. Keep this file up to date when something changes.
 
-> Updated 3 Oct 2026 for the AWS Lightsail setup. Items marked [Unverified] should be checked on the provider's site.
+> Updated 4 Oct 2026 for the DigitalOcean setup. Items marked [Unverified] should be checked on the provider's site.
 
 ---
 
@@ -11,15 +11,15 @@ How to run, update and look after the app. Keep this file up to date when someth
 | Part | Where | Notes |
 |---|---|---|
 | Code | GitHub `pratikluniya/jain_sthanak` (private) | `main` branch = live app |
-| Server | AWS Lightsail `jainsangh-prod`, Mumbai, 2 GB, Ubuntu 24.04 | Account owned and billed by TechShree for the Sangh |
+| Server | DigitalOcean Droplet `jainsangh-prod`, Bangalore (BLR1), 2 GB, Ubuntu 24.04 | Account nashikroadjainsthanak@gmail.com, billed to TechShree |
 | Website | Docker container `app` on the server, behind Caddy (HTTPS) | Address: the techshree.com subdomain in `.env` (`APP_DOMAIN`) |
 | Database | Docker container `db` (PostgreSQL 16) on the server | Not reachable from the internet. Data in the Docker volume `pgdata` |
-| Files (form photos, Aadhaar scans) | Lightsail bucket, prefixes `forms/` and `kyc/` | Private. Never make it public |
-| Backups | Nightly `pg_dump` to the bucket `backups/` (30 days) + Lightsail daily snapshots (7 days) | See section 5 |
+| Files (form photos, Aadhaar scans) | DigitalOcean Space (BLR1), prefixes `forms/` and `kyc/` | Private (file listing Restricted). Never make it public |
+| Backups | Nightly `pg_dump` to the Space `backups/` (30 days) + DigitalOcean weekly Droplet backups | See section 5 |
 | Deploys | GitHub Actions `test-build-deploy` | Every push to `main`: test > build image > deploy |
 | Secrets | `/opt/jainsangh/.env` on the server + a copy in the password manager | Never in git |
 
-Full setup steps: `docs/AWS-SETUP.md`.
+Full setup steps: `docs/SERVER-SETUP.md`.
 
 ## 2. Day-to-day use (no coding)
 
@@ -80,7 +80,7 @@ To pull an older image, log in to GitHub's registry once with a token that has `
 
 ### Look at the server
 ```
-ssh -i ~/.ssh/<key> ubuntu@<static IP>
+ssh -i ~/.ssh/jainsangh_admin root@<Droplet IP>
 cd /opt/jainsangh
 docker compose ps                     # what is running
 docker compose logs --tail 100 app    # app messages and errors
@@ -104,7 +104,7 @@ Each form goes to the check queue; nothing is saved to families until a voluntee
 | What | When | Kept | Where |
 |---|---|---|---|
 | Database dump (`pg_dump`, gzip) | Every night 03:00 IST | 30 days | Bucket `backups/` |
-| Whole server snapshot | Daily (Lightsail automatic) | 7 days | Lightsail > Snapshots |
+| Whole server backup | Weekly (DigitalOcean backups) | 4 weeks [Unverified] | Droplet > Backups |
 | Photos and scans | Stored once in the bucket | Until deleted | Bucket `forms/`, `kyc/` |
 
 Backup by hand (before any risky change): `docker compose exec backup backup.sh`
@@ -112,10 +112,10 @@ Backup by hand (before any risky change): `docker compose exec backup backup.sh`
 Restore the database from a dump (replaces ALL current data; take a fresh dump first):
 ```
 cd /opt/jainsangh
-docker compose exec backup sh -c '. /etc/backup.env; aws s3 cp s3://$S3_BUCKET/backups/<file>.sql.gz - | gunzip | psql'
+docker compose exec backup sh -c '. /etc/backup.env; aws --endpoint-url $S3_ENDPOINT s3 cp s3://$S3_BUCKET/backups/<file>.sql.gz - | gunzip | psql'
 docker compose restart app
 ```
-Restore the whole server: Lightsail > Snapshots > **Create new instance** from a snapshot, move the static IP to it.
+Restore the whole server: Droplet > **Backups** > **Restore Droplet** (or create a new Droplet from a backup and point the Cloudflare A record at its IP).
 
 The `AADHAAR_ENC_KEY` is not in any backup. Keep the `.env` copy in the password manager.
 
@@ -127,9 +127,9 @@ The `AADHAAR_ENC_KEY` is not in any backup. Keep the `.env` copy in the password
 |---|---|---|
 | `AADHAAR_ENC_KEY` | Stored Aadhaar numbers can never be read again. **Never change it.** | Rotate is not possible without re-entering Aadhaar numbers: treat as serious, inform the committee |
 | `AUTH_SECRET` | Generate a new one; everyone just logs in again | Change it in `.env`, `docker compose up -d app`: all sessions end |
-| Bucket access key (`S3_*`) | Create a new key in Lightsail > bucket > Permissions | Delete the old key in Lightsail, create a new one, update `.env`, `docker compose up -d` |
+| Spaces key (`S3_*`) | Create a new key in DigitalOcean > API > Spaces Keys | Delete the old key there, create a new one, update `.env`, `docker compose up -d` |
 | `POSTGRES_PASSWORD` | It is in `.env` and the password manager | Ask Claude for the steps: the password is also stored inside the database volume |
-| Deploy SSH key (`SSH_KEY` secret) | Make a new key pair (AWS-SETUP step 8) | Remove its line from `~/.ssh/authorized_keys` on the server, make a new one |
+| Deploy SSH key (`SSH_KEY` secret) | Make a new key pair (SERVER-SETUP step 9) | Remove its line from `~/.ssh/authorized_keys` on the server, make a new one |
 | GitHub token (Mac) | Create a new fine-grained token (Contents: Read and write, only this repo) | Delete it on GitHub > Settings > Developer settings |
 
 After changing `.env`, run `docker compose up -d` in `/opt/jainsangh` so the containers pick up the new values.
@@ -142,8 +142,8 @@ Never paste secrets into chat, WhatsApp or email. Never commit `.env` (it is in 
 
 | When | What |
 |---|---|
-| Weekly | Glance at फॉर्म अपलोड for forms stuck in the queue. Check the bucket has last night's backup |
-| Monthly | Check the AWS bill (Billing > Bills). Expected about $15 + GST [Unverified: GST on AWS invoices] |
+| Weekly | Glance at फॉर्म अपलोड for forms stuck in the queue. Check the Space has last night's backup |
+| Monthly | Check the DigitalOcean bill (Billing). Expected about $19.40 + tax [Unverified: GST on DigitalOcean invoices] |
 | Monthly | Review users: disable volunteers who no longer help |
 | Every 3 months | Security updates: `npm outdated`, update Next.js within the 14.2.x line (`npm install next@14 eslint-config-next@14`), run tests, push. Check GitHub > Security tab for alerts. Ubuntu security updates install themselves; reboot the server once (`sudo reboot`) if `/var/run/reboot-required` exists |
 | Every 3 months | Test a restore: download one backup and check it opens |
@@ -156,7 +156,7 @@ Never paste secrets into chat, WhatsApp or email. Never commit `.env` (it is in 
 ## 8. Known limits and watch points
 
 - One server: if it fails, the app is down until it is rebuilt from a snapshot (about 30 minutes). Acceptable for this use.
-- 2 GB memory: enough for the Sangh's ~350 families. If `free -h` shows swap used heavily, move to the 4 GB plan (Lightsail > Snapshots > new instance from snapshot with a bigger plan).
+- 2 GB memory: enough for the Sangh's ~350 families. If `free -h` shows swap used heavily, move to the 4 GB plan (Droplet > **Resize** > 4 GB, a few minutes of downtime).
 - In-app AI form reading is OFF until `ANTHROPIC_API_KEY` is set in `.env`. Set a monthly spend limit in the Anthropic console first, then `docker compose up -d app`.
 - PDF export uses the browser's Print > Save as PDF (keeps Marathi text correct).
 - English name spellings are made automatically and should be checked by volunteers.
@@ -169,8 +169,8 @@ Never paste secrets into chat, WhatsApp or email. Never commit `.env` (it is in 
 | Problem | Likely cause | Fix |
 |---|---|---|
 | GitHub Action "test" fails | Code error | Open the run, read the red step, fix and push |
-| GitHub Action "deploy" fails at SSH | `SSH_HOST` / `SSH_KEY` secret wrong, or server off | Check the secrets; check the instance is running in Lightsail |
-| Site does not open, HTTPS error | DNS not pointing at the static IP, or port 443 closed | `dig +short <domain>`; Lightsail firewall must allow 443; `docker compose logs caddy` |
+| GitHub Action "deploy" fails at SSH | `SSH_HOST` / `SSH_KEY` secret wrong, or server off | Check the secrets; check the Droplet is on in DigitalOcean |
+| Site does not open, HTTPS error | DNS not pointing at the Droplet IP, or port 443 closed | `dig +short <domain>`; DigitalOcean firewall `jainsangh-web` must allow 443; `docker compose logs caddy` |
 | App shows an error on every page | Database or app container stopped | `docker compose ps`; `docker compose logs app`; `docker compose up -d` |
 | App container keeps restarting | `prisma db push` refused a change that would delete data, or a wrong `.env` value | `docker compose logs app`, read the first error |
 | Photos do not load | Bucket name or access key wrong | Check `S3_*` in `.env`; the key must belong to that bucket |

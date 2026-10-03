@@ -3,7 +3,7 @@
 Web app (mobile-first, Marathi / Hindi / English) for श्री जैन स्थानकवासी श्रावक संघ, नाशिकरोड:
 families, members, form photo upload with AI reading, voter list, exports, receipts.
 
-Stack: Next.js 14 · PostgreSQL 16 · Prisma · Claude API (form reading, optional) · Docker + Caddy on AWS Lightsail (Mumbai) · GitHub Actions CI/CD.
+Stack: Next.js 14 · PostgreSQL 16 · Prisma · Claude API (form reading, optional) · Docker + Caddy on a DigitalOcean Droplet (Bangalore) · GitHub Actions CI/CD.
 
 ## Features (v0.1)
 
@@ -55,11 +55,11 @@ Bulk import of forms read outside the app (goes to the check queue, never straig
 
 `npm run db:seed -- --demo` also loads the sample forms from `demo/` (not in Git: real personal data).
 
-## Deploy (AWS Lightsail)
+## Deploy (DigitalOcean)
 
-Full steps: `docs/AWS-SETUP.md`. Day-to-day running: `docs/RUNBOOK.md`.
+Full steps: `docs/SERVER-SETUP.md`. Day-to-day running: `docs/RUNBOOK.md`.
 
-1. One-time: Lightsail server (2 GB, Mumbai) + bucket + DNS, `scripts/server-setup.sh`, `/opt/jainsangh/.env`, GitHub secrets `SSH_HOST`, `SSH_USER`, `SSH_KEY`.
+1. One-time: Droplet (2 GB, Bangalore) + Space + firewall + Cloudflare DNS, `scripts/server-setup.sh`, `/opt/jainsangh/.env`, GitHub secrets `SSH_HOST`, `SSH_USER`, `SSH_KEY`.
 2. Every push to `main`: GitHub Actions runs the tests, builds the Docker image (pushed to ghcr.io) and restarts the app on the server.
 3. On start the app container runs `prisma db push` (adds new tables/columns, refuses data loss) and creates the first admin from `SEED_ADMIN_*` if there are no users.
 
@@ -68,7 +68,7 @@ Full steps: `docs/AWS-SETUP.md`. Day-to-day running: `docs/RUNBOOK.md`.
 | `Dockerfile` | Builds the app image (Next.js standalone) |
 | `docker-compose.yml` | Server services: `db`, `app`, `caddy`, `backup` |
 | `Caddyfile` | HTTPS front door |
-| `docker/backup/` | Nightly database dump to the bucket |
+| `docker/backup/` | Nightly database dump to the Space |
 | `.github/workflows/deploy.yml` | CI/CD |
 | `scripts/server-setup.sh` | One-time server preparation |
 
@@ -81,7 +81,7 @@ src/lib/relations.ts        relation words (बायको, सून, ना�
 src/lib/eligibility.ts      voter rules
 src/lib/extract.ts          Claude vision prompt + schema
 src/lib/translit.ts         Devanagari name -> English spelling
-src/lib/storage.ts          files: Lightsail bucket (S3) or local folder
+src/lib/storage.ts          files: DigitalOcean Space (S3 API) or local folder
 src/lib/importBatch.ts      batch import of forms read outside the app
 src/lib/uploads.ts          extraction run, duplicate finder
 src/lib/exportRows.ts       voter / member export columns

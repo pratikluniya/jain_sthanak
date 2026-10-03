@@ -1,5 +1,5 @@
 // File storage for form photos and KYC scans.
-//   STORAGE_DRIVER="s3"    -> AWS Lightsail bucket (or any S3-compatible store). Used in production.
+//   STORAGE_DRIVER="s3"    -> DigitalOcean Spaces (S3-compatible; also works with AWS S3). Used in production.
 //   STORAGE_DRIVER="local" -> ./uploads folder on disk. Used in development.
 // One private bucket holds both kinds of files, kept apart by a prefix: "forms/..." and "kyc/...".
 import { promises as fs } from "fs";
@@ -19,9 +19,11 @@ async function s3() {
   if (client) return client;
   const { S3Client } = await import("@aws-sdk/client-s3");
   client = new S3Client({
-    region: process.env.S3_REGION || "ap-south-1",
-    endpoint: process.env.S3_ENDPOINT || undefined, // only for testing with an S3 look-alike
-    forcePathStyle: !!process.env.S3_ENDPOINT,
+    // DigitalOcean Spaces: endpoint https://blr1.digitaloceanspaces.com, region "us-east-1" (as DigitalOcean's docs say;
+    // the real location comes from the endpoint), virtual-hosted style (forcePathStyle false).
+    region: process.env.S3_REGION || "us-east-1",
+    endpoint: process.env.S3_ENDPOINT || undefined,
+    forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
     credentials: {
       accessKeyId: process.env.S3_ACCESS_KEY_ID!,
       secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,

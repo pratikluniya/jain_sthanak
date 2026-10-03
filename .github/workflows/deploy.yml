@@ -1,9 +1,9 @@
-# CI/CD: every push to main is tested, built into a Docker image and deployed to the AWS server.
+# CI/CD: every push to main is tested, built into a Docker image and deployed to the DigitalOcean server.
 # A failed test stops everything: the server keeps running the last good version.
 #
 # GitHub > Settings > Secrets and variables > Actions > New repository secret:
 #   SSH_HOST  the server's static IP
-#   SSH_USER  ubuntu
+#   SSH_USER  deploy
 #   SSH_KEY   the private SSH key that can log in to the server (whole file, including BEGIN/END lines)
 name: test-build-deploy
 

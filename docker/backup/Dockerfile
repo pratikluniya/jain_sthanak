@@ -1,4 +1,4 @@
-# Nightly database backup to the Lightsail bucket.
+# Nightly database backup to the DigitalOcean Space (S3-compatible).
 FROM postgres:16-alpine
 RUN apk add --no-cache aws-cli tzdata
 ENV TZ=Asia/Kolkata
