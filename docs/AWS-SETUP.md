@@ -52,13 +52,21 @@ GitHub push to main ──> GitHub Actions: test ──> build image ──> dep
 
 ## 4. Web address (DNS)
 
-Pick the subdomain (e.g. `jainsangh.techshree.com`). Where techshree.com's DNS is managed, add:
+Address: **jainsthanak.techshree.com** (decided 3 Oct 2026).
+techshree.com is registered at GoDaddy, but its DNS is managed at **Cloudflare** (nameservers `kolton.ns.cloudflare.com` and `dayana.ns.cloudflare.com`, checked 3 Oct 2026). So the record is added in Cloudflare, not GoDaddy:
 
-| Type | Name | Value | TTL |
-|---|---|---|---|
-| A | `jainsangh` | the static IP from step 2.3 | 300 |
+1. https://dash.cloudflare.com > **techshree.com** > **DNS** > **Records** > **Add record**.
+2. Fill in:
 
-Check from the Mac after a few minutes: `dig +short jainsangh.techshree.com` should print the IP.
+| Type | Name | IPv4 address | Proxy status | TTL |
+|---|---|---|---|---|
+| A | `jainsthanak` | the static IP from step 2.3 | **DNS only** (grey cloud, not orange) | Auto |
+
+3. Save. The main website on Cloudflare Pages is not affected; this adds a new name only.
+
+Why "DNS only": Caddy on the server gets its own free HTTPS certificate. With the orange cloud (Cloudflare proxy) on, Cloudflare sits in between and needs extra SSL settings. Keep it simple: grey cloud.
+
+Check from the Mac after a few minutes: `dig +short jainsthanak.techshree.com` should print the static IP.
 
 ## 5. First login to the server
 
@@ -94,7 +102,7 @@ echo "AADHAAR_ENC_KEY=\"$(openssl rand -hex 32)\""
 Then `nano /opt/jainsangh/.env` and fill it like `.env.example`:
 ```
 POSTGRES_PASSWORD="..."          # from above
-APP_DOMAIN="jainsangh.techshree.com"
+APP_DOMAIN="jainsthanak.techshree.com"
 STORAGE_DRIVER="s3"
 S3_BUCKET="jainsangh-files-..."
 S3_REGION="ap-south-1"
@@ -135,7 +143,7 @@ On GitHub: repo > **Settings** > **Secrets and variables** > **Actions** > **New
 
 1. After the 5 Oct meeting, merge the `aws` branch into `main` (GitHub > **Pull requests** > **New** > base `main`, compare `aws` > **Merge**). This also stops being what Vercel shows: disconnect the project in Vercel first (Vercel > Project > Settings > Git > Disconnect) so Vercel does not try to build the Docker version.
 2. GitHub > **Actions** > **test-build-deploy**: it runs by itself after the merge (or press **Run workflow**). Three jobs: test, build, deploy. Each turns green.
-3. Open `https://jainsangh.techshree.com`. The first visit can take a few seconds while Caddy gets the HTTPS certificate.
+3. Open `https://jainsthanak.techshree.com`. The first visit can take a few seconds while Caddy gets the HTTPS certificate.
 4. Log in with the admin mobile and the `SEED_ADMIN_PASSWORD`, then **delete the `SEED_ADMIN_PASSWORD` line** from `/opt/jainsangh/.env`. Change the password in the app (Users).
 5. Settings: check the age cut-off date (01/10/2026), Sangh name, address, receipt purposes.
 
