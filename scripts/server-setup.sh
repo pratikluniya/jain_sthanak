@@ -42,7 +42,8 @@ chown deploy:deploy /opt/jainsangh
 # data/backups = nightly database copies
 mkdir -p /opt/jainsangh/data/uploads /opt/jainsangh/data/backups
 chown 1001:1001 /opt/jainsangh/data/uploads
-chmod 700 /opt/jainsangh/data /opt/jainsangh/data/uploads /opt/jainsangh/data/backups
+chmod 711 /opt/jainsangh/data   # others may pass through (Docker run by "deploy" needs it) but not list it
+chmod 700 /opt/jainsangh/data/uploads /opt/jainsangh/data/backups
 
 echo "== 6. rclone (weekly encrypted copy to Google Drive) + weekly schedule"
 DEBIAN_FRONTEND=noninteractive apt-get install -y rclone
