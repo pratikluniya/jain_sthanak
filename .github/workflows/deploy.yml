@@ -9,7 +9,9 @@ name: test-build-deploy
 
 on:
   push:
-    branches: [main]
+    # "aws" (the production-setup branch) also deploys, so the new server can be tested before the merge.
+    # After the merge into main, remove "aws" from this list.
+    branches: [main, aws]
   workflow_dispatch: {}   # "Run workflow" button in the Actions tab
 
 concurrency:
