@@ -48,6 +48,7 @@ chmod 700 /opt/jainsangh/data/uploads /opt/jainsangh/data/backups
 echo "== 6. rclone (weekly encrypted copy to Google Drive) + weekly schedule"
 DEBIAN_FRONTEND=noninteractive apt-get install -y rclone
 mkdir -p /opt/jainsangh/scripts
+chown deploy:deploy /opt/jainsangh/scripts   # GitHub Actions (user deploy) copies scripts here on every deploy
 # Every Sunday 04:00 India time (server clock is UTC: Saturday 22:30 UTC). Does nothing useful until
 # rclone is configured (docs/SERVER-SETUP.md, "Google Drive backup"); failures are written to the log.
 echo "30 22 * * 6 root bash /opt/jainsangh/scripts/drive-backup.sh" > /etc/cron.d/jainsangh-drive-backup
