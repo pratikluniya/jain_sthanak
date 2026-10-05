@@ -78,6 +78,10 @@ model User {
   deletedAt   DateTime?
   deletedById String?
 
+  // 15-day demise reminder (Admin and Operator): when this user last clicked "Done", and "Remind me later" until when
+  demiseCheckDoneAt  DateTime?
+  demiseSnoozeUntil  DateTime?
+
   auditLogs AuditLog[]
 }
 
@@ -156,12 +160,19 @@ model Member {
 
   status MemberStatus @default(ACTIVE)
 
+  // Deceased: optional date of death, and who marked it when (drives the 15-day reminder list)
+  dateOfDeath        DateTime?
+  deceasedMarkedAt   DateTime?
+  deceasedMarkedById String?
+
   voterNo Int? @unique // fixed voter number, assigned once
 
   // KYC (Aadhaar). Number stored encrypted; last 4 kept for display.
   aadhaarEnc    String?
   aadhaarLast4  String?
-  kycFileKey    String?
+  kycFileKey    String?   // Aadhaar front (or the single KYC document)
+  aadhaarBackKey String?  // Aadhaar back
+  photoKey       String?  // passport-size photo (bucket "photos")
   kycDocType    String?   // AADHAAR / PAN / VOTER_ID / OTHER
   kycVerified   Boolean   @default(false)
   kycVerifiedBy String?

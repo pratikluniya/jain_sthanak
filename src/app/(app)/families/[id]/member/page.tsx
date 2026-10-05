@@ -1,3 +1,6 @@
+import ImageInput from "@/components/ImageInput";
+import { can } from "@/lib/rbac";
+import { todayIST } from "@/lib/deceased";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getDict, getLang } from "@/lib/i18n";
@@ -7,9 +10,11 @@ import { saveMember } from "../../actions";
 import { headLabel } from "@/lib/members";
 
 export default async function MemberFormPage({ params, searchParams }: { params: { id: string }; searchParams: { m?: string } }) {
-  await requireSession("edit");
+  const s = await requireSession("edit");
+  const canSeeAadhaar = can(s.role, "viewAadhaar");
   const t = getDict();
   const lang = getLang();
+  const upT = { uploaded: t.uploaded, replaceFile: t.replaceFile };
   const fam = await prisma.family.findUnique({ where: { id: params.id, deletedAt: null } });
   if (!fam) notFound();
   const m = searchParams.m ? await prisma.member.findUnique({ where: { id: searchParams.m, deletedAt: null } }) : null;
@@ -82,14 +87,20 @@ export default async function MemberFormPage({ params, searchParams }: { params:
               {(["ACTIVE", "DECEASED", "MARRIED_OUT", "MOVED_OUT"] as const).map((x) => <option key={x} value={x}>{t[x]}</option>)}
             </select>
           </div>
+          {field("dateOfDeath", `${t.dateOfDeath} ${t.optional}`, m?.dateOfDeath ? m.dateOfDeath.toISOString().slice(0, 10) : "", { type: "date", max: todayIST() })}
         </div>
         <fieldset className="border rounded-lg p-3 space-y-2">
           <legend className="text-sm font-semibold px-1">{t.kyc}</legend>
           {field("aadhaar", `${t.aadhaar}${m?.aadhaarLast4 ? ` (XXXX XXXX ${m.aadhaarLast4})` : ""}`, "", { inputMode: "numeric", placeholder: t.aadhaarPlaceholder, autoComplete: "off" })}
-          <div>
-            <label className="label">{t.aadhaar} scan</label>
-            <input type="file" name="kycFile" accept="image/*,application/pdf" className="text-sm" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ImageInput name="kycFile" label={t.aadhaarFront} maxSide={1600} allowPdf currentUrl={m?.kycFileKey && canSeeAadhaar ? `/api/files/kyc/${m.kycFileKey}` : undefined} t={upT} />
+            <ImageInput name="aadhaarBackFile" label={t.aadhaarBack} maxSide={1600} allowPdf currentUrl={m?.aadhaarBackKey && canSeeAadhaar ? `/api/files/kyc/${m.aadhaarBackKey}` : undefined} t={upT} />
           </div>
+        </fieldset>
+        <fieldset className="border rounded-lg p-3 space-y-2">
+          <legend className="text-sm font-semibold px-1">{t.passportPhoto}</legend>
+          <ImageInput name="photoFile" label={t.passportPhoto} maxSide={600} currentUrl={m?.photoKey ? `/api/files/photos/${m.photoKey}` : undefined} t={upT} />
+          <p className="text-xs text-stone-500">{t.uploadHelp}</p>
         </fieldset>
         <button className="btn-primary w-full sm:w-auto">{t.save}</button>
       </form>

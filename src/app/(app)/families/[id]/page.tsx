@@ -10,6 +10,11 @@ import { effectiveAgeDate, getSettings } from "@/lib/settings";
 import { memberFullName, headLabel } from "@/lib/members";
 import { approveKyc, confirmPanth, deleteFamily, deleteMember, restoreFamily } from "../actions";
 import { RECEIPTS_ENABLED } from "@/lib/features";
+import { initials } from "@/lib/initials";
+import MarkDeceasedButton from "@/components/MarkDeceasedButton";
+import { deceasedLabels } from "@/lib/deceasedLabels";
+import { todayIST } from "@/lib/deceased";
+import { undoDeceasedAction } from "../../deceasedActions";
 import { LIVE } from "@/lib/softDelete";
 import ConfirmButton from "@/components/ConfirmButton";
 import { formImageUrls } from "@/lib/storage";
@@ -40,6 +45,10 @@ export default async function FamilyPage({ params }: { params: { id: string } })
   // a deleted family is read-only until it is restored
   const canEdit = can(s.role, "edit") && !deleted;
   const canDelete = can(s.role, "delete") && !deleted;
+  const canMarkDeceased = can(s.role, "approve") && !deleted;
+  const dLabels = deceasedLabels(t);
+  const today = todayIST();
+  const living = members.filter((x) => x.status !== "DECEASED");
   const settings = await getSettings();
   const ageDate = effectiveAgeDate(settings);
   const allKeys = fam.uploads.flatMap((u) => u.imageKeys);
@@ -123,7 +132,13 @@ export default async function FamilyPage({ params }: { params: { id: string } })
           return (
             <div key={m.id} className="card p-3">
               <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
+                {m.photoKey ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={`/api/files/photos/${m.photoKey}`} alt="" loading="lazy" className="h-14 w-12 shrink-0 rounded-lg border border-stone-200 object-cover" />
+                ) : (
+                  <span className="flex h-14 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-50 font-heading text-sm font-bold text-brand-700">{initials(memberFullName(m, false, en))}</span>
+                )}
+                <div className="min-w-0 flex-1">
                   <div className="font-semibold">
                     {memberFullName(m, true, en)} {m.isHead && <span className="badge-gray ml-1">{t.isHead}</span>}
                   </div>
@@ -142,28 +157,47 @@ export default async function FamilyPage({ params }: { params: { id: string } })
                   {r.eligible ? (
                     <span className="badge-green">{t.eligible}{m.voterNo ? ` #${m.voterNo}` : ""}</span>
                   ) : (
-                    r.reasons.map((x) => <span key={x} className={x === "UNDER_AGE" ? "badge-gray" : "badge-amber"}>{t[x]}</span>)
+                    r.reasons.filter((x) => x !== "DECEASED").map((x) => <span key={x} className={x === "UNDER_AGE" ? "badge-gray" : "badge-amber"}>{t[x]}</span>)
                   )}
-                  {m.status !== "ACTIVE" && <span className="badge-red">{t[m.status]}</span>}
-                  {m.aadhaarLast4 || m.kycFileKey ? (
+                  {m.status !== "ACTIVE" && (
+                    <span className="badge-red">{t[m.status]}{m.status === "DECEASED" && m.dateOfDeath ? ` · ${m.dateOfDeath.toLocaleDateString("en-IN")}` : ""}</span>
+                  )}
+                  {m.aadhaarLast4 || m.kycFileKey || m.aadhaarBackKey ? (
                     m.kycVerified ? <span className="badge-green">{t.kycVerified}</span> : <span className="badge-amber">{t.kycPending}</span>
                   ) : null}
                 </div>
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {canEdit && <Link href={`/families/${fam.id}/member?m=${m.id}`} className="btn-secondary btn-sm">{t.edit}</Link>}
-                {can(s.role, "approve") && !deleted && !m.kycVerified && (m.aadhaarLast4 || m.kycFileKey) && (
+                {can(s.role, "approve") && !deleted && !m.kycVerified && (m.aadhaarLast4 || m.kycFileKey || m.aadhaarBackKey) && (
                   <form action={approveKyc}>
                     <input type="hidden" name="memberId" value={m.id} />
                     <button className="btn-secondary btn-sm">KYC {t.approve}</button>
                   </form>
                 )}
                 {can(s.role, "viewAadhaar") && m.kycFileKey && (
-                  <a href={`/api/files/kyc/${m.kycFileKey}`} target="_blank" className="btn-secondary btn-sm">{m.kycDocType && m.kycDocType !== "AADHAAR" ? m.kycDocType : t.aadhaar} 📄</a>
+                  <a href={`/api/files/kyc/${m.kycFileKey}`} target="_blank" className="btn-secondary btn-sm">{m.kycDocType && m.kycDocType !== "AADHAAR" ? m.kycDocType : t.aadhaarFront} 📄</a>
+                )}
+                {can(s.role, "viewAadhaar") && m.aadhaarBackKey && (
+                  <a href={`/api/files/kyc/${m.aadhaarBackKey}`} target="_blank" className="btn-secondary btn-sm">{t.aadhaarBack} 📄</a>
                 )}
                 {m.aadhaarLast4 && <span className="text-xs text-stone-500 self-center">{t.aadhaar}: XXXX XXXX {m.aadhaarLast4}</span>}
                 {m.kycDocType && m.kycDocType !== "AADHAAR" && <span className="text-xs text-stone-500 self-center">KYC: {m.kycDocType}</span>}
                 {m.dob && <span className="text-xs text-stone-500 self-center">{t.dob}: {m.dob.toLocaleDateString("en-IN")}</span>}
+                {canMarkDeceased && m.status !== "DECEASED" && (
+                  <MarkDeceasedButton
+                    member={{ id: m.id, name: memberFullName(m, true, en), isHead: m.isHead }}
+                    others={living.filter((x) => x.id !== m.id).map((x) => ({ id: x.id, name: memberFullName(x, true, en) }))}
+                    today={today}
+                    t={dLabels}
+                  />
+                )}
+                {canMarkDeceased && m.status === "DECEASED" && (
+                  <form action={undoDeceasedAction}>
+                    <input type="hidden" name="memberId" value={m.id} />
+                    <ConfirmButton className="btn-secondary btn-sm" message={`${memberFullName(m)}: ${t.undoConfirm}`}>{t.undoDeceased}</ConfirmButton>
+                  </form>
+                )}
                 {canDelete && (
                   <form action={deleteMember}>
                     <input type="hidden" name="memberId" value={m.id} />

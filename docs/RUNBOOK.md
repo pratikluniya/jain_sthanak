@@ -29,6 +29,8 @@ Full setup steps: `docs/SERVER-SETUP.md`.
 | Edit family / member | Data entry, Operator, Admin | कुटुंबे > family > बदला |
 | Confirm blank panth | Operator, Admin | कुटुंबे > तपासणी बाकी |
 | Approve KYC | Operator, Admin | Family page > KYC मंजूर करा |
+| Upload Aadhaar front + back and passport photo | Data entry, Operator, Admin | Family page > member > बदला (phone camera or gallery; pictures are shrunk before upload) |
+| Mark a member deceased (optional date of death; asks for the new head if the head passed away) / undo | Operator, Admin | Family page > निधन नोंदवा / निधन नोंद रद्द करा, or the 15-day reminder popup on the dashboard |
 | Voter list, voter numbers | Operator, Admin | मतदार यादी |
 | Download lists (Excel, Print, PDF; pick columns and language) | Operator, Admin | "डाउनलोड" button on मतदार यादी (voters), सदस्य (all members), कुटुंबे (heads of family with address and phone) |
 | Receipts | (hidden until phase 2) | turned on in `src/lib/features.ts` (`RECEIPTS_ENABLED`) |
@@ -37,6 +39,8 @@ Full setup steps: `docs/SERVER-SETUP.md`.
 | Age cut-off date (18+), election date, membership-ended rule | Admin | सेटिंग्ज > बदला on the row |
 
 Every create / edit / delete / restore / export / Aadhaar view is recorded in the `AuditLog` table.
+
+Deceased members never appear on the voter list, whatever the settings say. Every 15 days, Admin and Operator see a popup on the dashboard asking whether anyone has passed away; "पूर्ण" restarts the 15 days, "नंतर" hides it until the next day. When the head of a family passes away, the chosen new head becomes "self", the old head becomes father / mother / husband / wife where that is clear, and the family notes record the old head. Other members' relations still describe the old head: correct them on the edit page.
 
 Delete never erases anything: users, families and members get a "deleted" mark (who and when) and disappear from lists, the voter list and exports. Deleting a family also hides its members. Admin can restore them. A disabled or deleted user is locked out on their next click, even if they are logged in.
 

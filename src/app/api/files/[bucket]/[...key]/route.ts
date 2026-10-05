@@ -12,8 +12,9 @@ export async function GET(_: Request, { params }: { params: { bucket: string; ke
   const s = await getLiveSession();
   if (!s) return new NextResponse("Unauthorized", { status: 401 });
   const bucket = params.bucket;
-  if (bucket !== "forms" && bucket !== "kyc") return new NextResponse("Not found", { status: 404 });
-  if (bucket === "forms" && !can(s.role, "view")) return new NextResponse("Forbidden", { status: 403 });
+  if (bucket !== "forms" && bucket !== "kyc" && bucket !== "photos") return new NextResponse("Not found", { status: 404 });
+  // form photos and member photos: any logged-in user; Aadhaar scans: only roles that may see Aadhaar (every view logged)
+  if ((bucket === "forms" || bucket === "photos") && !can(s.role, "view")) return new NextResponse("Forbidden", { status: 403 });
   if (bucket === "kyc" && !can(s.role, "viewAadhaar")) return new NextResponse("Forbidden", { status: 403 });
   const key = params.key.join("/");
   try {

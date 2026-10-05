@@ -9,6 +9,7 @@ import { computeSearchKey, inferHeadGender, prepareMember } from "@/lib/members"
 import { cleanAadhaar, encrypt } from "@/lib/crypto";
 import { putFile } from "@/lib/storage";
 import { toEnglishName } from "@/lib/translit";
+import { todayIST } from "@/lib/deceased";
 import type { Panth, PanthStatus, FamilyStatus } from "@prisma/client";
 import { restoreFamily as restoreFamilyRecord, restoreMember as restoreMemberRecord, softDeleteFamily, softDeleteMember } from "@/lib/softDelete";
 
@@ -125,6 +126,8 @@ export async function saveMember(fd: FormData) {
       bloodGroup: str(fd, "bloodGroup"),
       status: str(fd, "status"),
       serial: existing?.serial,
+      // keep the current head (after a head change the new head may not have relation "self" yet)
+      isHead: existing?.isHead,
     },
     fam.code,
     recordedOn,
@@ -132,6 +135,20 @@ export async function saveMember(fd: FormData) {
   if (existing) prepared.nameRaw = existing.nameRaw || prepared.nameRaw;
 
   const data: Record<string, unknown> = { ...prepared };
+
+  // Deceased via the edit form: record who marked it and when (for the 15-day reminder); clear it when changed back
+  if (prepared.status === "DECEASED") {
+    const dod = str(fd, "dateOfDeath");
+    data.dateOfDeath = /^\d{4}-\d{2}-\d{2}$/.test(dod) && dod <= todayIST() ? new Date(dod) : null;
+    if (existing?.status !== "DECEASED") {
+      data.deceasedMarkedAt = new Date();
+      data.deceasedMarkedById = s.uid;
+    }
+  } else {
+    data.dateOfDeath = null;
+    data.deceasedMarkedAt = null;
+    data.deceasedMarkedById = null;
+  }
 
   // Aadhaar (optional)
   const aadhaarRaw = str(fd, "aadhaar");
@@ -143,15 +160,30 @@ export async function saveMember(fd: FormData) {
       data.kycVerified = false;
     }
   }
-  const kycFile = fd.get("kycFile");
-  if (kycFile && typeof kycFile === "object" && "size" in kycFile && kycFile.size > 0) {
-    const f = kycFile as File;
-    const ext = (f.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
-    const key = `${familyId}/${memberId || "new"}-${Date.now()}.${ext}`;
-    await putFile("kyc", key, Buffer.from(await f.arrayBuffer()), f.type || "image/jpeg");
-    data.kycFileKey = key;
+  // Aadhaar front + back (bucket "kyc", Aadhaar-permission only) and passport photo (bucket "photos")
+  const upload = async (field: string, bucket: "kyc" | "photos", suffix: string) => {
+    const v = fd.get(field);
+    if (!v || typeof v !== "object" || !("size" in v) || v.size === 0) return null;
+    const f = v as File;
+    const ext = f.type === "application/pdf" ? "pdf" : (f.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
+    if (!["jpg", "png", "webp", "pdf"].includes(ext)) return null;
+    const key = `${familyId}/${memberId || "new"}-${suffix}-${Date.now()}.${ext}`;
+    await putFile(bucket, key, Buffer.from(await f.arrayBuffer()), f.type || "image/jpeg");
+    return key;
+  };
+  const front = await upload("kycFile", "kyc", "front");
+  if (front) {
+    data.kycFileKey = front;
+    data.kycDocType = "AADHAAR";
     data.kycVerified = false;
   }
+  const back = await upload("aadhaarBackFile", "kyc", "back");
+  if (back) {
+    data.aadhaarBackKey = back;
+    data.kycVerified = false;
+  }
+  const photo = await upload("photoFile", "photos", "photo");
+  if (photo) data.photoKey = photo;
 
   let id = memberId;
   if (existing) {

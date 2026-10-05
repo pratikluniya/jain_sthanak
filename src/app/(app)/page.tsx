@@ -6,6 +6,11 @@ import { requireSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import { LIVE } from "@/lib/softDelete";
 import Icon, { type IconName } from "@/components/Icon";
+import DemiseReminder from "@/components/DemiseReminder";
+import { DEMISE_EVERY_DAYS, demiseReminderDue, todayIST } from "@/lib/deceased";
+import { deceasedLabels } from "@/lib/deceasedLabels";
+import { memberFullName } from "@/lib/members";
+import { getLang } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +25,41 @@ export default async function Dashboard() {
     evaluateAll(),
   ]);
   const voters = rows.filter((r) => r.result.eligible).length;
+
+  // 15-day demise reminder for Admin and Operator
+  let reminder: React.ReactNode = null;
+  if (can(s.role, "approve")) {
+    const me = await prisma.user.findUnique({ where: { id: s.uid }, select: { demiseCheckDoneAt: true, demiseSnoozeUntil: true } });
+    if (me && demiseReminderDue(me)) {
+      const en = getLang() === "en";
+      const since = new Date(Date.now() - DEMISE_EVERY_DAYS * 86_400_000);
+      const recent = await prisma.member.findMany({
+        where: { ...LIVE, status: "DECEASED", deceasedMarkedAt: { gte: since } },
+        include: { family: { select: { code: true } } },
+        orderBy: { deceasedMarkedAt: "desc" },
+      });
+      const userIds = [...new Set(recent.map((r) => r.deceasedMarkedById).filter((x): x is string => !!x))];
+      const names = new Map((await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } })).map((u) => [u.id, u.name]));
+      reminder = (
+        <DemiseReminder
+          english={en}
+          today={todayIST()}
+          recent={recent.map((r) => ({
+            id: r.id,
+            name: memberFullName(r, true, en),
+            familyCode: r.family.code,
+            dateOfDeath: r.dateOfDeath ? r.dateOfDeath.toLocaleDateString("en-IN") : null,
+            markedBy: (r.deceasedMarkedById && names.get(r.deceasedMarkedById)) || "—",
+          }))}
+          t={{
+            ...deceasedLabels(t), demiseTitle: t.demiseTitle, demiseIntro: t.demiseIntro, demiseRecent: t.demiseRecent, demiseNone: t.demiseNone,
+            markedBy: t.markedBy, searchMember: t.searchMember, demiseDone: t.demiseDone, demiseLater: t.demiseLater, markedDone: t.markedDone,
+            family: t.family, isHead: t.isHead, name: t.name,
+          }}
+        />
+      );
+    }
+  }
   const borderline = rows.filter((r) => r.result.reasons.includes("AGE_BORDERLINE")).length;
 
   const stats: { label: string; value: number; href: string; icon: IconName; warn?: boolean }[] = [
@@ -32,6 +72,7 @@ export default async function Dashboard() {
 
   return (
     <div className="space-y-5">
+      {reminder}
       <h1 className="page-title">{t.dashboard}</h1>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {stats.map((st) => (
