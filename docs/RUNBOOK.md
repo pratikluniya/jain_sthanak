@@ -29,7 +29,8 @@ Full setup steps: `docs/SERVER-SETUP.md`.
 | Edit family / member | Data entry, Operator, Admin | कुटुंबे > family > बदला |
 | Confirm blank panth | Operator, Admin | कुटुंबे > तपासणी बाकी |
 | Approve KYC | Operator, Admin | Family page > KYC मंजूर करा |
-| Voter list, voter numbers, exports | Operator, Admin | मतदार यादी / निर्यात |
+| Voter list, voter numbers | Operator, Admin | मतदार यादी |
+| Download lists (Excel, Print, PDF; pick columns and language) | Operator, Admin | "डाउनलोड" button on मतदार यादी (voters), सदस्य (all members), कुटुंबे (heads of family with address and phone) |
 | Receipts | (hidden until phase 2) | turned on in `src/lib/features.ts` (`RECEIPTS_ENABLED`) |
 | Users (add, edit, disable, delete, reset password) | Admin | वापरकर्ते > बदला |
 | See and restore deleted users, families, members | Admin | "हटवलेले दाखवा" on Users, Families, Members |
@@ -164,7 +165,7 @@ Never paste secrets into chat, WhatsApp or email. Never commit `.env` (it is in 
 - One server: if it fails, the app is down until it is rebuilt from a snapshot (about 30 minutes). Acceptable for this use.
 - 2 GB memory: enough for the Sangh's ~350 families. If `free -h` shows swap used heavily, move to the 4 GB plan (Droplet > **Resize** > 4 GB, a few minutes of downtime).
 - In-app AI form reading is OFF until `ANTHROPIC_API_KEY` is set in `.env`. Set a monthly spend limit in the Anthropic console first, then `docker compose up -d app`.
-- PDF export uses the browser's Print > Save as PDF (keeps Marathi text correct).
+- Two ways to get a PDF: "PDF डाउनलोड" makes the file in the phone or browser (one click, but the text is a picture and cannot be searched), or "प्रिंट" then Save as PDF (searchable text, Marathi stays correct).
 - English name spellings are made automatically and should be checked by volunteers.
 - Marathi amount-in-words spellings on receipts should be checked once by the committee.
 

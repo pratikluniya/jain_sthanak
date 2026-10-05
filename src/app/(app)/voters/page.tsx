@@ -1,4 +1,6 @@
 import Link from "next/link";
+import DownloadButton from "@/components/DownloadButton";
+import { downloadProps } from "@/lib/downloadProps";
 import { getDict, getLang } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
@@ -46,13 +48,7 @@ export default async function VotersPage({ searchParams }: { searchParams: { q?:
             <button className="btn-secondary">{t.assignVoterNos} ({withoutNo})</button>
           </form>
         )}
-        {can(s.role, "export") && (
-          <>
-            <a href="/api/export?list=voters" className="btn-secondary">⬇ {t.downloadExcel}</a>
-            <Link href="/print?list=voters" className="btn-secondary">🖨 {t.printPdf}</Link>
-            <Link href="/export?list=voters" className="btn-secondary">{t.chooseFields}</Link>
-          </>
-        )}
+        {can(s.role, "export") && <DownloadButton {...downloadProps("voters", t, lang)} />}
       </div>
       <div className="flex gap-2 text-sm">
         <Link href="/voters" className={tab === "eligible" ? "badge-green font-semibold" : "badge-gray"}>{t.eligible} ({eligible.length})</Link>

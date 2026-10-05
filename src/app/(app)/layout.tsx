@@ -15,7 +15,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { href: "/members", label: t.members, icon: "member", show: true },
     { href: "/upload", label: t.upload, icon: "upload", show: can(s.role, "upload") },
     { href: "/voters", label: t.voters, icon: "voters", show: true },
-    { href: "/export", label: t.exports, icon: "download", show: can(s.role, "export") },
     { href: "/receipts", label: t.receipts, icon: "receipt", show: can(s.role, "receipts") },
     { href: "/users", label: t.users, icon: "users", show: can(s.role, "users") },
     { href: "/settings", label: t.settings, icon: "settings", show: can(s.role, "settings") },

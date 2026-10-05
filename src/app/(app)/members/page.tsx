@@ -1,4 +1,6 @@
 import Link from "next/link";
+import DownloadButton from "@/components/DownloadButton";
+import { downloadProps } from "@/lib/downloadProps";
 import { prisma } from "@/lib/db";
 import { getDict, getLang } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
@@ -37,7 +39,10 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
 
   return (
     <div className="space-y-3">
-      <h1 className="page-title">{t.members} <span className="text-stone-500 text-base">({filtered.length})</span></h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="page-title">{t.members} <span className="text-stone-500 text-base">({filtered.length})</span></h1>
+        {can(s.role, "export") && !showDeleted && <DownloadButton {...downloadProps("members", t, lang)} />}
+      </div>
       <SearchBox
         q={q}
         placeholder={t.searchPlaceholder}

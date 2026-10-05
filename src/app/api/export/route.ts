@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { getLiveSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
-import { buildExport, parseFields, type ListKind } from "@/lib/exportRows";
+import { asListKind, buildExport, fileBase, parseFields } from "@/lib/exportRows";
 import { audit } from "@/lib/audit";
 import { asLang, exportDictFor } from "@/lib/i18n";
 
@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   const s = await getLiveSession();
   if (!s || !can(s.role, "export")) return new NextResponse("Forbidden", { status: 403 });
   const url = new URL(req.url);
-  const list: ListKind = url.searchParams.get("list") === "members" ? "members" : "voters";
+  const list = asListKind(url.searchParams.get("list"));
   const fields = parseFields(url.searchParams.get("fields"), list);
   const lang = asLang(url.searchParams.get("lang"));
   const data = await buildExport(list, fields, lang);
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
 
   const wb = new ExcelJS.Workbook();
   wb.creator = "Jain Sangh Nashik Road";
-  const ws = wb.addWorksheet(list === "voters" ? t.voterList : t.memberListShort, {
+  const ws = wb.addWorksheet(list === "voters" ? t.voterList : list === "families" ? t.headList : t.memberListShort, {
     pageSetup: { paperSize: 9, orientation: fields.length > 7 ? "landscape" : "portrait", fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
     views: [{ state: "frozen", ySplit: 3 }],
   });
@@ -40,14 +40,14 @@ export async function GET(req: Request) {
   data.rows.forEach((r) => ws.addRow(r));
   fields.forEach((f, i) => {
     const col = ws.getColumn(i + 1);
-    col.width = f === "fullName" || f === "headName" ? 32 : f === "address" ? 40 : f === "mobile" ? 13 : f === "serial" || f === "age" ? 7 : 12;
+    col.width = f === "fullName" || f === "headName" ? 32 : f === "address" ? 40 : f === "mobile" || f === "phone" ? 13 : f === "serial" || f === "age" ? 7 : 12;
     if (f === "address") col.alignment = { wrapText: true, vertical: "top" };
   });
   ws.pageSetup.printTitlesRow = "3:3";
 
   const buf = await wb.xlsx.writeBuffer();
   await audit(s.uid, "export", list, null, { format: "xlsx", lang, fields, rows: data.rows.length });
-  const name = `${list === "voters" ? "voter-list" : "member-list"}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  const name = `${fileBase(list)}-${new Date().toISOString().slice(0, 10)}.xlsx`;
   return new NextResponse(buf as ArrayBuffer, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

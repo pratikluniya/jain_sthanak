@@ -223,6 +223,20 @@ const mr = {
   use_electionDate: "डॅशबोर्ड आणि मतदार यादीवर दाखवली जाते. वय गणना दिनांक रिकामा असेल तरच १८+ साठी वापरली जाते.",
   use_statusRules: "चालू असल्यास निधन झालेले, विवाहानंतर बाहेर गेलेले, स्थलांतरित सदस्य आणि निष्क्रिय कुटुंबे मतदार यादीतून वगळली जातात.",
   statusRulesEdit: "सदस्यत्व रद्द नियम लागू करा",
+  // Part C: downloads
+  download: "डाउनलोड",
+  downloadTitle: "यादी डाउनलोड",
+  printList: "प्रिंट",
+  downloadPdf: "PDF डाउनलोड",
+  pdfNote: "PDF फोनवर / ब्राउझरमध्ये तयार होते; त्यातील मजकूर चित्ररूपात असतो (शोधता येत नाही). शोधता येणारी PDF हवी असल्यास प्रिंट > Save as PDF वापरा.",
+  makingPdf: "PDF तयार होत आहे…",
+  pdfReady: "PDF डाउनलोड झाली. ही खिडकी बंद करू शकता.",
+  pdfFailed: "PDF तयार झाली नाही. प्रिंट > Save as PDF वापरा.",
+  defaultColumns: "मूळ कॉलम",
+  headList: "कुटुंब प्रमुख यादी",
+  phone: "फोन",
+  memberCount: "सदस्य संख्या",
+  pickOneColumn: "किमान एक कॉलम निवडा.",
 };
 
 export type Dict = { [K in keyof typeof mr]: string };
@@ -436,6 +450,20 @@ const hi: Dict = {
   use_electionDate: "डैशबोर्ड और मतदाता सूची पर दिखती है। आयु गणना तिथि खाली हो तभी 18+ के लिए उपयोग होती है।",
   use_statusRules: "चालू होने पर निधन हुए, विवाह के बाद बाहर गए, स्थानांतरित सदस्य और निष्क्रिय परिवार मतदाता सूची से हटते हैं।",
   statusRulesEdit: "सदस्यता रद्द नियम लागू करें",
+  // Part C: downloads
+  download: "डाउनलोड",
+  downloadTitle: "सूची डाउनलोड",
+  printList: "प्रिंट",
+  downloadPdf: "PDF डाउनलोड",
+  pdfNote: "PDF फोन / ब्राउज़र में बनती है; उसका टेक्स्ट चित्र के रूप में होता है (खोजा नहीं जा सकता)। खोजने योग्य PDF के लिए प्रिंट > Save as PDF चुनें।",
+  makingPdf: "PDF बन रही है…",
+  pdfReady: "PDF डाउनलोड हो गई। यह विंडो बंद कर सकते हैं।",
+  pdfFailed: "PDF नहीं बनी। प्रिंट > Save as PDF चुनें।",
+  defaultColumns: "मूल कॉलम",
+  headList: "परिवार प्रमुख सूची",
+  phone: "फ़ोन",
+  memberCount: "सदस्य संख्या",
+  pickOneColumn: "कम से कम एक कॉलम चुनें।",
 };
 
 const en: Dict = {
@@ -647,6 +675,20 @@ const en: Dict = {
   use_electionDate: "Shown on the dashboard and voter list. Used for the 18+ check only when the age cut-off date is empty.",
   use_statusRules: "When on, deceased, married-out and moved-out members, and inactive families, are left out of the voter list.",
   statusRulesEdit: "Apply the membership-ended rule",
+  // Part C: downloads
+  download: "Download",
+  downloadTitle: "Download list",
+  printList: "Print",
+  downloadPdf: "Download PDF",
+  pdfNote: "The PDF is made in your phone or browser; its text is a picture (cannot be searched). For a searchable PDF use Print > Save as PDF.",
+  makingPdf: "Making the PDF…",
+  pdfReady: "PDF downloaded. You can close this window.",
+  pdfFailed: "Could not make the PDF. Use Print > Save as PDF.",
+  defaultColumns: "Default columns",
+  headList: "Heads of family list",
+  phone: "Phone",
+  memberCount: "Members",
+  pickOneColumn: "Choose at least one column.",
 };
 
 const DICTS: Record<Lang, Dict> = { mr, hi, en };

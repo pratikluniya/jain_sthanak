@@ -128,3 +128,10 @@ test("English search tolerates spelling variation", () => {
   const key = searchKey("Nirmalabai Kachardasji Chordiya");
   assert.ok(matchesSearch(key, "nirmala chordia"));
 });
+
+test("head-of-family list phone: head first, else first member with a mobile", async () => {
+  const { familyPhone } = await import("./exportRows");
+  assert.equal(familyPhone([{ isHead: true, serial: 1, mobile: "9800000001" }, { isHead: false, serial: 2, mobile: "9800000002" }]), "9800000001");
+  assert.equal(familyPhone([{ isHead: true, serial: 1, mobile: "" }, { isHead: false, serial: 3, mobile: "9800000003" }, { isHead: false, serial: 2, mobile: "9800000002" }]), "9800000002");
+  assert.equal(familyPhone([{ isHead: true, serial: 1, mobile: "" }]), "");
+});
