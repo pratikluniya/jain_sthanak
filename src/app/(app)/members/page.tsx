@@ -30,7 +30,7 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
 
   return (
     <div className="space-y-3">
-      <h1 className="text-xl font-bold">{t.members} <span className="text-stone-500 text-base">({filtered.length})</span></h1>
+      <h1 className="page-title">{t.members} <span className="text-stone-500 text-base">({filtered.length})</span></h1>
       <SearchBox
         q={q}
         placeholder={t.searchPlaceholder}

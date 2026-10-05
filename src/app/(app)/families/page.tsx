@@ -33,7 +33,7 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-xl font-bold">{t.families} <span className="text-stone-500 text-base">({filtered.length})</span></h1>
+        <h1 className="page-title">{t.families} <span className="text-stone-500 text-base">({filtered.length})</span></h1>
         {can(s.role, "edit") && <Link href="/families/new" className="btn-primary btn-sm">+ {t.addFamily}</Link>}
       </div>
       <SearchBox q={q} placeholder={t.searchPlaceholder} label={t.search} />

@@ -172,6 +172,21 @@ const mr = {
   receiptPurposesLabel: "पावती तपशील (एका ओळीत एक)",
   exportLanguage: "यादीची भाषा",
   memberListShort: "सदस्य यादी",
+  // Part A: layout and profile
+  profile: "प्रोफाइल",
+  changePassword: "पासवर्ड बदला",
+  currentPassword: "सध्याचा पासवर्ड",
+  newPassword: "नवीन पासवर्ड",
+  confirmPassword: "नवीन पासवर्ड पुन्हा लिहा",
+  passwordChanged: "पासवर्ड बदलला.",
+  passwordMismatch: "दोन्ही नवीन पासवर्ड जुळत नाहीत.",
+  wrongPassword: "सध्याचा पासवर्ड चुकीचा आहे.",
+  passwordTooShort: "पासवर्ड किमान ८ अक्षरांचा हवा.",
+  nameRequired: "नाव लिहा.",
+  saved: "जतन केले.",
+  menu: "मेनू",
+  close: "बंद करा",
+  profileHelp: "मोबाईल नंबर आणि भूमिका फक्त प्रशासक बदलू शकतात.",
 };
 
 export type Dict = { [K in keyof typeof mr]: string };
@@ -334,6 +349,21 @@ const hi: Dict = {
   receiptPurposesLabel: "रसीद विवरण (एक पंक्ति में एक)",
   exportLanguage: "सूची की भाषा",
   memberListShort: "सदस्य सूची",
+  // Part A: layout and profile
+  profile: "प्रोफ़ाइल",
+  changePassword: "पासवर्ड बदलें",
+  currentPassword: "वर्तमान पासवर्ड",
+  newPassword: "नया पासवर्ड",
+  confirmPassword: "नया पासवर्ड दोबारा लिखें",
+  passwordChanged: "पासवर्ड बदल गया।",
+  passwordMismatch: "दोनों नए पासवर्ड मेल नहीं खाते।",
+  wrongPassword: "वर्तमान पासवर्ड गलत है।",
+  passwordTooShort: "पासवर्ड कम से कम 8 अक्षर का होना चाहिए।",
+  nameRequired: "नाम लिखें।",
+  saved: "सहेजा गया।",
+  menu: "मेनू",
+  close: "बंद करें",
+  profileHelp: "मोबाइल नंबर और भूमिका केवल प्रशासक बदल सकते हैं।",
 };
 
 const en: Dict = {
@@ -494,6 +524,21 @@ const en: Dict = {
   receiptPurposesLabel: "Receipt details (one per line)",
   exportLanguage: "List language",
   memberListShort: "Member list",
+  // Part A: layout and profile
+  profile: "Profile",
+  changePassword: "Change password",
+  currentPassword: "Current password",
+  newPassword: "New password",
+  confirmPassword: "Confirm new password",
+  passwordChanged: "Password changed.",
+  passwordMismatch: "The two new passwords do not match.",
+  wrongPassword: "Current password is wrong.",
+  passwordTooShort: "Password must be at least 8 characters.",
+  nameRequired: "Enter a name.",
+  saved: "Saved.",
+  menu: "Menu",
+  close: "Close",
+  profileHelp: "Only an admin can change the mobile number and role.",
 };
 
 const DICTS: Record<Lang, Dict> = { mr, hi, en };

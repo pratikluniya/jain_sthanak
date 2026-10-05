@@ -23,7 +23,7 @@ export default async function MemberFormPage({ params, searchParams }: { params:
 
   return (
     <div className="space-y-3 max-w-xl">
-      <h1 className="text-xl font-bold">{m ? t.edit : t.addMember} <span className="text-base text-stone-500">· {fam.code} {headLabel(fam, lang === "en")}</span></h1>
+      <h1 className="page-title">{m ? t.edit : t.addMember} <span className="text-base text-stone-500">· {fam.code} {headLabel(fam, lang === "en")}</span></h1>
       {m?.nameRaw && <p className="text-sm text-stone-500">{t.onForm}: {m.nameRaw} {m.relationRaw && `· ${m.relationRaw}`}</p>}
       <form action={saveMember} className="card p-4 space-y-3" encType="multipart/form-data">
         <input type="hidden" name="familyId" value={fam.id} />

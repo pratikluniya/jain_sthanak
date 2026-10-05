@@ -11,7 +11,7 @@ export default async function EditFamily({ params }: { params: { id: string } })
   if (!fam) notFound();
   return (
     <div className="space-y-3 max-w-xl">
-      <h1 className="text-xl font-bold">{t.edit}: {fam.code}</h1>
+      <h1 className="page-title">{t.edit}: {fam.code}</h1>
       <FamilyForm t={t} fam={fam} />
     </div>
   );

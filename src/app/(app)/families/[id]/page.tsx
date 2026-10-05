@@ -45,7 +45,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
       <section className="card p-4 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h1 className="text-xl font-bold">{headLabel(fam, en)}</h1>
+            <h1 className="page-title">{headLabel(fam, en)}</h1>
             <p className="text-stone-600 text-sm">{fam.address}</p>
             {fam.area && <p className="text-stone-500 text-xs">{t.area}: {fam.area}</p>}
           </div>
@@ -94,7 +94,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
       </section>
 
       <section className="space-y-2">
-        <h2 className="font-semibold">{t.members} ({fam.members.length})</h2>
+        <h2 className="section-title">{t.members} ({fam.members.length})</h2>
         {fam.members.map((m) => {
           const r = checkVoter(m, fam, { asOfDate: ageDate, applyStatusRules: settings.applyStatusRules });
           return (
@@ -155,7 +155,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
 
       {fam.uploads.length > 0 && (
         <section className="space-y-2">
-          <h2 className="font-semibold">{t.upload}</h2>
+          <h2 className="section-title">{t.upload}</h2>
           <div className="flex flex-wrap gap-2">
             {fam.uploads.flatMap((u) =>
               u.imageKeys.map((k, i) => (
@@ -171,7 +171,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
 
       {fam.payments.length > 0 && (
         <section className="space-y-2">
-          <h2 className="font-semibold">{t.receipts}</h2>
+          <h2 className="section-title">{t.receipts}</h2>
           <ul className="card divide-y">
             {fam.payments.map((p) => (
               <li key={p.id} className="p-3 flex justify-between text-sm">

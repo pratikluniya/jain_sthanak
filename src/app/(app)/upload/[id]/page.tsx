@@ -75,7 +75,7 @@ export default async function VerifyPage({ params }: { params: { id: string } })
 
   return (
     <div className="space-y-3">
-      <h1 className="text-xl font-bold">{t.verifyTitle}</h1>
+      <h1 className="page-title">{t.verifyTitle}</h1>
       <p className="text-sm text-stone-600">{t.verifyHelp}</p>
       {manual && up.status !== "FAILED" && (
         <div className="card p-3 border-sky-200 bg-sky-50 text-sm">{t.manualEntryHelp}</div>

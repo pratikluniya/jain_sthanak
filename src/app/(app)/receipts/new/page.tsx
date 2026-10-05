@@ -15,7 +15,7 @@ export default async function NewReceipt({ searchParams }: { searchParams: { fam
 
   return (
     <div className="space-y-3 max-w-xl">
-      <h1 className="text-xl font-bold">{t.newReceipt}</h1>
+      <h1 className="page-title">{t.newReceipt}</h1>
       <form action={createReceipt} className="card p-4 space-y-3">
         <div>
           <label className="label">{t.family}</label>

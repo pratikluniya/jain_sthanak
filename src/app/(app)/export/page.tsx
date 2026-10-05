@@ -10,7 +10,7 @@ export default async function ExportPage({ searchParams }: { searchParams: { lis
   const list: ListKind = searchParams.list === "members" ? "members" : "voters";
   return (
     <div className="space-y-3 max-w-2xl">
-      <h1 className="text-xl font-bold">{t.exports}</h1>
+      <h1 className="page-title">{t.exports}</h1>
       <ExportForm
         initialList={list}
         fields={FIELDS.map((f) => ({ key: f, label: labels[f] }))}

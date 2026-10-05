@@ -14,7 +14,7 @@ export default async function UsersPage() {
   const roleLabels = Object.fromEntries(ROLES.map((r) => [r, t[r]]));
   return (
     <div className="space-y-4 max-w-3xl">
-      <h1 className="text-xl font-bold">{t.users}</h1>
+      <h1 className="page-title">{t.users}</h1>
       <NewUserForm roles={ROLES} roleLabels={roleLabels} t={{ name: t.name, mobile: t.mobile, password: t.password, role: t.role, add: t.add, save: t.save }} />
       <div className="space-y-2">
         {users.map((u) => (

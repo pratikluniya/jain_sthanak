@@ -29,7 +29,7 @@ export default async function VotersPage({ searchParams }: { searchParams: { q?:
 
   return (
     <div className="space-y-3">
-      <h1 className="text-xl font-bold">{t.voterList}</h1>
+      <h1 className="page-title">{t.voterList}</h1>
       <div className="card p-3 text-sm space-y-1">
         <div><b>{t.ageCutoffDate}:</b> {ageDate.toLocaleDateString("en-IN")}</div>
         <div><b>{t.electionDate}:</b> {electionDate ? electionDate.toLocaleDateString("en-IN") : <span className="text-amber-700">{t.electionDateNotSet}</span>}</div>
