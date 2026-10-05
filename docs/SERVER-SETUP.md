@@ -172,4 +172,7 @@ rclone copy jsdrive-crypt:backups/<newest file> /tmp/
 then load the database copy as in RUNBOOK section 5.
 
 ## 12. After go-live
-After a week without problems: delete the Vercel project and the Supabase project (it holds demo forms and KYC scans).
+Done 5 Oct 2026:
+- Supabase project deleted (it held the demo forms and KYC scans; free plan, no charges).
+- Vercel project deleted and the Vercel GitHub app's access to this repo removed. The only deploy path is now GitHub Actions to the Droplet.
+- Supabase lines (`DATABASE_URL`, `DIRECT_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) removed from the Mac's local `.env`. Local `npm run dev` needs a local PostgreSQL before it works again.
