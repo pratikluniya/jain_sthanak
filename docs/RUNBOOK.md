@@ -30,6 +30,7 @@ Full setup steps: `docs/SERVER-SETUP.md`.
 | Confirm blank panth | Operator, Admin | कुटुंबे > तपासणी बाकी |
 | Approve KYC | Operator, Admin | Family page > KYC मंजूर करा |
 | Upload Aadhaar front + back and passport photo | Data entry, Operator, Admin | Family page > member > बदला (phone camera or gallery; pictures are shrunk before upload) |
+| Deceased members with no date of death are flagged in red on the dashboard (link to the list) and on the family page; open the member and fill the date |
 | Mark a member deceased (date of death compulsory; asks for the new head if the head passed away) / undo | Operator, Admin | Family page > निधन नोंदवा / निधन नोंद रद्द करा, or the 15-day reminder popup on the dashboard |
 | Voter list, voter numbers | Operator, Admin | मतदार यादी |
 | Download lists (Excel, Print, PDF; pick columns and language) | Operator, Admin | "डाउनलोड" button on मतदार यादी (voters), सदस्य (all members), कुटुंबे (heads of family with address and phone) |

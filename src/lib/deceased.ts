@@ -76,6 +76,9 @@ export async function undoDeceased(memberId: string) {
 
 export const DEMISE_EVERY_DAYS = 15;
 
+/** Deceased members with no date of death (e.g. from old forms): flagged on the dashboard, members list and family page. */
+export const MISSING_DOD_WHERE = { deletedAt: null, status: "DECEASED" as const, dateOfDeath: null, family: { deletedAt: null } };
+
 /** Is the 15-day reminder due for this user? Never answered = due now. "Later" hides it until the next day. */
 export function demiseReminderDue(u: { demiseCheckDoneAt: Date | null; demiseSnoozeUntil: Date | null }, now = new Date()): boolean {
   if (u.demiseSnoozeUntil && now < u.demiseSnoozeUntil) return false;

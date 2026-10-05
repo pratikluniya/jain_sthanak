@@ -265,6 +265,9 @@ const mr = {
   replaceFile: "बदलण्यासाठी नवीन फाईल निवडा",
   dateRequired: "निधन दिनांक लिहा.",
   dateRequiredEdit: "स्थिती 'निधन' असल्यास निधन दिनांक आवश्यक आहे (भविष्यातील नको). काहीही जतन झालेले नाही; पुन्हा भरा.",
+  missingDod: "निधन दिनांक हवा",
+  missingDodAlert: "निधन झालेल्या सदस्यांची निधन दिनांक नोंदलेली नाही",
+  fixNow: "यादी उघडा",
 };
 
 export type Dict = { [K in keyof typeof mr]: string };
@@ -520,6 +523,9 @@ const hi: Dict = {
   replaceFile: "बदलने के लिए नई फ़ाइल चुनें",
   dateRequired: "निधन तिथि लिखें।",
   dateRequiredEdit: "स्थिति 'निधन' हो तो निधन तिथि आवश्यक है (भविष्य की नहीं)। कुछ भी सहेजा नहीं गया; फिर से भरें।",
+  missingDod: "निधन तिथि चाहिए",
+  missingDodAlert: "निधन हुए सदस्यों की निधन तिथि दर्ज नहीं है",
+  fixNow: "सूची खोलें",
 };
 
 const en: Dict = {
@@ -773,6 +779,9 @@ const en: Dict = {
   replaceFile: "Choose a new file to replace it",
   dateRequired: "Enter the date of death.",
   dateRequiredEdit: "When the status is Deceased, the date of death is required (not in the future). Nothing was saved; please fill the form again.",
+  missingDod: "Date of death missing",
+  missingDodAlert: "deceased members have no date of death",
+  fixNow: "Open the list",
 };
 
 const DICTS: Record<Lang, Dict> = { mr, hi, en };

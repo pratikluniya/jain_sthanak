@@ -7,7 +7,7 @@ import { can } from "@/lib/rbac";
 import { LIVE } from "@/lib/softDelete";
 import Icon, { type IconName } from "@/components/Icon";
 import DemiseReminder from "@/components/DemiseReminder";
-import { DEMISE_EVERY_DAYS, demiseReminderDue, todayIST } from "@/lib/deceased";
+import { DEMISE_EVERY_DAYS, MISSING_DOD_WHERE, demiseReminderDue, todayIST } from "@/lib/deceased";
 import { deceasedLabels } from "@/lib/deceasedLabels";
 import { memberFullName } from "@/lib/members";
 import { getLang } from "@/lib/i18n";
@@ -25,6 +25,7 @@ export default async function Dashboard() {
     evaluateAll(),
   ]);
   const voters = rows.filter((r) => r.result.eligible).length;
+  const missingDod = can(s.role, "edit") ? await prisma.member.count({ where: MISSING_DOD_WHERE }) : 0;
 
   // 15-day demise reminder for Admin and Operator
   let reminder: React.ReactNode = null;
@@ -74,6 +75,12 @@ export default async function Dashboard() {
     <div className="space-y-5">
       {reminder}
       <h1 className="page-title">{t.dashboard}</h1>
+      {missingDod > 0 && (
+        <Link href="/members?nodod=1" className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800 hover:bg-red-100">
+          <span><b>{missingDod}</b> {t.missingDodAlert}.</span>
+          <span className="btn-secondary btn-sm">{t.fixNow} →</span>
+        </Link>
+      )}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {stats.map((st) => (
           <Link

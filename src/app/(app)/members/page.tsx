@@ -1,3 +1,4 @@
+import { MISSING_DOD_WHERE } from "@/lib/deceased";
 import Link from "next/link";
 import DownloadButton from "@/components/DownloadButton";
 import { downloadProps } from "@/lib/downloadProps";
@@ -14,7 +15,7 @@ import { restoreMember } from "../families/actions";
 export const dynamic = "force-dynamic";
 const PAGE = 100;
 
-export default async function MembersPage({ searchParams }: { searchParams: { q?: string; blood?: string; page?: string; deleted?: string } }) {
+export default async function MembersPage({ searchParams }: { searchParams: { q?: string; blood?: string; page?: string; deleted?: string; nodod?: string } }) {
   const s = await requireSession("view");
   const t = getDict();
   const lang = getLang();
@@ -25,8 +26,10 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
 
   // Admin only: list soft-deleted members instead of active ones
   const showDeleted = searchParams.deleted === "1" && can(s.role, "restore");
+  // deceased members whose date of death is missing (link from the dashboard alert)
+  const onlyNoDod = searchParams.nodod === "1" && !showDeleted;
   const all = await prisma.member.findMany({
-    where: { deletedAt: showDeleted ? { not: null } : null },
+    where: onlyNoDod ? MISSING_DOD_WHERE : { deletedAt: showDeleted ? { not: null } : null },
     include: { family: { select: { id: true, code: true, deletedAt: true } } },
   });
   const filtered = sortBySurname(
@@ -35,7 +38,7 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
       .map((m) => ({ member: m })),
   ).map((r) => r.member);
   const shown = filtered.slice((page - 1) * PAGE, page * PAGE);
-  const qs = (p: number) => `?${new URLSearchParams({ q, blood, page: String(p), ...(showDeleted ? { deleted: "1" } : {}) })}`;
+  const qs = (p: number) => `?${new URLSearchParams({ q, blood, page: String(p), ...(showDeleted ? { deleted: "1" } : {}), ...(onlyNoDod ? { nodod: "1" } : {}) })}`;
 
   return (
     <div className="space-y-3">
@@ -59,6 +62,12 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
           <Link href={showDeleted ? "/members" : "/members?deleted=1"} className={showDeleted ? "badge-red font-semibold" : "badge-red opacity-60"}>
             {showDeleted ? t.showActive : t.showDeleted}
           </Link>
+        </div>
+      )}
+      {onlyNoDod && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <span>{t.missingDod}: {t.missingDodAlert}.</span>
+          <Link href="/members" className="underline">{t.showActive}</Link>
         </div>
       )}
       {filtered.length === 0 && <p className="text-stone-500">{t.noResults}</p>}

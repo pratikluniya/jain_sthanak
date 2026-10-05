@@ -162,6 +162,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
                   {m.status !== "ACTIVE" && (
                     <span className="badge-red">{t[m.status]}{m.status === "DECEASED" && m.dateOfDeath ? ` · ${m.dateOfDeath.toLocaleDateString("en-IN")}` : ""}</span>
                   )}
+                  {m.status === "DECEASED" && !m.dateOfDeath && <span className="badge-amber">⚠ {t.missingDod}</span>}
                   {m.aadhaarLast4 || m.kycFileKey || m.aadhaarBackKey ? (
                     m.kycVerified ? <span className="badge-green">{t.kycVerified}</span> : <span className="badge-amber">{t.kycPending}</span>
                   ) : null}
