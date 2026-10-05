@@ -46,7 +46,7 @@ export default function AppShell(props: {
       >
         <div className="flex items-start gap-3 px-4 pt-5 pb-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="" className="h-16 w-16 shrink-0 rounded-xl bg-white p-1 shadow" />
+          <img src="/logo.png" alt="" className="h-20 w-auto shrink-0 rounded-lg bg-white object-contain p-1 shadow" />
           <Link href="/" className="min-w-0 flex-1">
             <span className="block font-heading text-lg font-bold leading-snug">{props.sangh}</span>
             <span className="mt-0.5 block text-sm text-brand-100">{props.appName}</span>
@@ -86,7 +86,7 @@ export default function AppShell(props: {
             </button>
             <Link href="/" className="flex min-w-0 flex-1 items-center gap-2 lg:hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="" className="h-10 w-10 shrink-0 rounded-lg bg-white p-0.5" />
+              <img src="/logo.png" alt="" className="h-11 w-auto shrink-0 rounded-md bg-white object-contain p-0.5" />
               <span className="line-clamp-2 font-heading text-[15px] font-bold leading-tight">{props.sangh}</span>
             </Link>
             <div className="hidden flex-1 lg:block" />
