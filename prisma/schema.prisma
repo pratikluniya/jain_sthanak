@@ -72,6 +72,11 @@ model User {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  createdById  String?  // user id of the admin who added this user (empty for users added before Oct 2026)
+
+  // Soft delete: nothing is erased. A deleted user cannot log in and is hidden; Admin can restore.
+  deletedAt   DateTime?
+  deletedById String?
 
   auditLogs AuditLog[]
 }
@@ -110,6 +115,10 @@ model Family {
   payments  Payment[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
+
+  // Soft delete: hidden everywhere (lists, voter list, exports); Admin can restore. Its members are deleted with it.
+  deletedAt   DateTime?
+  deletedById String?
 
   @@index([headName])
 }
@@ -160,6 +169,10 @@ model Member {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Soft delete: hidden everywhere (lists, voter list, exports); Admin can restore.
+  deletedAt   DateTime?
+  deletedById String?
 
   @@index([familyId])
   @@index([searchKey])

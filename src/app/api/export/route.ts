@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
-import { getSession } from "@/lib/session";
+import { getLiveSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import { buildExport, parseFields, type ListKind } from "@/lib/exportRows";
 import { audit } from "@/lib/audit";
@@ -9,7 +9,7 @@ import { asLang, exportDictFor } from "@/lib/i18n";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const s = await getSession();
+  const s = await getLiveSession();
   if (!s || !can(s.role, "export")) return new NextResponse("Forbidden", { status: 403 });
   const url = new URL(req.url);
   const list: ListKind = url.searchParams.get("list") === "members" ? "members" : "voters";

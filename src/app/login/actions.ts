@@ -10,7 +10,7 @@ export async function loginAction(_: unknown, fd: FormData): Promise<{ error?: b
   const mobile = normalizeMobile(String(fd.get("mobile") ?? "")).value;
   const password = String(fd.get("password") ?? "");
   const user = await prisma.user.findUnique({ where: { mobile } });
-  if (!user || !user.active || !(await bcrypt.compare(password, user.passwordHash))) {
+  if (!user || !user.active || user.deletedAt || !(await bcrypt.compare(password, user.passwordHash))) {
     return { error: true };
   }
   await createSession({ uid: user.id, name: user.name, role: user.role });

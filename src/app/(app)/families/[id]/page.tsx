@@ -8,7 +8,9 @@ import { relationLabel } from "@/lib/relations";
 import { checkVoter } from "@/lib/eligibility";
 import { effectiveAgeDate, getSettings } from "@/lib/settings";
 import { memberFullName, headLabel } from "@/lib/members";
-import { approveKyc, confirmPanth, deleteFamily, deleteMember } from "../actions";
+import { approveKyc, confirmPanth, deleteFamily, deleteMember, restoreFamily } from "../actions";
+import { RECEIPTS_ENABLED } from "@/lib/features";
+import { LIVE } from "@/lib/softDelete";
 import ConfirmButton from "@/components/ConfirmButton";
 import { formImageUrls } from "@/lib/storage";
 
@@ -26,10 +28,18 @@ export default async function FamilyPage({ params }: { params: { id: string } })
       uploads: { orderBy: { createdAt: "asc" } },
       payments: { orderBy: { date: "desc" } },
       parentFamily: true,
-      linkedFamilies: true,
+      linkedFamilies: { where: LIVE },
     },
   });
   if (!fam) notFound();
+  const deleted = !!fam.deletedAt;
+  // live family: its live members; deleted family (Admin view): the members deleted together with it
+  const members = fam.members.filter((m) => (deleted ? m.deletedAt?.getTime() === fam.deletedAt!.getTime() : !m.deletedAt));
+  if (deleted && !can(s.role, "restore")) notFound();
+  const deletedBy = fam.deletedById ? await prisma.user.findUnique({ where: { id: fam.deletedById }, select: { name: true } }) : null;
+  // a deleted family is read-only until it is restored
+  const canEdit = can(s.role, "edit") && !deleted;
+  const canDelete = can(s.role, "delete") && !deleted;
   const settings = await getSettings();
   const ageDate = effectiveAgeDate(settings);
   const allKeys = fam.uploads.flatMap((u) => u.imageKeys);
@@ -41,6 +51,19 @@ export default async function FamilyPage({ params }: { params: { id: string } })
       <div className="flex items-center gap-2 text-sm">
         <Link href="/families" className="text-brand-700">← {t.families}</Link>
       </div>
+
+      {deleted && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <span>
+            <b>{t.deletedTag}</b> · {fam.deletedAt!.toLocaleDateString("en-IN")}
+            {deletedBy && ` · ${deletedBy.name}`}. {t.familyDeletedNote}
+          </span>
+          <form action={restoreFamily}>
+            <input type="hidden" name="id" value={fam.id} />
+            <button className="btn-primary btn-sm">{t.restore}</button>
+          </form>
+        </div>
+      )}
 
       <section className="card p-4 space-y-2">
         <div className="flex items-start justify-between gap-2">
@@ -60,7 +83,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
           )}
           {fam.status !== "ACTIVE" && <span className="badge-red">{t[fam.status]}</span>}
         </div>
-        {fam.panthStatus === "TO_VERIFY" && can(s.role, "approve") && (
+        {fam.panthStatus === "TO_VERIFY" && can(s.role, "approve") && !deleted && (
           <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
             <p className="text-sm mb-2">{t.confirmPanth}:</p>
             <form action={confirmPanth} className="flex flex-wrap gap-2">
@@ -81,21 +104,21 @@ export default async function FamilyPage({ params }: { params: { id: string } })
           </div>
         )}
         <div className="flex flex-wrap gap-2 pt-1">
-          {can(s.role, "edit") && <Link href={`/families/${fam.id}/edit`} className="btn-secondary btn-sm">{t.edit}</Link>}
-          {can(s.role, "edit") && <Link href={`/families/${fam.id}/member`} className="btn-primary btn-sm">+ {t.addMember}</Link>}
-          {can(s.role, "receipts") && <Link href={`/receipts/new?family=${fam.id}`} className="btn-secondary btn-sm">+ {t.newReceipt}</Link>}
-          {can(s.role, "delete") && fam.payments.length === 0 && (
+          {canEdit && <Link href={`/families/${fam.id}/edit`} className="btn-secondary btn-sm">{t.edit}</Link>}
+          {canEdit && <Link href={`/families/${fam.id}/member`} className="btn-primary btn-sm">+ {t.addMember}</Link>}
+          {RECEIPTS_ENABLED && !deleted && can(s.role, "receipts") && <Link href={`/receipts/new?family=${fam.id}`} className="btn-secondary btn-sm">+ {t.newReceipt}</Link>}
+          {canDelete && (
             <form action={deleteFamily}>
               <input type="hidden" name="id" value={fam.id} />
-              <ConfirmButton className="btn-danger btn-sm" message={`${fam.code} ${t.delete}?`}>{t.delete}</ConfirmButton>
+              <ConfirmButton className="btn-danger btn-sm" message={`${fam.code}: ${t.deleteConfirmSoft}`}>{t.delete}</ConfirmButton>
             </form>
           )}
         </div>
       </section>
 
       <section className="space-y-2">
-        <h2 className="section-title">{t.members} ({fam.members.length})</h2>
-        {fam.members.map((m) => {
+        <h2 className="section-title">{t.members} ({members.length})</h2>
+        {members.map((m) => {
           const r = checkVoter(m, fam, { asOfDate: ageDate, applyStatusRules: settings.applyStatusRules });
           return (
             <div key={m.id} className="card p-3">
@@ -128,8 +151,8 @@ export default async function FamilyPage({ params }: { params: { id: string } })
                 </div>
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
-                {can(s.role, "edit") && <Link href={`/families/${fam.id}/member?m=${m.id}`} className="btn-secondary btn-sm">{t.edit}</Link>}
-                {can(s.role, "approve") && !m.kycVerified && (m.aadhaarLast4 || m.kycFileKey) && (
+                {canEdit && <Link href={`/families/${fam.id}/member?m=${m.id}`} className="btn-secondary btn-sm">{t.edit}</Link>}
+                {can(s.role, "approve") && !deleted && !m.kycVerified && (m.aadhaarLast4 || m.kycFileKey) && (
                   <form action={approveKyc}>
                     <input type="hidden" name="memberId" value={m.id} />
                     <button className="btn-secondary btn-sm">KYC {t.approve}</button>
@@ -141,10 +164,10 @@ export default async function FamilyPage({ params }: { params: { id: string } })
                 {m.aadhaarLast4 && <span className="text-xs text-stone-500 self-center">{t.aadhaar}: XXXX XXXX {m.aadhaarLast4}</span>}
                 {m.kycDocType && m.kycDocType !== "AADHAAR" && <span className="text-xs text-stone-500 self-center">KYC: {m.kycDocType}</span>}
                 {m.dob && <span className="text-xs text-stone-500 self-center">{t.dob}: {m.dob.toLocaleDateString("en-IN")}</span>}
-                {can(s.role, "delete") && (
+                {canDelete && (
                   <form action={deleteMember}>
                     <input type="hidden" name="memberId" value={m.id} />
-                    <ConfirmButton className="btn-sm text-red-600 underline" message={`${memberFullName(m)}: ${t.delete}?`}>{t.delete}</ConfirmButton>
+                    <ConfirmButton className="btn-sm text-red-600 underline" message={`${memberFullName(m)}: ${t.deleteConfirmSoft}`}>{t.delete}</ConfirmButton>
                   </form>
                 )}
               </div>
@@ -169,7 +192,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
         </section>
       )}
 
-      {fam.payments.length > 0 && (
+      {RECEIPTS_ENABLED && fam.payments.length > 0 && (
         <section className="space-y-2">
           <h2 className="section-title">{t.receipts}</h2>
           <ul className="card divide-y">

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
+import { getLiveSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import { prisma } from "@/lib/db";
 import { putFile } from "@/lib/storage";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60; // AI reading takes 20-60 s
 
 export async function POST(req: Request) {
-  const s = await getSession();
+  const s = await getLiveSession();
   if (!s || !can(s.role, "upload")) return NextResponse.json({ error: "forbidden" }, { status: 403 });
   const fd = await req.formData();
   const files = fd.getAll("pages").filter((f): f is File => typeof f === "object" && "arrayBuffer" in f && f.size > 0);

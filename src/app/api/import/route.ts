@@ -1,7 +1,7 @@
 // Admin batch import: the browser sends ONE form at a time (its JSON entry + its photos),
 // so each request stays small. Aadhaar numbers are encrypted here before anything is saved.
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
+import { getLiveSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import { prisma } from "@/lib/db";
 import { audit } from "@/lib/audit";
@@ -10,7 +10,7 @@ import { importItem, type BatchItem } from "@/lib/importBatch";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const s = await getSession();
+  const s = await getLiveSession();
   if (!s || !can(s.role, "settings")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   try {
     const fd = await req.formData();

@@ -1,66 +1,47 @@
-import { revalidatePath } from "next/cache";
+import Link from "next/link";
 import { getDict } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
-import { getSettings, setSetting } from "@/lib/settings";
-import { audit } from "@/lib/audit";
+import { getSettings } from "@/lib/settings";
+import { SETTING_GROUPS, displayValue } from "./meta";
 
-async function save(fd: FormData) {
-  "use server";
-  const s = await requireSession("settings");
-  const electionDate = String(fd.get("electionDate") ?? "");
-  const purposes = String(fd.get("receiptPurposes") ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
-  await setSetting("electionDate", electionDate);
-  const ageCutoffDate = String(fd.get("ageCutoffDate") ?? "");
-  await setSetting("ageCutoffDate", ageCutoffDate);
-  await setSetting("applyStatusRules", fd.get("applyStatusRules") === "on" ? "true" : "false");
-  await setSetting("sanghName", String(fd.get("sanghName") ?? "").trim());
-  await setSetting("sanghAddress", String(fd.get("sanghAddress") ?? "").trim());
-  await setSetting("sanghRegNo", String(fd.get("sanghRegNo") ?? "").trim());
-  await setSetting("receiptPurposes", JSON.stringify(purposes));
-  await audit(s.uid, "update", "Settings", null, { electionDate, ageCutoffDate, purposes });
-  revalidatePath("/", "layout");
-}
+export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
   await requireSession("settings");
   const t = getDict();
   const s = await getSettings();
   return (
-    <div className="space-y-3 max-w-xl">
+    <div className="space-y-5">
       <h1 className="page-title">{t.settings}</h1>
-      <form action={save} className="card p-4 space-y-3">
-        <div>
-          <label className="label">{t.ageCutoffDate}</label>
-          <input type="date" name="ageCutoffDate" className="input" required defaultValue={s.ageCutoffDate ? s.ageCutoffDate.toISOString().slice(0, 10) : ""} />
-          <p className="text-xs text-stone-500 mt-1">{t.ageCutoffHelp}</p>
-        </div>
-        <div>
-          <label className="label">{t.electionDate}</label>
-          <input type="date" name="electionDate" className="input" defaultValue={s.electionDate ? s.electionDate.toISOString().slice(0, 10) : ""} />
-          
-        </div>
-        <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" name="applyStatusRules" defaultChecked={s.applyStatusRules} className="mt-1" />
-          <span>{t.statusRulesLabel}</span>
-        </label>
-        <div>
-          <label className="label">{t.sanghNameLabel}</label>
-          <input name="sanghName" className="input" defaultValue={s.sanghName} />
-        </div>
-        <div>
-          <label className="label">{t.sanghAddressLabel}</label>
-          <textarea name="sanghAddress" className="input" rows={2} defaultValue={s.sanghAddress} />
-        </div>
-        <div>
-          <label className="label">{t.regNoLabel}</label>
-          <input name="sanghRegNo" className="input" defaultValue={s.sanghRegNo} />
-        </div>
-        <div>
-          <label className="label">{t.receiptPurposesLabel}</label>
-          <textarea name="receiptPurposes" className="input" rows={4} defaultValue={s.receiptPurposes.join("\n")} />
-        </div>
-        <button className="btn-primary">{t.save}</button>
-      </form>
+      {SETTING_GROUPS.map((g) => (
+        <section key={g.title(t)} className="space-y-2">
+          <h2 className="section-title">{g.title(t)}</h2>
+          <div className="card overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th className="w-1/4">{t.settingCol}</th>
+                  <th className="w-1/5">{t.valueCol}</th>
+                  <th>{t.usedForCol}</th>
+                  <th className="text-right">{t.actionsCol}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {g.items.map((d) => (
+                  <tr key={d.key}>
+                    <td className="font-medium">{d.label(t)}</td>
+                    <td className="font-semibold text-stone-900">{displayValue(s, d, t)}</td>
+                    <td className="min-w-[16rem] text-stone-600">{d.usedFor(t)}</td>
+                    <td className="text-right">
+                      <Link href={`/settings/${d.key}`} className="btn-secondary btn-sm">{t.edit}</Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

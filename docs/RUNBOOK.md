@@ -30,14 +30,17 @@ Full setup steps: `docs/SERVER-SETUP.md`.
 | Confirm blank panth | Operator, Admin | कुटुंबे > तपासणी बाकी |
 | Approve KYC | Operator, Admin | Family page > KYC मंजूर करा |
 | Voter list, voter numbers, exports | Operator, Admin | मतदार यादी / निर्यात |
-| Receipts | Operator, Admin | पावत्या |
-| Users (add, disable, reset password) | Admin | वापरकर्ते |
-| Age cut-off date (18+), election date, Sangh name/address, receipt purposes | Admin | सेटिंग्ज |
+| Receipts | (hidden until phase 2) | turned on in `src/lib/features.ts` (`RECEIPTS_ENABLED`) |
+| Users (add, edit, disable, delete, reset password) | Admin | वापरकर्ते > बदला |
+| See and restore deleted users, families, members | Admin | "हटवलेले दाखवा" on Users, Families, Members |
+| Age cut-off date (18+), election date, membership-ended rule | Admin | सेटिंग्ज > बदला on the row |
 
-Every create / edit / delete / export / Aadhaar view is recorded in the `AuditLog` table.
+Every create / edit / delete / restore / export / Aadhaar view is recorded in the `AuditLog` table.
+
+Delete never erases anything: users, families and members get a "deleted" mark (who and when) and disappear from lists, the voter list and exports. Deleting a family also hides its members. Admin can restore them. A disabled or deleted user is locked out on their next click, even if they are logged in.
 
 ### Forgotten password
-Admin opens वापरकर्ते, types a new password (min 8 characters) on that user's row, clicks जतन करा.
+Every user can change their own password: profile circle (top right) > पासवर्ड बदला. If they forgot it: Admin opens वापरकर्ते > बदला on that user, types a new password (min 8 characters), clicks जतन करा.
 
 ### Admin locked out
 Putting `SEED_ADMIN_PASSWORD` back in `.env` does not help: it only works when there are no users at all. Reset the password on the server instead:

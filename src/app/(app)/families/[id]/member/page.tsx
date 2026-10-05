@@ -10,9 +10,9 @@ export default async function MemberFormPage({ params, searchParams }: { params:
   await requireSession("edit");
   const t = getDict();
   const lang = getLang();
-  const fam = await prisma.family.findUnique({ where: { id: params.id } });
+  const fam = await prisma.family.findUnique({ where: { id: params.id, deletedAt: null } });
   if (!fam) notFound();
-  const m = searchParams.m ? await prisma.member.findUnique({ where: { id: searchParams.m } }) : null;
+  const m = searchParams.m ? await prisma.member.findUnique({ where: { id: searchParams.m, deletedAt: null } }) : null;
 
   const field = (name: string, label: string, value: string, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
     <div>

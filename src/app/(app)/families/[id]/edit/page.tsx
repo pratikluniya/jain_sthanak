@@ -7,7 +7,7 @@ import FamilyForm from "@/components/FamilyForm";
 export default async function EditFamily({ params }: { params: { id: string } }) {
   await requireSession("edit");
   const t = getDict();
-  const fam = await prisma.family.findUnique({ where: { id: params.id } });
+  const fam = await prisma.family.findUnique({ where: { id: params.id, deletedAt: null } });
   if (!fam) notFound();
   return (
     <div className="space-y-3 max-w-xl">

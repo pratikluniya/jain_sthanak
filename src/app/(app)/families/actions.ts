@@ -10,6 +10,7 @@ import { cleanAadhaar, encrypt } from "@/lib/crypto";
 import { putFile } from "@/lib/storage";
 import { toEnglishName } from "@/lib/translit";
 import type { Panth, PanthStatus, FamilyStatus } from "@prisma/client";
+import { restoreFamily as restoreFamilyRecord, restoreMember as restoreMemberRecord, softDeleteFamily, softDeleteMember } from "@/lib/softDelete";
 
 const PANTHS: Panth[] = ["STHANAKVASI", "MANDIRMARGI", "TERAPANTH", "DIGAMBAR", "UNKNOWN"];
 
@@ -29,7 +30,8 @@ function freshEnglish(postedEn: string, postedDev: string, old?: { en: string; d
 export async function saveFamily(fd: FormData) {
   const s = await requireSession("edit");
   const id = str(fd, "id");
-  const old = id ? await prisma.family.findUnique({ where: { id }, select: { headName: true, headNameEn: true } }) : null;
+  const old = id ? await prisma.family.findUnique({ where: { id }, select: { headName: true, headNameEn: true, deletedAt: true } }) : null;
+  if (old?.deletedAt) throw new Error("Family is deleted");
   const panth = (PANTHS.includes(str(fd, "panth") as Panth) ? str(fd, "panth") : "UNKNOWN") as Panth;
   const data = {
     headName: str(fd, "headName"),
@@ -72,12 +74,21 @@ export async function confirmPanth(fd: FormData) {
 export async function deleteFamily(fd: FormData) {
   const s = await requireSession("delete");
   const id = str(fd, "id");
-  const fam = await prisma.family.findUnique({ where: { id }, include: { members: true, payments: true } });
-  if (!fam) redirect("/families");
-  if (fam.payments.length > 0) throw new Error("Family has receipts; cannot delete");
-  await prisma.family.delete({ where: { id } });
-  await audit(s.uid, "delete", "Family", id, { code: fam.code, headName: fam.headName, members: fam.members.length });
+  const fam = await prisma.family.findUnique({ where: { id }, include: { members: { where: { deletedAt: null } } } });
+  if (!fam || fam.deletedAt) redirect("/families");
+  await softDeleteFamily(id, s.uid);
+  await audit(s.uid, "delete", "Family", id, { code: fam.code, headName: fam.headName, members: fam.members.length, soft: true });
+  revalidatePath("/", "layout");
   redirect("/families");
+}
+
+export async function restoreFamily(fd: FormData) {
+  const s = await requireSession("restore");
+  const id = str(fd, "id");
+  await restoreFamilyRecord(id);
+  await audit(s.uid, "restore", "Family", id, {});
+  revalidatePath("/", "layout");
+  redirect(`/families/${id}`);
 }
 
 export async function saveMember(fd: FormData) {
@@ -85,7 +96,9 @@ export async function saveMember(fd: FormData) {
   const familyId = str(fd, "familyId");
   const memberId = str(fd, "memberId");
   const fam = await prisma.family.findUniqueOrThrow({ where: { id: familyId } });
+  if (fam.deletedAt) throw new Error("Family is deleted");
   const existing = memberId ? await prisma.member.findUnique({ where: { id: memberId } }) : null;
+  if (existing?.deletedAt) throw new Error("Member is deleted");
 
   const ageStr = str(fd, "age");
   // keep the original "age recorded on" date if the age was not changed
@@ -150,7 +163,7 @@ export async function saveMember(fd: FormData) {
   }
   // one head per family
   if (prepared.isHead) {
-    await prisma.member.updateMany({ where: { familyId, id: { not: id } }, data: { isHead: false } });
+    await prisma.member.updateMany({ where: { familyId, id: { not: id }, deletedAt: null }, data: { isHead: false } });
   }
   await inferHeadGender(familyId);
   const { aadhaarEnc: _omit, ...logged } = data;
@@ -162,9 +175,17 @@ export async function saveMember(fd: FormData) {
 export async function deleteMember(fd: FormData) {
   const s = await requireSession("delete");
   const id = str(fd, "memberId");
-  const m = await prisma.member.delete({ where: { id } });
-  await audit(s.uid, "delete", "Member", id, { name: m.nameRaw, familyId: m.familyId });
-  revalidatePath(`/families/${m.familyId}`);
+  const m = await softDeleteMember(id, s.uid);
+  await audit(s.uid, "delete", "Member", id, { name: m.nameRaw, familyId: m.familyId, soft: true });
+  revalidatePath("/", "layout");
+}
+
+export async function restoreMember(fd: FormData) {
+  const s = await requireSession("restore");
+  const id = str(fd, "memberId");
+  const r = await restoreMemberRecord(id);
+  if (r === "ok") await audit(s.uid, "restore", "Member", id, {});
+  revalidatePath("/", "layout");
 }
 
 export async function approveKyc(fd: FormData) {

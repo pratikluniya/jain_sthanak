@@ -4,6 +4,7 @@ import { getDict } from "@/lib/i18n";
 import { evaluateAll } from "@/lib/members";
 import { requireSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
+import { LIVE } from "@/lib/softDelete";
 import Icon, { type IconName } from "@/components/Icon";
 
 export const dynamic = "force-dynamic";
@@ -12,9 +13,9 @@ export default async function Dashboard() {
   const s = await requireSession("view");
   const t = getDict();
   const [families, members, toVerify, pendingUploads, { rows, ageDate, electionDate }] = await Promise.all([
-    prisma.family.count(),
-    prisma.member.count(),
-    prisma.family.count({ where: { panthStatus: "TO_VERIFY" } }),
+    prisma.family.count({ where: LIVE }),
+    prisma.member.count({ where: LIVE }),
+    prisma.family.count({ where: { ...LIVE, panthStatus: "TO_VERIFY" } }),
     prisma.formUpload.count({ where: { status: "EXTRACTED" } }),
     evaluateAll(),
   ]);

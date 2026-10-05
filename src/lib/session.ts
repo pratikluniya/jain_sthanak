@@ -2,6 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { can, type Permission, type Role } from "./rbac";
+import { prisma } from "./db";
 
 const COOKIE = "js_session";
 const MAX_AGE = 60 * 60 * 12; // 12 hours
@@ -48,9 +49,22 @@ export async function getSession(): Promise<Session | null> {
   }
 }
 
-/** Use in pages / actions: redirects to login if not signed in, 403 page if not allowed. */
-export async function requireSession(p: Permission = "view"): Promise<Session> {
+/**
+ * The login cookie checked against the database: null when the user was disabled or deleted after logging in.
+ * Name and role come from the database, so changes apply at once instead of after the 12-hour login ends.
+ * Use this (not getSession) wherever access is decided.
+ */
+export async function getLiveSession(): Promise<Session | null> {
   const s = await getSession();
+  if (!s) return null;
+  const u = await prisma.user.findUnique({ where: { id: s.uid }, select: { name: true, role: true, active: true, deletedAt: true } });
+  if (!u || !u.active || u.deletedAt) return null;
+  return { uid: s.uid, name: u.name, role: u.role };
+}
+
+/** Use in pages / actions: redirects to login if not signed in (or disabled / deleted), 403 page if not allowed. */
+export async function requireSession(p: Permission = "view"): Promise<Session> {
+  const s = await getLiveSession();
   if (!s) redirect("/login");
   if (!can(s.role, p)) redirect("/forbidden");
   return s;

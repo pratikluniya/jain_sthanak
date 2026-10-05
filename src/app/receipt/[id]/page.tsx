@@ -1,3 +1,4 @@
+import { RECEIPTS_ENABLED } from "@/lib/features";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { exportDict as t } from "@/lib/i18n";
@@ -11,6 +12,7 @@ export const dynamic = "force-dynamic";
 
 // Printable receipt (Marathi, English digits). Half A4 so two fit on one sheet.
 export default async function ReceiptPrint({ params }: { params: { id: string } }) {
+  if (!RECEIPTS_ENABLED) notFound(); // receipts are hidden until phase 2 (src/lib/features.ts)
   await requireSession("receipts");
   const p = await prisma.payment.findUnique({ where: { id: params.id }, include: { family: true } });
   if (!p) notFound();

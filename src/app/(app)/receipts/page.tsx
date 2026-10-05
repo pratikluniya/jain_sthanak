@@ -1,3 +1,5 @@
+import { RECEIPTS_ENABLED } from "@/lib/features";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getDict } from "@/lib/i18n";
@@ -7,6 +9,7 @@ import { financialYear } from "@/lib/counters";
 export const dynamic = "force-dynamic";
 
 export default async function ReceiptsPage({ searchParams }: { searchParams: { fy?: string } }) {
+  if (!RECEIPTS_ENABLED) notFound(); // receipts are hidden until phase 2 (src/lib/features.ts)
   await requireSession("receipts");
   const t = getDict();
   const fy = searchParams.fy ?? financialYear(new Date());

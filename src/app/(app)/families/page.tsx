@@ -9,17 +9,19 @@ import SearchBox from "@/components/SearchBox";
 
 export const dynamic = "force-dynamic";
 
-export default async function FamiliesPage({ searchParams }: { searchParams: { q?: string; panth?: string } }) {
+export default async function FamiliesPage({ searchParams }: { searchParams: { q?: string; panth?: string; deleted?: string } }) {
   const s = await requireSession("view");
   const t = getDict();
   const lang = getLang();
   const en = lang === "en";
   const q = (searchParams.q ?? "").trim();
   const onlyToVerify = searchParams.panth === "TO_VERIFY";
+  // Admin only: list soft-deleted families instead of active ones
+  const showDeleted = searchParams.deleted === "1" && can(s.role, "restore");
 
   const families = await prisma.family.findMany({
-    where: onlyToVerify ? { panthStatus: "TO_VERIFY" } : undefined,
-    include: { members: { select: { searchKey: true, mobile: true } } },
+    where: { deletedAt: showDeleted ? { not: null } : null, ...(onlyToVerify ? { panthStatus: "TO_VERIFY" as const } : {}) },
+    include: { members: { where: showDeleted ? { deletedAt: { not: null } } : { deletedAt: null }, select: { searchKey: true, mobile: true } } },
   });
 
   const filtered = families
@@ -40,6 +42,11 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
       <div className="flex gap-2 text-sm">
         <Link href="/families" className={!onlyToVerify ? "badge-gray font-semibold" : "badge-gray opacity-60"}>{t.total}</Link>
         <Link href="/families?panth=TO_VERIFY" className={onlyToVerify ? "badge-amber font-semibold" : "badge-amber opacity-60"}>{t.toVerify}</Link>
+        {can(s.role, "restore") && (
+          <Link href={showDeleted ? "/families" : "/families?deleted=1"} className={showDeleted ? "badge-red font-semibold" : "badge-red opacity-60"}>
+            {showDeleted ? t.showActive : t.showDeleted}
+          </Link>
+        )}
       </div>
       {filtered.length === 0 && <p className="text-stone-500">{t.noResults}</p>}
       <ul className="grid gap-2 sm:grid-cols-2">
@@ -61,6 +68,7 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
                   <span className="badge-amber">{t.panth}: {t.toVerify}</span>
                 )}
                 {f.status !== "ACTIVE" && <span className="badge-red">{t[f.status]}</span>}
+                {f.deletedAt && <span className="badge-red">{t.deletedTag} · {f.deletedAt.toLocaleDateString("en-IN")}</span>}
               </div>
             </Link>
           </li>

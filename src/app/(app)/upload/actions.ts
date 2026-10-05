@@ -56,7 +56,7 @@ export async function saveVerified(raw: VerifyPayload): Promise<{ familyId?: str
     let fam;
     if (p.mode === "merge") {
       if (!p.targetFamilyId) throw new Error("choose a family");
-      fam = await tx.family.findUniqueOrThrow({ where: { id: p.targetFamilyId } });
+      fam = await tx.family.findUniqueOrThrow({ where: { id: p.targetFamilyId, deletedAt: null } });
       if (fam.panthStatus === "TO_VERIFY" && p.panth !== "UNKNOWN") {
         fam = await tx.family.update({
           where: { id: fam.id },

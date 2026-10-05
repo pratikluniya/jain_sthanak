@@ -1,3 +1,5 @@
+import { RECEIPTS_ENABLED } from "@/lib/features";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getDict } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
@@ -6,6 +8,7 @@ import { collator } from "@/lib/members";
 import { createReceipt } from "../actions";
 
 export default async function NewReceipt({ searchParams }: { searchParams: { family?: string } }) {
+  if (!RECEIPTS_ENABLED) notFound(); // receipts are hidden until phase 2 (src/lib/features.ts)
   await requireSession("receipts");
   const t = getDict();
   const settings = await getSettings();
