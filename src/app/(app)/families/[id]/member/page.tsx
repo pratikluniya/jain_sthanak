@@ -1,3 +1,4 @@
+import StatusField from "@/components/StatusField";
 import ImageInput from "@/components/ImageInput";
 import { can } from "@/lib/rbac";
 import { todayIST } from "@/lib/deceased";
@@ -9,7 +10,7 @@ import { RELATIONS } from "@/lib/relations";
 import { saveMember } from "../../actions";
 import { headLabel } from "@/lib/members";
 
-export default async function MemberFormPage({ params, searchParams }: { params: { id: string }; searchParams: { m?: string } }) {
+export default async function MemberFormPage({ params, searchParams }: { params: { id: string }; searchParams: { m?: string; e?: string } }) {
   const s = await requireSession("edit");
   const canSeeAadhaar = can(s.role, "viewAadhaar");
   const t = getDict();
@@ -29,6 +30,7 @@ export default async function MemberFormPage({ params, searchParams }: { params:
   return (
     <div className="space-y-3 max-w-xl">
       <h1 className="page-title">{m ? t.edit : t.addMember} <span className="text-base text-stone-500">· {fam.code} {headLabel(fam, lang === "en")}</span></h1>
+      {searchParams.e === "dod" && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{t.dateRequiredEdit}</p>}
       {m?.nameRaw && <p className="text-sm text-stone-500">{t.onForm}: {m.nameRaw} {m.relationRaw && `· ${m.relationRaw}`}</p>}
       <form action={saveMember} className="card p-4 space-y-3" encType="multipart/form-data">
         <input type="hidden" name="familyId" value={fam.id} />
@@ -81,13 +83,13 @@ export default async function MemberFormPage({ params, searchParams }: { params:
               {["", "A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map((x) => <option key={x} value={x}>{x || "-"}</option>)}
             </select>
           </div>
-          <div>
-            <label className="label">{t.status}</label>
-            <select name="status" className="input" defaultValue={m?.status ?? "ACTIVE"}>
-              {(["ACTIVE", "DECEASED", "MARRIED_OUT", "MOVED_OUT"] as const).map((x) => <option key={x} value={x}>{t[x]}</option>)}
-            </select>
-          </div>
-          {field("dateOfDeath", `${t.dateOfDeath} ${t.optional}`, m?.dateOfDeath ? m.dateOfDeath.toISOString().slice(0, 10) : "", { type: "date", max: todayIST() })}
+          <StatusField
+            defaultStatus={m?.status ?? "ACTIVE"}
+            defaultDate={m?.dateOfDeath ? m.dateOfDeath.toISOString().slice(0, 10) : ""}
+            today={todayIST()}
+            options={(["ACTIVE", "DECEASED", "MARRIED_OUT", "MOVED_OUT"] as const).map((x) => ({ value: x, label: t[x] }))}
+            t={{ status: t.status, dateOfDeath: t.dateOfDeath }}
+          />
         </div>
         <fieldset className="border rounded-lg p-3 space-y-2">
           <legend className="text-sm font-semibold px-1">{t.kyc}</legend>

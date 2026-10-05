@@ -2,7 +2,7 @@
 import { prisma } from "./db";
 import { memberFullName } from "./members";
 
-export type MarkResult = { ok: true } | { ok: false; error: "notFound" | "mustChooseHead" | "dateInFuture" };
+export type MarkResult = { ok: true } | { ok: false; error: "notFound" | "mustChooseHead" | "dateInFuture" | "dateRequired" };
 
 /** Today's date in India as YYYY-MM-DD (the server runs in UTC). */
 export function todayIST(now = new Date()): string {
@@ -10,16 +10,17 @@ export function todayIST(now = new Date()): string {
 }
 
 /**
- * Marks a member deceased. The date of death is optional (YYYY-MM-DD, not in the future).
+ * Marks a member deceased. The date of death is required (YYYY-MM-DD, not in the future; decided 6 Oct 2026).
  * If the member is the head of the family and other living members exist, a new head must be chosen:
  * the new head gets isHead, and the family's head name becomes the new head's name
  * (the old head is noted in the family notes).
  */
-export async function markDeceased(input: { memberId: string; dateOfDeath?: string; newHeadId?: string; by: string }): Promise<MarkResult> {
+export async function markDeceased(input: { memberId: string; dateOfDeath: string; newHeadId?: string; by: string }): Promise<MarkResult> {
   const m = await prisma.member.findUnique({ where: { id: input.memberId }, include: { family: { include: { members: { where: { deletedAt: null } } } } } });
   if (!m || m.deletedAt || m.family.deletedAt || m.status === "DECEASED") return { ok: false, error: "notFound" };
   const date = input.dateOfDeath?.trim() || "";
-  if (date && (!/^\d{4}-\d{2}-\d{2}$/.test(date) || date > todayIST())) return { ok: false, error: "dateInFuture" };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "dateRequired" };
+  if (date > todayIST()) return { ok: false, error: "dateInFuture" };
 
   const others = m.family.members.filter((x) => x.id !== m.id && x.status !== "DECEASED");
   const newHead = m.isHead && others.length ? others.find((x) => x.id === input.newHeadId) : undefined;
@@ -30,7 +31,7 @@ export async function markDeceased(input: { memberId: string; dateOfDeath?: stri
       where: { id: m.id },
       data: {
         status: "DECEASED",
-        dateOfDeath: date ? new Date(date) : null,
+        dateOfDeath: new Date(date),
         deceasedMarkedAt: new Date(),
         deceasedMarkedById: input.by,
         ...(newHead ? { isHead: false } : {}),
@@ -40,7 +41,7 @@ export async function markDeceased(input: { memberId: string; dateOfDeath?: stri
       // the head is the member with relation "self"; the old head's relation is rewritten as seen from the new head
       await tx.member.update({ where: { id: m.id }, data: { relation: oldHeadRelation(newHead.relation, m.gender) } });
       await tx.member.update({ where: { id: newHead.id }, data: { isHead: true, relation: "SELF" } });
-      const note = `पूर्वीचे कुटुंब प्रमुख: ${m.family.headName} (निधन${date ? ` ${date.split("-").reverse().join("/")}` : ""})`;
+      const note = `पूर्वीचे कुटुंब प्रमुख: ${m.family.headName} (निधन ${date.split("-").reverse().join("/")})`;
       await tx.family.update({
         where: { id: m.familyId },
         data: {

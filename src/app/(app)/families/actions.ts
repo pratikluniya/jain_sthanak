@@ -138,8 +138,12 @@ export async function saveMember(fd: FormData) {
 
   // Deceased via the edit form: record who marked it and when (for the 15-day reminder); clear it when changed back
   if (prepared.status === "DECEASED") {
+    // date of death is compulsory (decided 6 Oct 2026); send the volunteer back to the form without saving
     const dod = str(fd, "dateOfDeath");
-    data.dateOfDeath = /^\d{4}-\d{2}-\d{2}$/.test(dod) && dod <= todayIST() ? new Date(dod) : null;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dod) || dod > todayIST()) {
+      redirect(`/families/${familyId}/member?${new URLSearchParams({ ...(memberId ? { m: memberId } : {}), e: "dod" })}`);
+    }
+    data.dateOfDeath = new Date(dod);
     if (existing?.status !== "DECEASED") {
       data.deceasedMarkedAt = new Date();
       data.deceasedMarkedById = s.uid;

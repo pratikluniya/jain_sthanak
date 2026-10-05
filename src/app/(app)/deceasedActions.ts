@@ -8,7 +8,7 @@ import { markDeceased, nextDayIST, undoDeceased } from "@/lib/deceased";
 import { matchesSearch } from "@/lib/normalize";
 import { memberFullName } from "@/lib/members";
 
-export type MarkState = { ok?: boolean; error?: "notFound" | "mustChooseHead" | "dateInFuture" };
+export type MarkState = { ok?: boolean; error?: "notFound" | "mustChooseHead" | "dateInFuture" | "dateRequired" };
 
 export async function markDeceasedAction(_: MarkState, fd: FormData): Promise<MarkState> {
   const s = await requireSession("approve");
@@ -17,7 +17,7 @@ export async function markDeceasedAction(_: MarkState, fd: FormData): Promise<Ma
   const newHeadId = String(fd.get("newHeadId") ?? "") || undefined;
   const r = await markDeceased({ memberId, dateOfDeath, newHeadId, by: s.uid });
   if (!r.ok) return { error: r.error };
-  await audit(s.uid, "deceased", "Member", memberId, { dateOfDeath: dateOfDeath || null, newHeadId: newHeadId ?? null });
+  await audit(s.uid, "deceased", "Member", memberId, { dateOfDeath, newHeadId: newHeadId ?? null });
   revalidatePath("/", "layout");
   return { ok: true };
 }

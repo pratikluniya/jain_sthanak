@@ -13,6 +13,7 @@ export interface DeceasedLabels {
   noOtherMember: string;
   mustChooseHead: string;
   dateInFuture: string;
+  dateRequired: string;
   notFound: string;
   cancel: string;
 }
@@ -40,8 +41,8 @@ export default function DeceasedForm(props: {
       <input type="hidden" name="memberId" value={props.member.id} />
       <p className="font-semibold">{props.member.name}</p>
       <div>
-        <label htmlFor={`dod-${props.member.id}`} className="label">{props.t.dateOfDeath} <span className="font-normal text-stone-400">{props.t.optional}</span></label>
-        <input id={`dod-${props.member.id}`} name="dateOfDeath" type="date" max={props.today} className="input" />
+        <label htmlFor={`dod-${props.member.id}`} className="label">{props.t.dateOfDeath} <span className="text-red-600">*</span></label>
+        <input id={`dod-${props.member.id}`} name="dateOfDeath" type="date" max={props.today} className="input" required />
       </div>
       {props.member.isHead && props.others.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
