@@ -126,23 +126,36 @@ file names and contents. Script: `scripts/drive-backup.sh`; schedule: `/etc/cron
 
 [Unverified] rclone's questions below may be worded or numbered differently in the installed version; pick the matching option.
 
-**a. Install rclone on the Mac too** (needed once, only to log in to Google from a browser):
-```
-brew install rclone
-```
+**a. Nothing to install on the Mac.** `scripts/server-setup.sh` already installed rclone on the server.
+(The `brew install rclone` + `rclone authorize` copy-paste method was tried on 5 Oct 2026 and failed twice: brew was
+not installed and the pasted token came through empty. Use the SSH tunnel below instead.)
+
 **b. On the server (as root): connect Google Drive**
 ```
 rclone config
 ```
 - `n` (new remote), name: `jsdrive`
 - Storage: `drive` (Google Drive)
-- client_id and client_secret: press Enter (empty)
+- client_id and client_secret: press Enter (empty, rclone's built-in client)
 - scope: **drive.file** (rclone can only see the files it created, nothing else in the Drive)
 - service_account_file: Enter. Advanced config: `n`
-- Use web browser to authenticate automatically: **`n`** (the server has no browser). rclone prints a line like
-  `rclone authorize "drive" "eyJ..."`. Run that exact line **in the Mac Terminal**; a browser opens: log in with
-  **nashikroadjainsthanak@gmail.com** and allow. The Mac Terminal prints a token: copy it and paste it into the server prompt.
-- Shared Drive: `n`. Keep this remote: `y`.
+- Use web browser to authenticate automatically: `n`, then finish the remote without a token if it lets you
+  (or quit and continue with the reconnect below). Shared Drive: `n`. Keep this remote: `y`.
+
+Then log in to Google through an SSH tunnel (the server has no browser; the tunnel lets the Mac's browser reach
+rclone's login page on the server):
+1. In a NEW Mac Terminal window, log in with the tunnel and keep this window open:
+   ```
+   ssh -i ~/.ssh/jainsangh_admin -L 53682:localhost:53682 root@<Droplet IP>
+   ```
+2. In that same window (now on the server):
+   ```
+   rclone config reconnect jsdrive:
+   ```
+   Answer `y` to "Use web browser to automatically authenticate". rclone prints a link like
+   `http://127.0.0.1:53682/auth?state=...`.
+3. Open that link in the Mac's browser, log in with **nashikroadjainsthanak@gmail.com** and click Allow.
+   The browser shows "Success" and rclone saves the token. The tunnel can be closed afterwards.
 
 **c. On the server: add encryption on top**
 Still in `rclone config`:
