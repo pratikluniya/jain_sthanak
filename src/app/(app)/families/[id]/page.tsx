@@ -8,7 +8,14 @@ import { relationLabel } from "@/lib/relations";
 import { checkVoter } from "@/lib/eligibility";
 import { effectiveAgeDate, getSettings } from "@/lib/settings";
 import { memberFullName, headLabel } from "@/lib/members";
-import { approveKyc, confirmPanth, deleteFamily, deleteMember } from "../actions";
+import { approveKyc, confirmPanth, deleteFamily, deleteMember, restoreFamily } from "../actions";
+import { RECEIPTS_ENABLED } from "@/lib/features";
+import { initials } from "@/lib/initials";
+import MarkDeceasedButton from "@/components/MarkDeceasedButton";
+import { deceasedLabels } from "@/lib/deceasedLabels";
+import { todayIST } from "@/lib/deceased";
+import { undoDeceasedAction } from "../../deceasedActions";
+import { LIVE } from "@/lib/softDelete";
 import ConfirmButton from "@/components/ConfirmButton";
 import { formImageUrls } from "@/lib/storage";
 
@@ -26,10 +33,22 @@ export default async function FamilyPage({ params }: { params: { id: string } })
       uploads: { orderBy: { createdAt: "asc" } },
       payments: { orderBy: { date: "desc" } },
       parentFamily: true,
-      linkedFamilies: true,
+      linkedFamilies: { where: LIVE },
     },
   });
   if (!fam) notFound();
+  const deleted = !!fam.deletedAt;
+  // live family: its live members; deleted family (Admin view): the members deleted together with it
+  const members = fam.members.filter((m) => (deleted ? m.deletedAt?.getTime() === fam.deletedAt!.getTime() : !m.deletedAt));
+  if (deleted && !can(s.role, "restore")) notFound();
+  const deletedBy = fam.deletedById ? await prisma.user.findUnique({ where: { id: fam.deletedById }, select: { name: true } }) : null;
+  // a deleted family is read-only until it is restored
+  const canEdit = can(s.role, "edit") && !deleted;
+  const canDelete = can(s.role, "delete") && !deleted;
+  const canMarkDeceased = can(s.role, "approve") && !deleted;
+  const dLabels = deceasedLabels(t);
+  const today = todayIST();
+  const living = members.filter((x) => x.status !== "DECEASED");
   const settings = await getSettings();
   const ageDate = effectiveAgeDate(settings);
   const allKeys = fam.uploads.flatMap((u) => u.imageKeys);
@@ -42,10 +61,23 @@ export default async function FamilyPage({ params }: { params: { id: string } })
         <Link href="/families" className="text-brand-700">← {t.families}</Link>
       </div>
 
+      {deleted && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+          <span>
+            <b>{t.deletedTag}</b> · {fam.deletedAt!.toLocaleDateString("en-IN")}
+            {deletedBy && ` · ${deletedBy.name}`}. {t.familyDeletedNote}
+          </span>
+          <form action={restoreFamily}>
+            <input type="hidden" name="id" value={fam.id} />
+            <button className="btn-primary btn-sm">{t.restore}</button>
+          </form>
+        </div>
+      )}
+
       <section className="card p-4 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <h1 className="text-xl font-bold">{headLabel(fam, en)}</h1>
+            <h1 className="page-title">{headLabel(fam, en)}</h1>
             <p className="text-stone-600 text-sm">{fam.address}</p>
             {fam.area && <p className="text-stone-500 text-xs">{t.area}: {fam.area}</p>}
           </div>
@@ -60,7 +92,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
           )}
           {fam.status !== "ACTIVE" && <span className="badge-red">{t[fam.status]}</span>}
         </div>
-        {fam.panthStatus === "TO_VERIFY" && can(s.role, "approve") && (
+        {fam.panthStatus === "TO_VERIFY" && can(s.role, "approve") && !deleted && (
           <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
             <p className="text-sm mb-2">{t.confirmPanth}:</p>
             <form action={confirmPanth} className="flex flex-wrap gap-2">
@@ -81,26 +113,32 @@ export default async function FamilyPage({ params }: { params: { id: string } })
           </div>
         )}
         <div className="flex flex-wrap gap-2 pt-1">
-          {can(s.role, "edit") && <Link href={`/families/${fam.id}/edit`} className="btn-secondary btn-sm">{t.edit}</Link>}
-          {can(s.role, "edit") && <Link href={`/families/${fam.id}/member`} className="btn-primary btn-sm">+ {t.addMember}</Link>}
-          {can(s.role, "receipts") && <Link href={`/receipts/new?family=${fam.id}`} className="btn-secondary btn-sm">+ {t.newReceipt}</Link>}
-          {can(s.role, "delete") && fam.payments.length === 0 && (
+          {canEdit && <Link href={`/families/${fam.id}/edit`} className="btn-secondary btn-sm">{t.edit}</Link>}
+          {canEdit && <Link href={`/families/${fam.id}/member`} className="btn-primary btn-sm">+ {t.addMember}</Link>}
+          {RECEIPTS_ENABLED && !deleted && can(s.role, "receipts") && <Link href={`/receipts/new?family=${fam.id}`} className="btn-secondary btn-sm">+ {t.newReceipt}</Link>}
+          {canDelete && (
             <form action={deleteFamily}>
               <input type="hidden" name="id" value={fam.id} />
-              <ConfirmButton className="btn-danger btn-sm" message={`${fam.code} ${t.delete}?`}>{t.delete}</ConfirmButton>
+              <ConfirmButton className="btn-danger btn-sm" message={`${fam.code}: ${t.deleteConfirmSoft}`}>{t.delete}</ConfirmButton>
             </form>
           )}
         </div>
       </section>
 
       <section className="space-y-2">
-        <h2 className="font-semibold">{t.members} ({fam.members.length})</h2>
-        {fam.members.map((m) => {
+        <h2 className="section-title">{t.members} ({members.length})</h2>
+        {members.map((m) => {
           const r = checkVoter(m, fam, { asOfDate: ageDate, applyStatusRules: settings.applyStatusRules });
           return (
             <div key={m.id} className="card p-3">
               <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
+                {m.photoKey ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={`/api/files/photos/${m.photoKey}`} alt="" loading="lazy" className="h-14 w-12 shrink-0 rounded-lg border border-stone-200 object-cover" />
+                ) : (
+                  <span className="flex h-14 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-50 font-heading text-sm font-bold text-brand-700">{initials(memberFullName(m, false, en))}</span>
+                )}
+                <div className="min-w-0 flex-1">
                   <div className="font-semibold">
                     {memberFullName(m, true, en)} {m.isHead && <span className="badge-gray ml-1">{t.isHead}</span>}
                   </div>
@@ -119,32 +157,52 @@ export default async function FamilyPage({ params }: { params: { id: string } })
                   {r.eligible ? (
                     <span className="badge-green">{t.eligible}{m.voterNo ? ` #${m.voterNo}` : ""}</span>
                   ) : (
-                    r.reasons.map((x) => <span key={x} className={x === "UNDER_AGE" ? "badge-gray" : "badge-amber"}>{t[x]}</span>)
+                    r.reasons.filter((x) => x !== "DECEASED").map((x) => <span key={x} className={x === "UNDER_AGE" ? "badge-gray" : "badge-amber"}>{t[x]}</span>)
                   )}
-                  {m.status !== "ACTIVE" && <span className="badge-red">{t[m.status]}</span>}
-                  {m.aadhaarLast4 || m.kycFileKey ? (
+                  {m.status !== "ACTIVE" && (
+                    <span className="badge-red">{t[m.status]}{m.status === "DECEASED" && m.dateOfDeath ? ` · ${m.dateOfDeath.toLocaleDateString("en-IN")}` : ""}</span>
+                  )}
+                  {m.status === "DECEASED" && !m.dateOfDeath && <span className="badge-amber">⚠ {t.missingDod}</span>}
+                  {m.aadhaarLast4 || m.kycFileKey || m.aadhaarBackKey ? (
                     m.kycVerified ? <span className="badge-green">{t.kycVerified}</span> : <span className="badge-amber">{t.kycPending}</span>
                   ) : null}
                 </div>
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
-                {can(s.role, "edit") && <Link href={`/families/${fam.id}/member?m=${m.id}`} className="btn-secondary btn-sm">{t.edit}</Link>}
-                {can(s.role, "approve") && !m.kycVerified && (m.aadhaarLast4 || m.kycFileKey) && (
+                {canEdit && <Link href={`/families/${fam.id}/member?m=${m.id}`} className="btn-secondary btn-sm">{t.edit}</Link>}
+                {can(s.role, "approve") && !deleted && !m.kycVerified && (m.aadhaarLast4 || m.kycFileKey || m.aadhaarBackKey) && (
                   <form action={approveKyc}>
                     <input type="hidden" name="memberId" value={m.id} />
                     <button className="btn-secondary btn-sm">KYC {t.approve}</button>
                   </form>
                 )}
                 {can(s.role, "viewAadhaar") && m.kycFileKey && (
-                  <a href={`/api/files/kyc/${m.kycFileKey}`} target="_blank" className="btn-secondary btn-sm">{m.kycDocType && m.kycDocType !== "AADHAAR" ? m.kycDocType : t.aadhaar} 📄</a>
+                  <a href={`/api/files/kyc/${m.kycFileKey}`} target="_blank" className="btn-secondary btn-sm">{m.kycDocType && m.kycDocType !== "AADHAAR" ? m.kycDocType : t.aadhaarFront} 📄</a>
+                )}
+                {can(s.role, "viewAadhaar") && m.aadhaarBackKey && (
+                  <a href={`/api/files/kyc/${m.aadhaarBackKey}`} target="_blank" className="btn-secondary btn-sm">{t.aadhaarBack} 📄</a>
                 )}
                 {m.aadhaarLast4 && <span className="text-xs text-stone-500 self-center">{t.aadhaar}: XXXX XXXX {m.aadhaarLast4}</span>}
                 {m.kycDocType && m.kycDocType !== "AADHAAR" && <span className="text-xs text-stone-500 self-center">KYC: {m.kycDocType}</span>}
                 {m.dob && <span className="text-xs text-stone-500 self-center">{t.dob}: {m.dob.toLocaleDateString("en-IN")}</span>}
-                {can(s.role, "delete") && (
+                {canMarkDeceased && m.status !== "DECEASED" && (
+                  <MarkDeceasedButton
+                    member={{ id: m.id, name: memberFullName(m, true, en), isHead: m.isHead }}
+                    others={living.filter((x) => x.id !== m.id).map((x) => ({ id: x.id, name: memberFullName(x, true, en) }))}
+                    today={today}
+                    t={dLabels}
+                  />
+                )}
+                {canMarkDeceased && m.status === "DECEASED" && (
+                  <form action={undoDeceasedAction}>
+                    <input type="hidden" name="memberId" value={m.id} />
+                    <ConfirmButton className="btn-secondary btn-sm" message={`${memberFullName(m)}: ${t.undoConfirm}`}>{t.undoDeceased}</ConfirmButton>
+                  </form>
+                )}
+                {canDelete && (
                   <form action={deleteMember}>
                     <input type="hidden" name="memberId" value={m.id} />
-                    <ConfirmButton className="btn-sm text-red-600 underline" message={`${memberFullName(m)}: ${t.delete}?`}>{t.delete}</ConfirmButton>
+                    <ConfirmButton className="btn-sm text-red-600 underline" message={`${memberFullName(m)}: ${t.deleteConfirmSoft}`}>{t.delete}</ConfirmButton>
                   </form>
                 )}
               </div>
@@ -155,7 +213,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
 
       {fam.uploads.length > 0 && (
         <section className="space-y-2">
-          <h2 className="font-semibold">{t.upload}</h2>
+          <h2 className="section-title">{t.upload}</h2>
           <div className="flex flex-wrap gap-2">
             {fam.uploads.flatMap((u) =>
               u.imageKeys.map((k, i) => (
@@ -169,9 +227,9 @@ export default async function FamilyPage({ params }: { params: { id: string } })
         </section>
       )}
 
-      {fam.payments.length > 0 && (
+      {RECEIPTS_ENABLED && fam.payments.length > 0 && (
         <section className="space-y-2">
-          <h2 className="font-semibold">{t.receipts}</h2>
+          <h2 className="section-title">{t.receipts}</h2>
           <ul className="card divide-y">
             {fam.payments.map((p) => (
               <li key={p.id} className="p-3 flex justify-between text-sm">

@@ -72,6 +72,15 @@ model User {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  createdById  String?  // user id of the admin who added this user (empty for users added before Oct 2026)
+
+  // Soft delete: nothing is erased. A deleted user cannot log in and is hidden; Admin can restore.
+  deletedAt   DateTime?
+  deletedById String?
+
+  // 15-day demise reminder (Admin and Operator): when this user last clicked "Done", and "Remind me later" until when
+  demiseCheckDoneAt  DateTime?
+  demiseSnoozeUntil  DateTime?
 
   auditLogs AuditLog[]
 }
@@ -111,6 +120,10 @@ model Family {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
+  // Soft delete: hidden everywhere (lists, voter list, exports); Admin can restore. Its members are deleted with it.
+  deletedAt   DateTime?
+  deletedById String?
+
   @@index([headName])
 }
 
@@ -147,12 +160,19 @@ model Member {
 
   status MemberStatus @default(ACTIVE)
 
+  // Deceased: optional date of death, and who marked it when (drives the 15-day reminder list)
+  dateOfDeath        DateTime?
+  deceasedMarkedAt   DateTime?
+  deceasedMarkedById String?
+
   voterNo Int? @unique // fixed voter number, assigned once
 
   // KYC (Aadhaar). Number stored encrypted; last 4 kept for display.
   aadhaarEnc    String?
   aadhaarLast4  String?
-  kycFileKey    String?
+  kycFileKey    String?   // Aadhaar front (or the single KYC document)
+  aadhaarBackKey String?  // Aadhaar back
+  photoKey       String?  // passport-size photo (bucket "photos")
   kycDocType    String?   // AADHAAR / PAN / VOTER_ID / OTHER
   kycVerified   Boolean   @default(false)
   kycVerifiedBy String?
@@ -160,6 +180,10 @@ model Member {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Soft delete: hidden everywhere (lists, voter list, exports); Admin can restore.
+  deletedAt   DateTime?
+  deletedById String?
 
   @@index([familyId])
   @@index([searchKey])

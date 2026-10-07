@@ -80,9 +80,12 @@ test("age and eligibility", () => {
     checkVoter({ age: 45, ageRecordedOn: recorded, dob: null, status: "ACTIVE" }, { panth: "DIGAMBAR", panthStatus: "CONFIRMED" }, opts).reasons,
     ["NOT_STHANAKVASI"],
   );
-  // status rules off by default: deceased still listed ("add everyone for now")
-  assert.equal(checkVoter({ age: 70, ageRecordedOn: recorded, dob: null, status: "DECEASED" }, fam, opts).eligible, true);
-  assert.equal(checkVoter({ age: 70, ageRecordedOn: recorded, dob: null, status: "DECEASED" }, fam, { ...opts, applyStatusRules: true }).eligible, false);
+  // deceased: never a voter, whatever the status-rules setting (decided 6 Oct 2026)
+  assert.deepEqual(checkVoter({ age: 70, ageRecordedOn: recorded, dob: null, status: "DECEASED" }, fam, opts).reasons, ["DECEASED"]);
+  assert.deepEqual(checkVoter({ age: 70, ageRecordedOn: recorded, dob: null, status: "DECEASED" }, fam, { ...opts, applyStatusRules: true }).reasons, ["DECEASED"]);
+  // other status rules only when switched on
+  assert.equal(checkVoter({ age: 40, ageRecordedOn: recorded, dob: null, status: "MOVED_OUT" }, fam, opts).eligible, true);
+  assert.equal(checkVoter({ age: 40, ageRecordedOn: recorded, dob: null, status: "MOVED_OUT" }, fam, { ...opts, applyStatusRules: true }).eligible, false);
   // exact DOB
   const dob = checkVoter({ age: null, ageRecordedOn: null, dob: new Date("2008-11-23"), status: "ACTIVE" }, fam, opts);
   assert.deepEqual(dob.reasons, ["UNDER_AGE"]);
@@ -127,4 +130,30 @@ test("English search tolerates spelling variation", () => {
   assert.equal(latinFold("Kantilalji"), latinFold("Kantilal"));
   const key = searchKey("Nirmalabai Kachardasji Chordiya");
   assert.ok(matchesSearch(key, "nirmala chordia"));
+});
+
+test("head-of-family list phone: head first, else first member with a mobile", async () => {
+  const { familyPhone } = await import("./exportRows");
+  assert.equal(familyPhone([{ isHead: true, serial: 1, mobile: "9800000001" }, { isHead: false, serial: 2, mobile: "9800000002" }]), "9800000001");
+  assert.equal(familyPhone([{ isHead: true, serial: 1, mobile: "" }, { isHead: false, serial: 3, mobile: "9800000003" }, { isHead: false, serial: 2, mobile: "9800000002" }]), "9800000002");
+  assert.equal(familyPhone([{ isHead: true, serial: 1, mobile: "" }]), "");
+});
+
+test("demise reminder timing", async () => {
+  const { demiseReminderDue, nextDayIST, todayIST } = await import("./deceased");
+  const now = new Date("2026-10-20T06:00:00Z"); // 11:30 IST
+  assert.equal(demiseReminderDue({ demiseCheckDoneAt: null, demiseSnoozeUntil: null }, now), true, "never answered");
+  assert.equal(demiseReminderDue({ demiseCheckDoneAt: new Date("2026-10-10T06:00:00Z"), demiseSnoozeUntil: null }, now), false, "10 days ago");
+  assert.equal(demiseReminderDue({ demiseCheckDoneAt: new Date("2026-10-05T06:00:00Z"), demiseSnoozeUntil: null }, now), true, "15 days ago");
+  assert.equal(demiseReminderDue({ demiseCheckDoneAt: null, demiseSnoozeUntil: new Date("2026-10-20T18:30:00Z") }, now), false, "snoozed till midnight IST");
+  assert.equal(nextDayIST(now).toISOString(), "2026-10-20T18:30:00.000Z", "next midnight in India");
+  assert.equal(todayIST(new Date("2026-10-20T20:00:00Z")), "2026-10-21", "after midnight IST it is already the next day");
+});
+
+test("old head's relation after the head changes", async () => {
+  const { oldHeadRelation } = await import("./deceased");
+  assert.equal(oldHeadRelation("SON", "MALE"), "FATHER");
+  assert.equal(oldHeadRelation("DAUGHTER", "FEMALE"), "MOTHER");
+  assert.equal(oldHeadRelation("WIFE", "MALE"), "HUSBAND");
+  assert.equal(oldHeadRelation("BROTHER", "MALE"), "OTHER");
 });

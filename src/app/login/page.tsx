@@ -11,7 +11,7 @@ export default function LoginPage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="" className="mx-auto mb-3 h-28 w-auto" />
           <p className="text-xs text-brand-700">॥ श्री महावीराय नमः ॥</p>
-          <h1 className="text-lg font-bold text-brand-900">{t.sangh}</h1>
+          <h1 className="font-heading text-xl font-bold leading-snug text-brand-900">{t.sangh}</h1>
           <p className="text-stone-600">{t.appName}</p>
         </div>
         <div className="card overflow-hidden">

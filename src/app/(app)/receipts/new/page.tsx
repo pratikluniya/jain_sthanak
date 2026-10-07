@@ -1,3 +1,5 @@
+import { RECEIPTS_ENABLED } from "@/lib/features";
+import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { getDict } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
@@ -6,6 +8,7 @@ import { collator } from "@/lib/members";
 import { createReceipt } from "../actions";
 
 export default async function NewReceipt({ searchParams }: { searchParams: { family?: string } }) {
+  if (!RECEIPTS_ENABLED) notFound(); // receipts are hidden until phase 2 (src/lib/features.ts)
   await requireSession("receipts");
   const t = getDict();
   const settings = await getSettings();
@@ -15,7 +18,7 @@ export default async function NewReceipt({ searchParams }: { searchParams: { fam
 
   return (
     <div className="space-y-3 max-w-xl">
-      <h1 className="text-xl font-bold">{t.newReceipt}</h1>
+      <h1 className="page-title">{t.newReceipt}</h1>
       <form action={createReceipt} className="card p-4 space-y-3">
         <div>
           <label className="label">{t.family}</label>

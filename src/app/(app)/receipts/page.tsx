@@ -1,3 +1,5 @@
+import { RECEIPTS_ENABLED } from "@/lib/features";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getDict } from "@/lib/i18n";
@@ -7,6 +9,7 @@ import { financialYear } from "@/lib/counters";
 export const dynamic = "force-dynamic";
 
 export default async function ReceiptsPage({ searchParams }: { searchParams: { fy?: string } }) {
+  if (!RECEIPTS_ENABLED) notFound(); // receipts are hidden until phase 2 (src/lib/features.ts)
   await requireSession("receipts");
   const t = getDict();
   const fy = searchParams.fy ?? financialYear(new Date());
@@ -15,7 +18,7 @@ export default async function ReceiptsPage({ searchParams }: { searchParams: { f
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">{t.receipts} <span className="text-base text-stone-500">{fy}</span></h1>
+        <h1 className="page-title">{t.receipts} <span className="text-base text-stone-500">{fy}</span></h1>
         <Link href="/receipts/new" className="btn-primary btn-sm">+ {t.newReceipt}</Link>
       </div>
       <p className="text-sm">{t.total}: <b>₹{total.toLocaleString("en-IN")}</b> · {list.length}</p>

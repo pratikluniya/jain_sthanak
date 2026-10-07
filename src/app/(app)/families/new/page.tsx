@@ -7,7 +7,7 @@ export default async function NewFamily() {
   const t = getDict();
   return (
     <div className="space-y-3 max-w-xl">
-      <h1 className="text-xl font-bold">{t.addFamily}</h1>
+      <h1 className="page-title">{t.addFamily}</h1>
       <FamilyForm t={t} />
     </div>
   );

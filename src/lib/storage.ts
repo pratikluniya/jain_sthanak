@@ -6,7 +6,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import type { S3Client } from "@aws-sdk/client-s3";
 
-type Bucket = "forms" | "kyc";
+type Bucket = "forms" | "kyc" | "photos"; // photos = passport-size member photos
 const LOCAL_ROOT = process.env.LOCAL_UPLOADS_DIR || path.join(process.cwd(), "uploads");
 const LINK_SECONDS = 60 * 60; // private photo links work for 1 hour
 

@@ -23,7 +23,7 @@ export default async function UploadList() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">{t.upload}</h1>
+        <h1 className="page-title">{t.upload}</h1>
         <div className="flex gap-2">
           {can(session.role, "settings") && <Link href="/upload/import" className="btn-secondary">⬆ Import batch</Link>}
           <Link href="/upload/new" className="btn-primary">📷 {t.uploadForm}</Link>
@@ -32,7 +32,7 @@ export default async function UploadList() {
       <p className="text-sm text-stone-500">
         ✔ {done} · AI ≈ ${(cost._sum.aiCostUsd ?? 0).toFixed(2)}
       </p>
-      <h2 className="font-semibold">{t.pendingUploads} ({pending.length})</h2>
+      <h2 className="section-title">{t.pendingUploads} ({pending.length})</h2>
       <ul className="grid gap-2 sm:grid-cols-2">
         {pending.map((u) => {
           const x = u.extracted as unknown as ExtractedForm | null;

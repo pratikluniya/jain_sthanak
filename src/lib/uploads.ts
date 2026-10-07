@@ -1,3 +1,4 @@
+import { LIVE } from "./softDelete";
 import { prisma } from "./db";
 import { extractForm, type ExtractedForm } from "./extract";
 import { getFile } from "./storage";
@@ -45,7 +46,7 @@ export async function findDuplicates(form: Pick<ExtractedForm, "headName" | "mem
   const headWords = searchKey(form.headName).split(" ").filter((w) => w.length > 1);
   const addrWords = new Set(searchKey(form.address ?? "").split(" ").filter((w) => w.length > 2));
   const mobiles = form.members.map((m) => normalizeMobile(m.mobile).value).filter((m) => m.length === 10);
-  const families = await prisma.family.findMany({ include: { members: { select: { mobile: true } } } });
+  const families = await prisma.family.findMany({ where: LIVE, include: { members: { where: LIVE, select: { mobile: true } } } });
   const scored: (DuplicateCandidate & { score: number })[] = [];
   for (const f of families) {
     const fw = searchKey(f.headName).split(" ").filter((w) => w.length > 1);

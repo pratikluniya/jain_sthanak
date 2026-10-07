@@ -1,4 +1,5 @@
 import type { Family, Member, Prisma } from "@prisma/client";
+import { LIVE } from "./softDelete";
 import { prisma } from "./db";
 import { fullName, normalizeBloodGroup, normalizeMobile, parseAge, searchKey, splitName } from "./normalize";
 import { genderFromRelation, genderFromTitle, relationFromRaw } from "./relations";
@@ -127,7 +128,7 @@ export interface VoterRow {
 export async function evaluateAll(): Promise<{ rows: VoterRow[]; ageDate: Date; electionDate: Date | null; applyStatusRules: boolean }> {
   const settings = await getSettings();
   const ageDate = effectiveAgeDate(settings);
-  const families = await prisma.family.findMany({ include: { members: true } });
+  const families = await prisma.family.findMany({ where: LIVE, include: { members: { where: LIVE } } });
   const rows: VoterRow[] = [];
   for (const f of families) {
     for (const m of f.members) {

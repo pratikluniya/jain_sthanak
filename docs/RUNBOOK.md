@@ -29,15 +29,24 @@ Full setup steps: `docs/SERVER-SETUP.md`.
 | Edit family / member | Data entry, Operator, Admin | कुटुंबे > family > बदला |
 | Confirm blank panth | Operator, Admin | कुटुंबे > तपासणी बाकी |
 | Approve KYC | Operator, Admin | Family page > KYC मंजूर करा |
-| Voter list, voter numbers, exports | Operator, Admin | मतदार यादी / निर्यात |
-| Receipts | Operator, Admin | पावत्या |
-| Users (add, disable, reset password) | Admin | वापरकर्ते |
-| Age cut-off date (18+), election date, Sangh name/address, receipt purposes | Admin | सेटिंग्ज |
+| Upload Aadhaar front + back and passport photo | Data entry, Operator, Admin | Family page > member > बदला (phone camera or gallery; pictures are shrunk before upload) |
+| Deceased members with no date of death are flagged in red on the dashboard (link to the list) and on the family page; open the member and fill the date |
+| Mark a member deceased (date of death compulsory; asks for the new head if the head passed away) / undo | Operator, Admin | Family page > निधन नोंदवा / निधन नोंद रद्द करा, or the 15-day reminder popup on the dashboard |
+| Voter list, voter numbers | Operator, Admin | मतदार यादी |
+| Download lists (Excel, Print, PDF; pick columns and language) | Operator, Admin | "डाउनलोड" button on मतदार यादी (voters), सदस्य (all members), कुटुंबे (heads of family with address and phone) |
+| Receipts | (hidden until phase 2) | turned on in `src/lib/features.ts` (`RECEIPTS_ENABLED`) |
+| Users (add, edit, disable, delete, reset password) | Admin | वापरकर्ते > बदला |
+| See and restore deleted users, families, members | Admin | "हटवलेले दाखवा" on Users, Families, Members |
+| Age cut-off date (18+), election date, membership-ended rule | Admin | सेटिंग्ज > बदला on the row |
 
-Every create / edit / delete / export / Aadhaar view is recorded in the `AuditLog` table.
+Every create / edit / delete / restore / export / Aadhaar view is recorded in the `AuditLog` table.
+
+Deceased members never appear on the voter list, whatever the settings say. Every 15 days, Admin and Operator see a popup on the dashboard asking whether anyone has passed away; "पूर्ण" restarts the 15 days, "नंतर" hides it until the next day. When the head of a family passes away, the chosen new head becomes "self", the old head becomes father / mother / husband / wife where that is clear, and the family notes record the old head. Other members' relations still describe the old head: correct them on the edit page.
+
+Delete never erases anything: users, families and members get a "deleted" mark (who and when) and disappear from lists, the voter list and exports. Deleting a family also hides its members. Admin can restore them. A disabled or deleted user is locked out on their next click, even if they are logged in.
 
 ### Forgotten password
-Admin opens वापरकर्ते, types a new password (min 8 characters) on that user's row, clicks जतन करा.
+Every user can change their own password: profile circle (top right) > पासवर्ड बदला. If they forgot it: Admin opens वापरकर्ते > बदला on that user, types a new password (min 8 characters), clicks जतन करा.
 
 ### Admin locked out
 Putting `SEED_ADMIN_PASSWORD` back in `.env` does not help: it only works when there are no users at all. Reset the password on the server instead:
@@ -161,7 +170,7 @@ Never paste secrets into chat, WhatsApp or email. Never commit `.env` (it is in 
 - One server: if it fails, the app is down until it is rebuilt from a snapshot (about 30 minutes). Acceptable for this use.
 - 2 GB memory: enough for the Sangh's ~350 families. If `free -h` shows swap used heavily, move to the 4 GB plan (Droplet > **Resize** > 4 GB, a few minutes of downtime).
 - In-app AI form reading is OFF until `ANTHROPIC_API_KEY` is set in `.env`. Set a monthly spend limit in the Anthropic console first, then `docker compose up -d app`.
-- PDF export uses the browser's Print > Save as PDF (keeps Marathi text correct).
+- Two ways to get a PDF: "PDF डाउनलोड" makes the file in the phone or browser (one click, but the text is a picture and cannot be searched), or "प्रिंट" then Save as PDF (searchable text, Marathi stays correct).
 - English name spellings are made automatically and should be checked by volunteers.
 - Marathi amount-in-words spellings on receipts should be checked once by the committee.
 
