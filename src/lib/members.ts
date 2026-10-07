@@ -128,7 +128,11 @@ export interface VoterRow {
 export async function evaluateAll(): Promise<{ rows: VoterRow[]; ageDate: Date; electionDate: Date | null; applyStatusRules: boolean }> {
   const settings = await getSettings();
   const ageDate = effectiveAgeDate(settings);
-  const families = await prisma.family.findMany({ where: LIVE, include: { members: { where: LIVE } } });
+  // deleted and moved-out families / members are not part of any list (decided 7 Oct 2026)
+  const families = await prisma.family.findMany({
+    where: { ...LIVE, status: { not: "MOVED_OUT" } },
+    include: { members: { where: { ...LIVE, status: { not: "MOVED_OUT" } } } },
+  });
   const rows: VoterRow[] = [];
   for (const f of families) {
     for (const m of f.members) {

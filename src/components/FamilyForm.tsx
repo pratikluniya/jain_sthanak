@@ -27,7 +27,7 @@ export default function FamilyForm({ t, fam }: { t: Dict; fam?: Family | null })
         <div>
           <label className="label">{t.status}</label>
           <select name="status" className="input" defaultValue={fam?.status ?? "ACTIVE"}>
-            {(["ACTIVE", "MOVED_OUT", "INACTIVE"] as const).map((x) => <option key={x} value={x}>{t[x]}</option>)}
+            {(fam?.status === "MOVED_OUT" ? (["MOVED_OUT"] as const) : (["ACTIVE", "INACTIVE"] as const)).map((x) => <option key={x} value={x}>{t[x]}</option>)}
           </select>
         </div>
         <div>

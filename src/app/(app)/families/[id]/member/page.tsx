@@ -87,7 +87,7 @@ export default async function MemberFormPage({ params, searchParams }: { params:
             defaultStatus={m?.status ?? "ACTIVE"}
             defaultDate={m?.dateOfDeath ? m.dateOfDeath.toISOString().slice(0, 10) : ""}
             today={todayIST()}
-            options={(["ACTIVE", "DECEASED", "MARRIED_OUT", "MOVED_OUT"] as const).map((x) => ({ value: x, label: t[x] }))}
+            options={(m?.status === "MOVED_OUT" ? (["MOVED_OUT"] as const) : (["ACTIVE", "DECEASED", "MARRIED_OUT"] as const)).map((x) => ({ value: x, label: t[x] }))}
             t={{ status: t.status, dateOfDeath: t.dateOfDeath }}
           />
         </div>

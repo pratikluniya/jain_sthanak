@@ -31,7 +31,7 @@ function freshEnglish(postedEn: string, postedDev: string, old?: { en: string; d
 export async function saveFamily(fd: FormData) {
   const s = await requireSession("edit");
   const id = str(fd, "id");
-  const old = id ? await prisma.family.findUnique({ where: { id }, select: { headName: true, headNameEn: true, deletedAt: true } }) : null;
+  const old = id ? await prisma.family.findUnique({ where: { id }, select: { headName: true, headNameEn: true, deletedAt: true, status: true } }) : null;
   if (old?.deletedAt) throw new Error("Family is deleted");
   const panth = (PANTHS.includes(str(fd, "panth") as Panth) ? str(fd, "panth") : "UNKNOWN") as Panth;
   const data = {
@@ -44,7 +44,8 @@ export async function saveFamily(fd: FormData) {
     panth,
     // choosing a real panth while editing counts as confirming it (edit is done by trusted roles)
     panthStatus: (panth === "UNKNOWN" ? "TO_VERIFY" : (str(fd, "panthStatus") as PanthStatus) || "TO_VERIFY") as PanthStatus,
-    status: ((str(fd, "status") || "ACTIVE") as FamilyStatus),
+    // "moved out" is set and undone only with the Moved-out buttons (they also move the members), never by this form
+    status: ((old?.status === "MOVED_OUT" ? "MOVED_OUT" : str(fd, "status") === "MOVED_OUT" ? old?.status ?? "ACTIVE" : str(fd, "status") || "ACTIVE") as FamilyStatus),
     notes: str(fd, "notes"),
   };
   if (id) {
@@ -124,7 +125,8 @@ export async function saveMember(fd: FormData) {
       occupation: str(fd, "occupation"),
       mobile: str(fd, "mobile"),
       bloodGroup: str(fd, "bloodGroup"),
-      status: str(fd, "status"),
+      // "moved out" is set and undone only with the Moved-out buttons, never by this form
+      status: existing?.status === "MOVED_OUT" ? "MOVED_OUT" : str(fd, "status") === "MOVED_OUT" ? existing?.status ?? "ACTIVE" : str(fd, "status"),
       serial: existing?.serial,
       // keep the current head (after a head change the new head may not have relation "self" yet)
       isHead: existing?.isHead,

@@ -15,7 +15,7 @@ import { restoreMember } from "../families/actions";
 export const dynamic = "force-dynamic";
 const PAGE = 100;
 
-export default async function MembersPage({ searchParams }: { searchParams: { q?: string; blood?: string; page?: string; deleted?: string; nodod?: string } }) {
+export default async function MembersPage({ searchParams }: { searchParams: { q?: string; blood?: string; page?: string; deleted?: string; nodod?: string; moved?: string } }) {
   const s = await requireSession("view");
   const t = getDict();
   const lang = getLang();
@@ -28,8 +28,16 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
   const showDeleted = searchParams.deleted === "1" && can(s.role, "restore");
   // deceased members whose date of death is missing (link from the dashboard alert)
   const onlyNoDod = searchParams.nodod === "1" && !showDeleted;
+  // Admin and Operator: members who moved out (on their own or with the family); hidden everywhere else
+  const showMoved = searchParams.moved === "1" && can(s.role, "approve") && !showDeleted && !onlyNoDod;
   const all = await prisma.member.findMany({
-    where: onlyNoDod ? MISSING_DOD_WHERE : { deletedAt: showDeleted ? { not: null } : null },
+    where: onlyNoDod
+      ? MISSING_DOD_WHERE
+      : showDeleted
+        ? { deletedAt: { not: null } }
+        : showMoved
+          ? { deletedAt: null, family: { deletedAt: null }, OR: [{ status: "MOVED_OUT" }, { family: { status: "MOVED_OUT" } }] }
+          : { deletedAt: null, status: { not: "MOVED_OUT" }, family: { deletedAt: null, status: { not: "MOVED_OUT" } } },
     include: { family: { select: { id: true, code: true, deletedAt: true } } },
   });
   const filtered = sortBySurname(
@@ -38,13 +46,13 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
       .map((m) => ({ member: m })),
   ).map((r) => r.member);
   const shown = filtered.slice((page - 1) * PAGE, page * PAGE);
-  const qs = (p: number) => `?${new URLSearchParams({ q, blood, page: String(p), ...(showDeleted ? { deleted: "1" } : {}), ...(onlyNoDod ? { nodod: "1" } : {}) })}`;
+  const qs = (p: number) => `?${new URLSearchParams({ q, blood, page: String(p), ...(showDeleted ? { deleted: "1" } : {}), ...(onlyNoDod ? { nodod: "1" } : {}), ...(showMoved ? { moved: "1" } : {}) })}`;
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="page-title">{t.members} <span className="text-stone-500 text-base">({filtered.length})</span></h1>
-        {can(s.role, "export") && !showDeleted && <DownloadButton {...downloadProps("members", t, lang)} />}
+        {can(s.role, "export") && !showDeleted && !showMoved && !onlyNoDod && <DownloadButton {...downloadProps("members", t, lang)} />}
       </div>
       <SearchBox
         q={q}
@@ -57,11 +65,18 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
           </select>
         }
       />
-      {can(s.role, "restore") && (
+      {(can(s.role, "restore") || can(s.role, "approve")) && (
         <div className="flex gap-2 text-sm">
-          <Link href={showDeleted ? "/members" : "/members?deleted=1"} className={showDeleted ? "badge-red font-semibold" : "badge-red opacity-60"}>
-            {showDeleted ? t.showActive : t.showDeleted}
-          </Link>
+          {can(s.role, "approve") && (
+            <Link href={showMoved ? "/members" : "/members?moved=1"} className={showMoved ? "badge-amber font-semibold" : "badge-amber opacity-60"}>
+              {showMoved ? t.showActive : t.MOVED_OUT}
+            </Link>
+          )}
+          {can(s.role, "restore") && (
+            <Link href={showDeleted ? "/members" : "/members?deleted=1"} className={showDeleted ? "badge-red font-semibold" : "badge-red opacity-60"}>
+              {showDeleted ? t.showActive : t.showDeleted}
+            </Link>
+          )}
         </div>
       )}
       {onlyNoDod && (

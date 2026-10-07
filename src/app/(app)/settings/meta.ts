@@ -3,7 +3,7 @@ import type { Dict } from "@/lib/i18n";
 import type { AppSettings } from "@/lib/settings";
 import { RECEIPTS_ENABLED } from "@/lib/features";
 
-export type SettingKey = "ageCutoffDate" | "electionDate" | "applyStatusRules" | "sanghName" | "sanghAddress" | "sanghRegNo" | "receiptPurposes";
+export type SettingKey = "ageCutoffDate" | "electionDate" | "applyStatusRules" | "publicSearchEnabled" | "helpDeskMessage" | "sanghName" | "sanghAddress" | "sanghRegNo" | "receiptPurposes";
 export type SettingKind = "date" | "dateOptional" | "onOff" | "text" | "longText" | "lines";
 
 export interface SettingDef {
@@ -11,6 +11,8 @@ export interface SettingDef {
   kind: SettingKind;
   label: (t: Dict) => string;
   usedFor: (t: Dict) => string;
+  /** for on/off settings: the words next to the tick box */
+  checkboxLabel?: (t: Dict) => string;
 }
 
 export interface SettingGroup {
@@ -23,7 +25,15 @@ const ELECTION: SettingGroup = {
   items: [
     { key: "ageCutoffDate", kind: "date", label: (t) => t.ageCutoffDate, usedFor: (t) => t.use_ageCutoff },
     { key: "electionDate", kind: "dateOptional", label: (t) => t.electionDate, usedFor: (t) => t.use_electionDate },
-    { key: "applyStatusRules", kind: "onOff", label: (t) => t.statusRulesShort, usedFor: (t) => t.use_statusRules },
+    { key: "applyStatusRules", kind: "onOff", label: (t) => t.statusRulesShort, usedFor: (t) => t.use_statusRules, checkboxLabel: (t) => t.statusRulesEdit },
+  ],
+};
+
+const PUBLIC_SEARCH: SettingGroup = {
+  title: (t) => t.catPublicSearch,
+  items: [
+    { key: "publicSearchEnabled", kind: "onOff", label: (t) => t.publicSearchLabel, usedFor: (t) => t.use_publicSearch, checkboxLabel: (t) => t.publicSearchEdit },
+    { key: "helpDeskMessage", kind: "longText", label: (t) => t.helpDeskLabel, usedFor: (t) => t.use_helpDesk },
   ],
 };
 
@@ -38,7 +48,7 @@ const RECEIPTS: SettingGroup = {
   ],
 };
 
-export const SETTING_GROUPS: SettingGroup[] = RECEIPTS_ENABLED ? [ELECTION, RECEIPTS] : [ELECTION];
+export const SETTING_GROUPS: SettingGroup[] = RECEIPTS_ENABLED ? [ELECTION, PUBLIC_SEARCH, RECEIPTS] : [ELECTION, PUBLIC_SEARCH];
 
 export function findSetting(key: string): SettingDef | undefined {
   return SETTING_GROUPS.flatMap((g) => g.items).find((i) => i.key === key);
@@ -52,6 +62,7 @@ export function formValue(s: AppSettings, key: SettingKey): string {
     case "ageCutoffDate": return isoDay(s.ageCutoffDate);
     case "electionDate": return isoDay(s.electionDate);
     case "applyStatusRules": return s.applyStatusRules ? "true" : "false";
+    case "publicSearchEnabled": return s.publicSearchEnabled ? "true" : "false";
     case "receiptPurposes": return s.receiptPurposes.join("\n");
     default: return s[key];
   }

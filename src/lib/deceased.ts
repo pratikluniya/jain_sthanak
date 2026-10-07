@@ -22,7 +22,7 @@ export async function markDeceased(input: { memberId: string; dateOfDeath: strin
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "dateRequired" };
   if (date > todayIST()) return { ok: false, error: "dateInFuture" };
 
-  const others = m.family.members.filter((x) => x.id !== m.id && x.status !== "DECEASED");
+  const others = headCandidates(m.family.members, m.id);
   const newHead = m.isHead && others.length ? others.find((x) => x.id === input.newHeadId) : undefined;
   if (m.isHead && others.length && !newHead) return { ok: false, error: "mustChooseHead" };
 
@@ -34,25 +34,37 @@ export async function markDeceased(input: { memberId: string; dateOfDeath: strin
         dateOfDeath: new Date(date),
         deceasedMarkedAt: new Date(),
         deceasedMarkedById: input.by,
-        ...(newHead ? { isHead: false } : {}),
       },
     });
-    if (newHead) {
-      // the head is the member with relation "self"; the old head's relation is rewritten as seen from the new head
-      await tx.member.update({ where: { id: m.id }, data: { relation: oldHeadRelation(newHead.relation, m.gender) } });
-      await tx.member.update({ where: { id: newHead.id }, data: { isHead: true, relation: "SELF" } });
-      const note = `पूर्वीचे कुटुंब प्रमुख: ${m.family.headName} (निधन ${date.split("-").reverse().join("/")})`;
-      await tx.family.update({
-        where: { id: m.familyId },
-        data: {
-          headName: memberFullName(newHead, false, false),
-          headNameEn: memberFullName(newHead, false, true),
-          notes: m.family.notes ? `${m.family.notes}\n${note}` : note,
-        },
-      });
-    }
+    if (newHead) await changeHead(tx, m, newHead, m.family, `निधन ${date.split("-").reverse().join("/")}`);
   });
   return { ok: true };
+}
+
+type Tx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+type HeadMember = Parameters<typeof memberFullName>[0] & { id: string; relation: string; gender: string; status: string };
+
+/** Members who can become head: living, still in the area, not the member leaving. */
+export function headCandidates<T extends { id: string; status: string; deletedAt?: Date | null }>(members: T[], leavingId: string): T[] {
+  return members.filter((x) => x.id !== leavingId && !x.deletedAt && x.status !== "DECEASED" && x.status !== "MOVED_OUT");
+}
+
+/**
+ * Hands the head of family over: the new head gets isHead + relation "self", the old head's relation is rewritten
+ * as seen from the new head, the family's head name changes and the notes record the old head and why.
+ */
+export async function changeHead(tx: Tx, oldHead: HeadMember, newHead: HeadMember, family: { id: string; headName: string; notes: string }, why: string) {
+  await tx.member.update({ where: { id: oldHead.id }, data: { isHead: false, relation: oldHeadRelation(newHead.relation, oldHead.gender) } });
+  await tx.member.update({ where: { id: newHead.id }, data: { isHead: true, relation: "SELF" } });
+  const note = `पूर्वीचे कुटुंब प्रमुख: ${family.headName} (${why})`;
+  await tx.family.update({
+    where: { id: family.id },
+    data: {
+      headName: memberFullName(newHead, false, false),
+      headNameEn: memberFullName(newHead, false, true),
+      notes: family.notes ? `${family.notes}\n${note}` : note,
+    },
+  });
 }
 
 /**
