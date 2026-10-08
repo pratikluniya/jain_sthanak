@@ -352,6 +352,7 @@ const mr = {
   appErr_familyNotFound: "हा कुटुंब कोड सापडला नाही.",
   appErr_nameRequired: "अर्जदाराचे नाव आवश्यक आहे.",
   appErr_relationSelf: "जुन्या कुटुंबात 'स्वतः' नाते निवडता येत नाही.",
+  savedForms: "सेव्ह झालेले फॉर्म",
 };
 
 export type Dict = { [K in keyof typeof mr]: string };
@@ -694,6 +695,7 @@ const hi: Dict = {
   appErr_familyNotFound: "यह परिवार कोड नहीं मिला.",
   appErr_nameRequired: "आवेदक का नाम आवश्यक है.",
   appErr_relationSelf: "मौजूदा परिवार में 'स्वयं' नाता नहीं चुन सकते.",
+  savedForms: "सेव किए गए फॉर्म",
 };
 
 const en: Dict = {
@@ -1034,6 +1036,7 @@ const en: Dict = {
   appErr_familyNotFound: "That family code was not found.",
   appErr_nameRequired: "The applicant's name is required.",
   appErr_relationSelf: "'Self' cannot be chosen for an existing family.",
+  savedForms: "Forms saved",
 };
 
 const DICTS: Record<Lang, Dict> = { mr, hi, en };
