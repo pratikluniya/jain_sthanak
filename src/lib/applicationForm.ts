@@ -67,6 +67,7 @@ documents ticked: residence proof (आधार कार्ड, रेशन �
 
 Rules:
 - Copy text EXACTLY as written in Devanagari; do not translate or correct spellings. Copy digits as written.
+- Names written in ENGLISH letters: give nameRaw and the name parts in Devanagari (as the family would spell it in Marathi), and the English as written in the *En fields.
 - Split the name: title (सौ., श्री, कु., श्रीमती...), firstName, middleName (husband's or father's name), surname. Remember the surname is usually written first.
 - Also give the English spelling of each name part (firstNameEn, middleNameEn, surnameEn) as Marathi Jain families usually spell them.
 - gender from the title or name if clear, else UNKNOWN.

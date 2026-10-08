@@ -63,6 +63,9 @@ Form layout:
 
 Rules:
 - Copy names EXACTLY as written, in Devanagari, including titles like सौ., कु., श्रीमती and the suffix जी. Do not translate or "correct" spellings.
+- If a name is written in ENGLISH letters, nameRaw/headName must still be in Devanagari: write it the way the family would spell it in Marathi
+  (e.g. "Sakarchand S. Bothara" -> "साकरचंद एस. बोथरा", "Mrs. Rupali" -> "सौ. रुपाली"), and put the English as written in nameEn/headNameEn. Mention it in notes.
+- A middle name written only as an initial (शां., S.): if that father's or husband's full name appears on the same form, write the full name instead.
 - ALSO give each name in English letters (nameEn, headNameEn), the way Marathi Jain families usually spell it:
   title + first + middle + surname in the same order and word count as the Devanagari, e.g. "सौ. निर्मलाबाई कचरदासजी चोरडिया" -> "Sau. Nirmalabai Kachardasji Chordiya", "प्रविणकुमार लुणिया" -> "Pravinkumar Luniya". Do not add or drop words.
 - Digits may be Devanagari (०-९) or English. Copy them as written; do not convert.
