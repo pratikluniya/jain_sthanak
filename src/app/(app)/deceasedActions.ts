@@ -46,8 +46,8 @@ export async function searchForDemise(q: string, english: boolean): Promise<Demi
   const query = q.trim();
   if (query.length < 2) return [];
   const members = await prisma.member.findMany({
-    where: { deletedAt: null, status: { not: "DECEASED" }, family: { deletedAt: null } },
-    include: { family: { include: { members: { where: { deletedAt: null, status: { not: "DECEASED" } } } } } },
+    where: { deletedAt: null, status: { notIn: ["DECEASED", "MOVED_OUT"] }, family: { deletedAt: null, status: { not: "MOVED_OUT" } } },
+    include: { family: { include: { members: { where: { deletedAt: null, status: { notIn: ["DECEASED", "MOVED_OUT"] } } } } } },
   });
   return members
     .filter((m) => matchesSearch(m.searchKey, query))

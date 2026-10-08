@@ -11,7 +11,7 @@ import SearchBox from "@/components/SearchBox";
 
 export const dynamic = "force-dynamic";
 
-export default async function FamiliesPage({ searchParams }: { searchParams: { q?: string; panth?: string; deleted?: string } }) {
+export default async function FamiliesPage({ searchParams }: { searchParams: { q?: string; panth?: string; deleted?: string; moved?: string } }) {
   const s = await requireSession("view");
   const t = getDict();
   const lang = getLang();
@@ -20,10 +20,21 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
   const onlyToVerify = searchParams.panth === "TO_VERIFY";
   // Admin only: list soft-deleted families instead of active ones
   const showDeleted = searchParams.deleted === "1" && can(s.role, "restore");
+  // Admin and Operator: list families that moved out of the area (hidden everywhere else)
+  const showMoved = searchParams.moved === "1" && can(s.role, "approve") && !showDeleted;
 
   const families = await prisma.family.findMany({
-    where: { deletedAt: showDeleted ? { not: null } : null, ...(onlyToVerify ? { panthStatus: "TO_VERIFY" as const } : {}) },
-    include: { members: { where: showDeleted ? { deletedAt: { not: null } } : { deletedAt: null }, select: { searchKey: true, mobile: true } } },
+    where: {
+      deletedAt: showDeleted ? { not: null } : null,
+      ...(showDeleted ? {} : { status: showMoved ? ("MOVED_OUT" as const) : { not: "MOVED_OUT" as const } }),
+      ...(onlyToVerify ? { panthStatus: "TO_VERIFY" as const } : {}),
+    },
+    include: {
+      members: {
+        where: showDeleted ? { deletedAt: { not: null } } : showMoved ? { deletedAt: null } : { deletedAt: null, status: { not: "MOVED_OUT" } },
+        select: { searchKey: true, mobile: true },
+      },
+    },
   });
 
   const filtered = families
@@ -39,7 +50,7 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="page-title">{t.families} <span className="text-stone-500 text-base">({filtered.length})</span></h1>
         <div className="flex flex-wrap gap-2">
-          {can(s.role, "export") && !showDeleted && <DownloadButton {...downloadProps("families", t, lang)} />}
+          {can(s.role, "export") && !showDeleted && !showMoved && <DownloadButton {...downloadProps("families", t, lang)} />}
           {can(s.role, "edit") && <Link href="/families/new" className="btn-primary">+ {t.addFamily}</Link>}
         </div>
       </div>
@@ -47,6 +58,11 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
       <div className="flex gap-2 text-sm">
         <Link href="/families" className={!onlyToVerify ? "badge-gray font-semibold" : "badge-gray opacity-60"}>{t.total}</Link>
         <Link href="/families?panth=TO_VERIFY" className={onlyToVerify ? "badge-amber font-semibold" : "badge-amber opacity-60"}>{t.toVerify}</Link>
+        {can(s.role, "approve") && (
+          <Link href={showMoved ? "/families" : "/families?moved=1"} className={showMoved ? "badge-amber font-semibold" : "badge-amber opacity-60"}>
+            {showMoved ? t.showActive : t.MOVED_OUT}
+          </Link>
+        )}
         {can(s.role, "restore") && (
           <Link href={showDeleted ? "/families" : "/families?deleted=1"} className={showDeleted ? "badge-red font-semibold" : "badge-red opacity-60"}>
             {showDeleted ? t.showActive : t.showDeleted}

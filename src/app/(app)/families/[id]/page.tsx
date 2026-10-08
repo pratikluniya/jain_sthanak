@@ -12,7 +12,9 @@ import { approveKyc, confirmPanth, deleteFamily, deleteMember, restoreFamily } f
 import { RECEIPTS_ENABLED } from "@/lib/features";
 import { initials } from "@/lib/initials";
 import MarkDeceasedButton from "@/components/MarkDeceasedButton";
-import { deceasedLabels } from "@/lib/deceasedLabels";
+import MoveOutButton from "@/components/MoveOutButton";
+import { undoFamilyMovedOutAction, undoMemberMovedOutAction } from "../../movedOutActions";
+import { deceasedLabels, moveLabels } from "@/lib/deceasedLabels";
 import { todayIST } from "@/lib/deceased";
 import { undoDeceasedAction } from "../../deceasedActions";
 import { LIVE } from "@/lib/softDelete";
@@ -38,17 +40,25 @@ export default async function FamilyPage({ params }: { params: { id: string } })
   });
   if (!fam) notFound();
   const deleted = !!fam.deletedAt;
+  // moved-out families and members are seen only by Admin and Operator (who can undo)
+  const seesMoved = can(s.role, "approve");
+  const familyMoved = fam.status === "MOVED_OUT";
+  if (familyMoved && !seesMoved) notFound();
   // live family: its live members; deleted family (Admin view): the members deleted together with it
-  const members = fam.members.filter((m) => (deleted ? m.deletedAt?.getTime() === fam.deletedAt!.getTime() : !m.deletedAt));
+  const members = fam.members
+    .filter((m) => (deleted ? m.deletedAt?.getTime() === fam.deletedAt!.getTime() : !m.deletedAt))
+    .filter((m) => seesMoved || m.status !== "MOVED_OUT");
   if (deleted && !can(s.role, "restore")) notFound();
   const deletedBy = fam.deletedById ? await prisma.user.findUnique({ where: { id: fam.deletedById }, select: { name: true } }) : null;
   // a deleted family is read-only until it is restored
   const canEdit = can(s.role, "edit") && !deleted;
   const canDelete = can(s.role, "delete") && !deleted;
-  const canMarkDeceased = can(s.role, "approve") && !deleted;
+  const canMarkDeceased = can(s.role, "approve") && !deleted && !familyMoved;
   const dLabels = deceasedLabels(t);
+  const mLabels = moveLabels(t);
   const today = todayIST();
-  const living = members.filter((x) => x.status !== "DECEASED");
+  const living = members.filter((x) => x.status !== "DECEASED" && x.status !== "MOVED_OUT");
+  const movedBy = fam.movedOutMarkedById ? await prisma.user.findUnique({ where: { id: fam.movedOutMarkedById }, select: { name: true } }) : null;
   const settings = await getSettings();
   const ageDate = effectiveAgeDate(settings);
   const allKeys = fam.uploads.flatMap((u) => u.imageKeys);
@@ -70,6 +80,22 @@ export default async function FamilyPage({ params }: { params: { id: string } })
           <form action={restoreFamily}>
             <input type="hidden" name="id" value={fam.id} />
             <button className="btn-primary btn-sm">{t.restore}</button>
+          </form>
+        </div>
+      )}
+
+      {familyMoved && !deleted && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <span>
+            <b>{t.MOVED_OUT}</b>
+            {fam.movedOutOn && ` · ${fam.movedOutOn.toLocaleDateString("en-IN")}`}
+            {fam.movedOutCity && ` · ${fam.movedOutCity}`}
+            {fam.movedOutRemark && ` · ${fam.movedOutRemark}`}
+            {movedBy && ` · ${movedBy.name}`}. {t.familyMovedNote}
+          </span>
+          <form action={undoFamilyMovedOutAction}>
+            <input type="hidden" name="familyId" value={fam.id} />
+            <ConfirmButton className="btn-secondary btn-sm" message={`${fam.code}: ${t.undoMovedConfirm}`}>{t.undoMovedOut}</ConfirmButton>
           </form>
         </div>
       )}
@@ -116,6 +142,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
           {canEdit && <Link href={`/families/${fam.id}/edit`} className="btn-secondary btn-sm">{t.edit}</Link>}
           {canEdit && <Link href={`/families/${fam.id}/member`} className="btn-primary btn-sm">+ {t.addMember}</Link>}
           {RECEIPTS_ENABLED && !deleted && can(s.role, "receipts") && <Link href={`/receipts/new?family=${fam.id}`} className="btn-secondary btn-sm">+ {t.newReceipt}</Link>}
+          {canMarkDeceased && <MoveOutButton target={{ familyId: fam.id, name: `${fam.code} · ${headLabel(fam, en)}` }} today={today} t={mLabels} />}
           {canDelete && (
             <form action={deleteFamily}>
               <input type="hidden" name="id" value={fam.id} />
@@ -157,7 +184,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
                   {r.eligible ? (
                     <span className="badge-green">{t.eligible}{m.voterNo ? ` #${m.voterNo}` : ""}</span>
                   ) : (
-                    r.reasons.filter((x) => x !== "DECEASED").map((x) => <span key={x} className={x === "UNDER_AGE" ? "badge-gray" : "badge-amber"}>{t[x]}</span>)
+                    r.reasons.filter((x) => x !== "DECEASED" && x !== "MOVED_OUT").map((x) => <span key={x} className={x === "UNDER_AGE" ? "badge-gray" : "badge-amber"}>{t[x]}</span>)
                   )}
                   {m.status !== "ACTIVE" && (
                     <span className="badge-red">{t[m.status]}{m.status === "DECEASED" && m.dateOfDeath ? ` · ${m.dateOfDeath.toLocaleDateString("en-IN")}` : ""}</span>
@@ -185,7 +212,26 @@ export default async function FamilyPage({ params }: { params: { id: string } })
                 {m.aadhaarLast4 && <span className="text-xs text-stone-500 self-center">{t.aadhaar}: XXXX XXXX {m.aadhaarLast4}</span>}
                 {m.kycDocType && m.kycDocType !== "AADHAAR" && <span className="text-xs text-stone-500 self-center">KYC: {m.kycDocType}</span>}
                 {m.dob && <span className="text-xs text-stone-500 self-center">{t.dob}: {m.dob.toLocaleDateString("en-IN")}</span>}
-                {canMarkDeceased && m.status !== "DECEASED" && (
+                {canMarkDeceased && m.status !== "DECEASED" && m.status !== "MOVED_OUT" && (
+                  <MoveOutButton
+                    target={{ memberId: m.id, name: memberFullName(m, true, en), isHead: m.isHead }}
+                    others={living.filter((x) => x.id !== m.id).map((x) => ({ id: x.id, name: memberFullName(x, true, en) }))}
+                    today={today}
+                    t={mLabels}
+                  />
+                )}
+                {seesMoved && m.status === "MOVED_OUT" && !familyMoved && !deleted && (
+                  <form action={undoMemberMovedOutAction}>
+                    <input type="hidden" name="memberId" value={m.id} />
+                    <ConfirmButton className="btn-secondary btn-sm" message={`${memberFullName(m)}: ${t.undoMovedConfirm}`}>{t.undoMovedOut}</ConfirmButton>
+                  </form>
+                )}
+                {m.status === "MOVED_OUT" && (m.movedOutOn || m.movedOutCity) && (
+                  <span className="text-xs text-stone-500 self-center">
+                    {t.movedOn}: {m.movedOutOn?.toLocaleDateString("en-IN")}{m.movedOutCity && ` · ${m.movedOutCity}`}{m.movedOutRemark && ` · ${m.movedOutRemark}`}
+                  </span>
+                )}
+                {canMarkDeceased && m.status !== "DECEASED" && m.status !== "MOVED_OUT" && (
                   <MarkDeceasedButton
                     member={{ id: m.id, name: memberFullName(m, true, en), isHead: m.isHead }}
                     others={living.filter((x) => x.id !== m.id).map((x) => ({ id: x.id, name: memberFullName(x, true, en) }))}

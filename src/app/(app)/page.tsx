@@ -1,3 +1,4 @@
+import { HERE_FAMILY, HERE_MEMBER } from "@/lib/movedOut";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getDict } from "@/lib/i18n";
@@ -18,9 +19,9 @@ export default async function Dashboard() {
   const s = await requireSession("view");
   const t = getDict();
   const [families, members, toVerify, pendingUploads, { rows, ageDate, electionDate }] = await Promise.all([
-    prisma.family.count({ where: LIVE }),
-    prisma.member.count({ where: LIVE }),
-    prisma.family.count({ where: { ...LIVE, panthStatus: "TO_VERIFY" } }),
+    prisma.family.count({ where: HERE_FAMILY }),
+    prisma.member.count({ where: HERE_MEMBER }),
+    prisma.family.count({ where: { ...HERE_FAMILY, panthStatus: "TO_VERIFY" } }),
     prisma.formUpload.count({ where: { status: "EXTRACTED" } }),
     evaluateAll(),
   ]);

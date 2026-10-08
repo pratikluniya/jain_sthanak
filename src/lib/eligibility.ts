@@ -1,7 +1,8 @@
 // Voter eligibility rules (confirmed by the Sangh, 27 Sep 2026):
 //   1. Age 18 or more as on the age cut-off date (Settings; default 01/10/2026)
 //   2. Family panth = Sthanakvasi, and confirmed (blank panth = "to verify")
-//   3. A member marked deceased is never a voter (decided 6 Oct 2026).
+//   3. A member marked deceased, or who moved out of the area (alone or with the family),
+//      is never a voter (decided 6-7 Oct 2026).
 // The other membership cancellation rules printed on the form (moved out,
 // married daughters, inactive family) are applied only when the
 // `applyStatusRules` setting is on.
@@ -51,6 +52,7 @@ export type Reason =
   | "NOT_STHANAKVASI"
   | "PANTH_TO_VERIFY"
   | "DECEASED"
+  | "MOVED_OUT"
   | "STATUS_INACTIVE";
 
 export interface EligibilityResult {
@@ -82,6 +84,7 @@ export function checkVoter(
   else if (family.panth !== "STHANAKVASI") reasons.push("NOT_STHANAKVASI");
 
   if (member.status === "DECEASED") reasons.push("DECEASED");
+  else if (member.status === "MOVED_OUT" || family.status === "MOVED_OUT") reasons.push("MOVED_OUT");
   else if (opts.applyStatusRules) {
     if (member.status !== "ACTIVE" || (family.status && family.status !== "ACTIVE")) reasons.push("STATUS_INACTIVE");
   }

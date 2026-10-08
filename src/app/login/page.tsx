@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getDict } from "@/lib/i18n";
 import LoginForm from "./LoginForm";
 import LangToggle from "@/components/LangToggle";
@@ -20,6 +21,9 @@ export default function LoginPage() {
           <LoginForm t={{ mobile: t.mobile, password: t.password, login: t.login, loginFailed: t.loginFailed }} />
           </div>
         </div>
+        <Link href="/search" className="mt-4 flex items-center justify-center gap-2 rounded-xl border border-brand-200 bg-white px-4 py-3 font-semibold text-brand-700 shadow-sm hover:bg-brand-50">
+          🔍 {t.ps_title}
+        </Link>
         <div className="mt-4 flex justify-center"><LangToggle /></div>
       </div>
     </main>

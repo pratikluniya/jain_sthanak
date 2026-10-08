@@ -83,9 +83,12 @@ test("age and eligibility", () => {
   // deceased: never a voter, whatever the status-rules setting (decided 6 Oct 2026)
   assert.deepEqual(checkVoter({ age: 70, ageRecordedOn: recorded, dob: null, status: "DECEASED" }, fam, opts).reasons, ["DECEASED"]);
   assert.deepEqual(checkVoter({ age: 70, ageRecordedOn: recorded, dob: null, status: "DECEASED" }, fam, { ...opts, applyStatusRules: true }).reasons, ["DECEASED"]);
-  // other status rules only when switched on
-  assert.equal(checkVoter({ age: 40, ageRecordedOn: recorded, dob: null, status: "MOVED_OUT" }, fam, opts).eligible, true);
-  assert.equal(checkVoter({ age: 40, ageRecordedOn: recorded, dob: null, status: "MOVED_OUT" }, fam, { ...opts, applyStatusRules: true }).eligible, false);
+  // moved out (member or whole family): never a voter (decided 7 Oct 2026)
+  assert.deepEqual(checkVoter({ age: 40, ageRecordedOn: recorded, dob: null, status: "MOVED_OUT" }, fam, opts).reasons, ["MOVED_OUT"]);
+  assert.deepEqual(checkVoter({ age: 40, ageRecordedOn: recorded, dob: null, status: "ACTIVE" }, { ...fam, status: "MOVED_OUT" }, opts).reasons, ["MOVED_OUT"]);
+  // other status rules (married out) only when switched on
+  assert.equal(checkVoter({ age: 40, ageRecordedOn: recorded, dob: null, status: "MARRIED_OUT" }, fam, opts).eligible, true);
+  assert.equal(checkVoter({ age: 40, ageRecordedOn: recorded, dob: null, status: "MARRIED_OUT" }, fam, { ...opts, applyStatusRules: true }).eligible, false);
   // exact DOB
   const dob = checkVoter({ age: null, ageRecordedOn: null, dob: new Date("2008-11-23"), status: "ACTIVE" }, fam, opts);
   assert.deepEqual(dob.reasons, ["UNDER_AGE"]);
@@ -156,4 +159,12 @@ test("old head's relation after the head changes", async () => {
   assert.equal(oldHeadRelation("DAUGHTER", "FEMALE"), "MOTHER");
   assert.equal(oldHeadRelation("WIFE", "MALE"), "HUSBAND");
   assert.equal(oldHeadRelation("BROTHER", "MALE"), "OTHER");
+});
+
+test("public search needs first name and surname", async () => {
+  const { validQuery } = await import("./publicSearch");
+  assert.equal(validQuery("बोथरा"), false, "surname only");
+  assert.equal(validQuery("र बोथरा"), false, "one-letter word does not count");
+  assert.equal(validQuery("रमेश बोथरा"), true);
+  assert.equal(validQuery("Ramesh Bothra"), true);
 });

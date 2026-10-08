@@ -120,6 +120,13 @@ model Family {
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
+  // Moved out of the Sangh's area (status MOVED_OUT): date compulsory, new place and remark optional.
+  // Hidden from lists, voter list and exports; Admin and Operator see them under the "Moved out" filter and can undo.
+  movedOutOn         DateTime?
+  movedOutCity       String    @default("")
+  movedOutRemark     String    @default("")
+  movedOutMarkedById String?
+
   // Soft delete: hidden everywhere (lists, voter list, exports); Admin can restore. Its members are deleted with it.
   deletedAt   DateTime?
   deletedById String?
@@ -164,6 +171,13 @@ model Member {
   dateOfDeath        DateTime?
   deceasedMarkedAt   DateTime?
   deceasedMarkedById String?
+
+  // Moved out of the area (status MOVED_OUT): on its own, or together with the whole family (movedWithFamily)
+  movedOutOn         DateTime?
+  movedOutCity       String    @default("")
+  movedOutRemark     String    @default("")
+  movedOutMarkedById String?
+  movedWithFamily    Boolean   @default(false)
 
   voterNo Int? @unique // fixed voter number, assigned once
 

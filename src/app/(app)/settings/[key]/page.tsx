@@ -25,7 +25,7 @@ export default async function EditSettingPage({ params, searchParams }: { params
         {def.kind === "onOff" ? (
           <label className="flex items-start gap-2 text-sm">
             <input type="checkbox" name="value" defaultChecked={value === "true"} className="mt-1" />
-            <span className="font-medium">{t.statusRulesEdit}</span>
+            <span className="font-medium">{def.checkboxLabel ? def.checkboxLabel(t) : label}</span>
           </label>
         ) : (
           <div>

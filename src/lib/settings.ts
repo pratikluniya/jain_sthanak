@@ -8,6 +8,10 @@ export interface AppSettings {
   sanghAddress: string;
   sanghRegNo: string;
   receiptPurposes: string[];
+  /** public voter search page /search (no login): Admin turns it on around the election */
+  publicSearchEnabled: boolean;
+  /** shown on /search when a name is not found */
+  helpDeskMessage: string;
 }
 
 export const DEFAULTS: Record<string, string> = {
@@ -17,6 +21,8 @@ export const DEFAULTS: Record<string, string> = {
   sanghName: "श्री जैन स्थानकवासी श्रावक संघ, नाशिकरोड",
   sanghAddress: "दुर्गा उद्यान समोर, महावीर नगर, नाशिकरोड, देवळाली - 422101",
   sanghRegNo: "PTA Reg. No. A577-NSK",
+  publicSearchEnabled: "false",
+  helpDeskMessage: "",
   receiptPurposes: JSON.stringify(["चातुर्मास गौतम प्रसादी", "महावीर जन्मकल्याणक", "देणगी"]),
 };
 
@@ -38,6 +44,8 @@ export async function getSettings(): Promise<AppSettings> {
     sanghAddress: m.sanghAddress,
     sanghRegNo: m.sanghRegNo,
     receiptPurposes: purposes,
+    publicSearchEnabled: m.publicSearchEnabled === "true",
+    helpDeskMessage: m.helpDeskMessage,
   };
 }
 

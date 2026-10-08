@@ -31,6 +31,8 @@ Full setup steps: `docs/SERVER-SETUP.md`.
 | Approve KYC | Operator, Admin | Family page > KYC मंजूर करा |
 | Upload Aadhaar front + back and passport photo | Data entry, Operator, Admin | Family page > member > बदला (phone camera or gallery; pictures are shrunk before upload) |
 | Deceased members with no date of death are flagged in red on the dashboard (link to the list) and on the family page; open the member and fill the date |
+| Mark a member or a whole family "moved out of the area" (date compulsory, new place and remark optional) / undo | Operator, Admin | Family page > स्थलांतर नोंदवा / संपूर्ण कुटुंब स्थलांतरित; find them later under the "कार्यक्षेत्राबाहेर" filter on Families and Members |
+| Public voter search (no login) at /search | Admin turns it on: सेटिंग्ज > सार्वजनिक मतदार शोध; also set the help-desk message | People type first name + surname and see voter number, name and address. Keep it on only around the election |
 | Mark a member deceased (date of death compulsory; asks for the new head if the head passed away) / undo | Operator, Admin | Family page > निधन नोंदवा / निधन नोंद रद्द करा, or the 15-day reminder popup on the dashboard |
 | Voter list, voter numbers | Operator, Admin | मतदार यादी |
 | Download lists (Excel, Print, PDF; pick columns and language) | Operator, Admin | "डाउनलोड" button on मतदार यादी (voters), सदस्य (all members), कुटुंबे (heads of family with address and phone) |
