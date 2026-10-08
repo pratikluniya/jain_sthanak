@@ -36,14 +36,19 @@ export default async function UploadList() {
       <ul className="grid gap-2 sm:grid-cols-2">
         {pending.map((u) => {
           const x = u.extracted as unknown as ExtractedForm | null;
+          const ap = u.kind === "INDIVIDUAL" ? (u.extracted as { title?: string; firstName?: string; middleName?: string; surname?: string; nameRaw?: string } | null) : null;
+          const apName = ap ? [ap.title, ap.firstName, ap.middleName, ap.surname].filter(Boolean).join(" ") || ap.nameRaw : "";
           return (
             <li key={u.id}>
               <Link href={`/upload/${u.id}`} className="card p-3 flex gap-3 hover:border-brand-500">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 {thumbOf.get(u.id) && <img src={thumbOf.get(u.id)} alt="" loading="lazy" className="h-20 w-16 object-cover rounded border" />}
                 <div className="min-w-0 text-sm">
-                  <div className="font-semibold truncate">{x?.headName || t.newForm}</div>
-                  <div className="text-stone-500">{x ? `${x.members.length} ${t.members}` : "✍ manual"}</div>
+                  <div className="font-semibold truncate">{u.kind === "INDIVIDUAL" ? apName || t.newForm : x?.headName || t.newForm}</div>
+                  <div className="text-stone-500">
+                    <span className={u.kind === "INDIVIDUAL" ? "badge-amber mr-1" : "badge-gray mr-1"}>{u.kind === "INDIVIDUAL" ? t.formIndividual : t.formFamily}</span>
+                    {u.kind === "INDIVIDUAL" ? (u.extracted ? "" : "✍ manual") : x ? `${x.members.length} ${t.members}` : "✍ manual"}
+                  </div>
                   <div className="text-xs text-stone-400">{u.createdAt.toLocaleString("en-IN")} · {u.uploadedBy}</div>
                   {u.status === "FAILED" && <div className="badge-red mt-1">{u.error?.slice(0, 60)}</div>}
                 </div>

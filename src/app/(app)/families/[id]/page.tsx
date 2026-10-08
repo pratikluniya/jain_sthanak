@@ -20,6 +20,7 @@ import { undoDeceasedAction } from "../../deceasedActions";
 import { LIVE } from "@/lib/softDelete";
 import ConfirmButton from "@/components/ConfirmButton";
 import { formImageUrls } from "@/lib/storage";
+import ApplicationSummary from "@/components/ApplicationSummary";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
   const fam = await prisma.family.findUnique({
     where: { id: params.id },
     include: {
-      members: { orderBy: [{ isHead: "desc" }, { serial: "asc" }] },
+      members: { orderBy: [{ isHead: "desc" }, { serial: "asc" }], include: { application: true } },
       uploads: { orderBy: { createdAt: "asc" } },
       payments: { orderBy: { date: "desc" } },
       parentFamily: true,
@@ -195,6 +196,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
                   ) : null}
                 </div>
               </div>
+              {m.application && <ApplicationSummary a={m.application} t={t} editHref={canEdit ? `/families/${fam.id}/application?m=${m.id}` : undefined} />}
               <div className="mt-2 flex flex-wrap gap-2">
                 {canEdit && <Link href={`/families/${fam.id}/member?m=${m.id}`} className="btn-secondary btn-sm">{t.edit}</Link>}
                 {can(s.role, "approve") && !deleted && !m.kycVerified && (m.aadhaarLast4 || m.kycFileKey || m.aadhaarBackKey) && (

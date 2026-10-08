@@ -27,7 +27,12 @@ async function prepare(p: Page): Promise<Blob> {
   return new Promise((res) => canvas.toBlob((b) => res(b!), "image/jpeg", 0.85));
 }
 
-export default function Uploader({ t }: { t: Record<"takePhoto" | "addPage" | "rotate" | "readForm" | "reading" | "delete", string> }) {
+type Kind = "FAMILY" | "INDIVIDUAL";
+type Labels = "takePhoto" | "addPage" | "rotate" | "readForm" | "reading" | "delete" | "chooseFormType" | "formFamily" | "formFamilyHelp" | "formIndividual" | "formIndividualHelp" | "change";
+
+export default function Uploader({ t }: { t: Record<Labels, string> }) {
+  // one button for both forms: the volunteer says which form this is (decided 8 Oct 2026)
+  const [kind, setKind] = useState<Kind | null>(null);
   const [pages, setPages] = useState<Page[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -44,6 +49,7 @@ export default function Uploader({ t }: { t: Record<"takePhoto" | "addPage" | "r
     setError("");
     try {
       const fd = new FormData();
+      fd.set("kind", kind ?? "FAMILY");
       for (const p of pages) fd.append("pages", await prepare(p), "page.jpg");
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const j = await res.json();
@@ -55,8 +61,28 @@ export default function Uploader({ t }: { t: Record<"takePhoto" | "addPage" | "r
     }
   }
 
+  if (!kind) {
+    return (
+      <div className="space-y-3">
+        <p className="text-sm font-semibold">{t.chooseFormType}</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {(["INDIVIDUAL", "FAMILY"] as const).map((k) => (
+            <button key={k} type="button" onClick={() => setKind(k)} className="card p-4 text-left hover:border-brand-500">
+              <div className="font-heading text-lg font-bold text-brand-700">{k === "FAMILY" ? t.formFamily : t.formIndividual}</div>
+              <div className="text-sm text-stone-600">{k === "FAMILY" ? t.formFamilyHelp : t.formIndividualHelp}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-between rounded-lg bg-brand-50 px-3 py-2 text-sm">
+        <b>{kind === "FAMILY" ? t.formFamily : t.formIndividual}</b>
+        {pages.length === 0 && <button type="button" className="text-brand-700 underline" onClick={() => setKind(null)}>{t.change}</button>}
+      </div>
       <div className="grid grid-cols-2 gap-3">
         {pages.map((p, i) => (
           <div key={p.url} className="card p-2 space-y-2">

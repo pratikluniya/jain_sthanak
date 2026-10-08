@@ -131,7 +131,7 @@ export async function evaluateAll(): Promise<{ rows: VoterRow[]; ageDate: Date; 
   // deleted and moved-out families / members are not part of any list (decided 7 Oct 2026)
   const families = await prisma.family.findMany({
     where: { ...LIVE, status: { not: "MOVED_OUT" } },
-    include: { members: { where: { ...LIVE, status: { not: "MOVED_OUT" } } } },
+    include: { members: { where: { ...LIVE, status: { not: "MOVED_OUT" } }, include: { application: { select: { decision: true } } } } },
   });
   const rows: VoterRow[] = [];
   for (const f of families) {

@@ -3,6 +3,8 @@
 //   2. Family panth = Sthanakvasi, and confirmed (blank panth = "to verify")
 //   3. A member marked deceased, or who moved out of the area (alone or with the family),
 //      is never a voter (decided 6-7 Oct 2026).
+//   4. Someone who joined through an individual application (सभासद अर्ज) counts only when the
+//      application is APPROVED (decided 8 Oct 2026). Members from census forms have no application.
 // The other membership cancellation rules printed on the form (moved out,
 // married daughters, inactive family) are applied only when the
 // `applyStatusRules` setting is on.
@@ -53,7 +55,8 @@ export type Reason =
   | "PANTH_TO_VERIFY"
   | "DECEASED"
   | "MOVED_OUT"
-  | "STATUS_INACTIVE";
+  | "STATUS_INACTIVE"
+  | "NOT_APPROVED"; // individual application pending or rejected
 
 export interface EligibilityResult {
   eligible: boolean;
@@ -67,7 +70,7 @@ export interface EligibilityOptions {
 }
 
 export function checkVoter(
-  member: AgeInput & { status: string },
+  member: AgeInput & { status: string; application?: { decision: string } | null },
   family: { panth: string; panthStatus: string; status?: string },
   opts: EligibilityOptions,
 ): EligibilityResult {
@@ -88,6 +91,7 @@ export function checkVoter(
   else if (opts.applyStatusRules) {
     if (member.status !== "ACTIVE" || (family.status && family.status !== "ACTIVE")) reasons.push("STATUS_INACTIVE");
   }
+  if (member.application && member.application.decision !== "APPROVED") reasons.push("NOT_APPROVED");
 
   return { eligible: reasons.length === 0, reasons, age };
 }

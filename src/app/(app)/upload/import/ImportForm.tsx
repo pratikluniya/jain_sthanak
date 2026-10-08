@@ -3,6 +3,7 @@ import { useState } from "react";
 
 interface Item {
   images: string[];
+  photo?: string;
   kyc?: { image: string }[];
   form: { headName?: string };
 }
@@ -27,7 +28,7 @@ export default function ImportForm() {
   }
 
   const byName = new Map(photos.map((p) => [p.name, p]));
-  const missing = items.flatMap((it) => [...it.images, ...(it.kyc ?? []).map((k) => k.image)]).filter((n) => !byName.has(n));
+  const missing = items.flatMap((it) => [...it.images, ...(it.kyc ?? []).map((k) => k.image), ...(it.photo ? [it.photo] : [])]).filter((n) => !byName.has(n));
 
   async function run() {
     setBusy(true);
@@ -36,7 +37,7 @@ export default function ImportForm() {
       const fd = new FormData();
       fd.set("batch", batch);
       fd.set("item", JSON.stringify(it));
-      for (const n of [...it.images, ...(it.kyc ?? []).map((k) => k.image)]) {
+      for (const n of [...it.images, ...(it.kyc ?? []).map((k) => k.image), ...(it.photo ? [it.photo] : [])]) {
         const f = byName.get(n);
         if (f) fd.append("files", f, n);
       }

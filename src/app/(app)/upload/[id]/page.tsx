@@ -7,6 +7,7 @@ import type { ExtractedForm } from "@/lib/extract";
 import { RELATIONS, relationFromRaw } from "@/lib/relations";
 import { normalizeBloodGroup, normalizeMobile, parseAge, splitName } from "@/lib/normalize";
 import Verifier, { type Row } from "./Verifier";
+import ApplicationCheck from "./ApplicationCheck";
 import { toEnglishName } from "@/lib/translit";
 
 /**
@@ -32,13 +33,14 @@ export const dynamic = "force-dynamic";
 
 const PANTH_MAP = { STHANAKVASI: "STHANAKVASI", MANDIRMARGI: "MANDIRMARGI", TERAPANTH: "TERAPANTH", DIGAMBAR: "DIGAMBAR", BLANK: "UNKNOWN" } as const;
 
-export default async function VerifyPage({ params }: { params: { id: string } }) {
+export default async function VerifyPage({ params, searchParams }: { params: { id: string }; searchParams: { e?: string } }) {
   await requireSession("upload");
   const t = getDict();
   const lang = getLang();
   const up = await prisma.formUpload.findUnique({ where: { id: params.id } });
   if (!up) notFound();
   if (up.status === "VERIFIED" && up.familyId) redirect(`/families/${up.familyId}`);
+  if (up.kind === "INDIVIDUAL") return <ApplicationCheck up={up} error={searchParams.e} />;
 
   const x = (up.extracted as unknown as ExtractedForm | null) ?? {
     headName: "", address: "", panth: "BLANK" as const, panthEvidence: "", continuesOnNextPage: false, isContinuationPage: false, members: [], notes: "",

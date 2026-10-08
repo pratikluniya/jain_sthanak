@@ -2,6 +2,7 @@ import { LIVE } from "./softDelete";
 import { prisma } from "./db";
 import { extractForm, type ExtractedForm } from "./extract";
 import { getFile } from "./storage";
+import { extractApplication } from "./applicationForm";
 import { searchKey } from "./normalize";
 import { normalizeMobile } from "./normalize";
 
@@ -15,7 +16,8 @@ export async function runExtraction(uploadId: string) {
     const images = await Promise.all(
       up.imageKeys.map(async (k) => ({ base64: (await getFile("forms", k)).toString("base64"), mediaType: "image/jpeg" as const })),
     );
-    const res = await extractForm(images);
+    // individual membership application (सभासद अर्ज) or family census form
+    const res = up.kind === "INDIVIDUAL" ? await extractApplication(images) : await extractForm(images);
     const cost = (res.inputTokens * USD_PER_MTOK_IN + res.outputTokens * USD_PER_MTOK_OUT) / 1_000_000;
     await prisma.formUpload.update({
       where: { id: uploadId },

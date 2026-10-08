@@ -4,6 +4,7 @@
 // Used by the Admin "Import batch" page (/upload/import) and by scripts/import-forms.ts.
 import type { PrismaClient } from "@prisma/client";
 import { ExtractedForm, type ImportedKyc } from "./extract";
+import { ExtractedApplication } from "./applicationForm";
 import { putFile } from "./storage";
 import { cleanAadhaar, encrypt } from "./crypto";
 
@@ -18,7 +19,11 @@ export interface RawKyc {
 }
 
 export interface BatchItem {
+  /** "family" (census form, default) or "individual" (सभासद अर्ज: A1.jpg + A1_2.jpg, photo A1_photo.jpg) */
+  kind?: "family" | "individual";
   images: string[];
+  /** individual only: applicant photo cropped from the form */
+  photo?: string;
   kyc?: RawKyc[];
   form: unknown;
 }
@@ -34,7 +39,7 @@ export async function importItem(
   readFile: (name: string) => Promise<Buffer>,
 ): Promise<ImportResult> {
   if (!SAFE.test(batch)) throw new Error("batch name: use letters, digits, - and _ only");
-  for (const n of [...item.images, ...(item.kyc ?? []).map((k) => k.image)]) if (!SAFE.test(n)) throw new Error(`bad file name: ${n}`);
+  for (const n of [...item.images, ...(item.kyc ?? []).map((k) => k.image), ...(item.photo ? [item.photo] : [])]) if (!SAFE.test(n)) throw new Error(`bad file name: ${n}`);
 
   const tag = `${batch}/${item.images.join("+")}`;
   if (await prisma.formUpload.findFirst({ where: { uploadedBy: `import:${tag}` } })) return { status: "skipped" };
@@ -44,6 +49,17 @@ export async function importItem(
     const key = `import/${batch}/${img}`;
     await putFile("forms", key, await readFile(img), "image/jpeg");
     keys.push(key);
+  }
+  if (item.kind === "individual") {
+    let photoKey: string | undefined;
+    if (item.photo) {
+      photoKey = `import/${batch}/${item.photo}`;
+      await putFile("forms", photoKey, await readFile(item.photo), "image/jpeg");
+    }
+    const app = ExtractedApplication.parse({ ...(item.form as object), photoKey });
+    await prisma.formUpload.create({ data: { kind: "INDIVIDUAL", imageKeys: keys, status: "EXTRACTED", extracted: app as object, uploadedBy: `import:${tag}` } });
+    const name = [app.title, app.firstName, app.middleName, app.surname].filter(Boolean).join(" ") || app.nameRaw;
+    return { status: "imported", headName: name, members: 1, kyc: 0, warnings: [] };
   }
   const warnings: string[] = [];
   const kyc: ImportedKyc[] = [];

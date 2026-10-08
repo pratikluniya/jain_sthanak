@@ -168,3 +168,27 @@ test("public search needs first name and surname", async () => {
   assert.equal(validQuery("रमेश बोथरा"), true);
   assert.equal(validQuery("Ramesh Bothra"), true);
 });
+
+test("individual application: only approved applicants are voters", async () => {
+  const { checkVoter } = await import("./eligibility");
+  const m = { age: 25, ageRecordedOn: new Date("2026-10-01"), dob: null, status: "ACTIVE" };
+  const fam = { panth: "STHANAKVASI", panthStatus: "CONFIRMED", status: "ACTIVE" };
+  const opts = { asOfDate: new Date("2026-10-01") };
+  assert.equal(checkVoter(m, fam, opts).eligible, true, "census member without an application");
+  assert.equal(checkVoter({ ...m, application: { decision: "APPROVED" } }, fam, opts).eligible, true);
+  assert.deepEqual(checkVoter({ ...m, application: { decision: "PENDING" } }, fam, opts).reasons, ["NOT_APPROVED"]);
+  assert.deepEqual(checkVoter({ ...m, application: { decision: "REJECTED" } }, fam, opts).reasons, ["NOT_APPROVED"]);
+});
+
+test("application form dates and rupees", async () => {
+  const { parseFormDate, parseRupees } = await import("./applicationForm");
+  assert.equal(parseFormDate("12/05/2019"), "2019-05-12");
+  assert.equal(parseFormDate("१२-५-२०१९"), "2019-05-12", "Devanagari digits");
+  assert.equal(parseFormDate("2019-05-12"), "2019-05-12");
+  assert.equal(parseFormDate("3/4/19"), "2019-04-03");
+  assert.equal(parseFormDate("31/02/2019"), "", "no such day");
+  assert.equal(parseFormDate("मे 2019"), "");
+  assert.equal(parseRupees("₹ ५०१/-"), 501);
+  assert.equal(parseRupees("1,100"), 1100);
+  assert.equal(parseRupees(""), null);
+});
