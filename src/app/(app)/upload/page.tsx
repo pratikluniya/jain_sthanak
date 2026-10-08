@@ -18,7 +18,6 @@ export default async function UploadList() {
   const thumbs = await formImageUrls(pending.map((u) => u.imageKeys[0]).filter(Boolean));
   const thumbOf = new Map(pending.filter((u) => u.imageKeys[0]).map((u, i) => [u.id, thumbs[i]]));
   const done = await prisma.formUpload.count({ where: { status: "VERIFIED" } });
-  const cost = await prisma.formUpload.aggregate({ _sum: { aiCostUsd: true } });
 
   return (
     <div className="space-y-4">
@@ -30,7 +29,7 @@ export default async function UploadList() {
         </div>
       </div>
       <p className="text-sm text-stone-500">
-        ✔ {done} · AI ≈ ${(cost._sum.aiCostUsd ?? 0).toFixed(2)}
+        ✔ {t.savedForms}: {done}
       </p>
       <h2 className="section-title">{t.pendingUploads} ({pending.length})</h2>
       <ul className="grid gap-2 sm:grid-cols-2">
