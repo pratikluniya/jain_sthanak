@@ -192,3 +192,10 @@ test("application form dates and rupees", async () => {
   assert.equal(parseRupees("1,100"), 1100);
   assert.equal(parseRupees(""), null);
 });
+
+test("English relations written as two words", async () => {
+  const { relationFromRaw } = await import("./relations");
+  assert.equal(relationFromRaw("Grand Daughter"), "GRANDDAUGHTER");
+  assert.equal(relationFromRaw("Grand Son"), "GRANDSON");
+  assert.equal(relationFromRaw("Daughter in law"), "DAUGHTER_IN_LAW");
+});
