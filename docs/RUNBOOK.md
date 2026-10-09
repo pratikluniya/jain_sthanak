@@ -190,4 +190,4 @@ Never paste secrets into chat, WhatsApp or email. Never commit `.env` (it is in 
 | Photos do not load / upload fails | Folder `data/uploads` not writable by the app (user id 1001) | `chown -R 1001:1001 /opt/jainsangh/data/uploads` |
 | `git push` asks for password / 403 | GitHub token expired | New fine-grained token with Contents: Read and write |
 | Login fails for everyone | `AUTH_SECRET` missing or shorter than 32 characters | Fix in `.env`, `docker compose up -d app` |
-| Person missing from voter list | Panth to verify, age borderline, or panth not Sthanakvasi | मतदार यादी > तपासणी बाकी tab shows the reason |
+| Person missing from voter list | Panth to verify, age borderline, or panth Digambar | मतदार यादी > तपासणी बाकी tab shows the reason |

@@ -1,6 +1,7 @@
 // Voter eligibility rules (confirmed by the Sangh, 27 Sep 2026):
 //   1. Age 18 or more as on the age cut-off date (Settings; default 01/10/2026)
-//   2. Family panth = Sthanakvasi, and confirmed (blank panth = "to verify")
+//   2. Family panth confirmed, and any panth except Digambar (decided 9 Oct 2026; earlier only
+//      Sthanakvasi). Blank or unconfirmed panth = "to verify".
 //   3. A member marked deceased, or who moved out of the area (alone or with the family),
 //      is never a voter (decided 6-7 Oct 2026).
 //   4. Someone who joined through an individual application (सभासद अर्ज) counts only when the
@@ -51,7 +52,7 @@ export type Reason =
   | "UNDER_AGE"
   | "AGE_UNKNOWN"
   | "AGE_BORDERLINE" // may or may not be 18 on election day: needs DOB
-  | "NOT_STHANAKVASI"
+  | "DIGAMBAR_PANTH"
   | "PANTH_TO_VERIFY"
   | "DECEASED"
   | "MOVED_OUT"
@@ -84,7 +85,7 @@ export function checkVoter(
   else reasons.push("UNDER_AGE");
 
   if (family.panthStatus !== "CONFIRMED") reasons.push("PANTH_TO_VERIFY");
-  else if (family.panth !== "STHANAKVASI") reasons.push("NOT_STHANAKVASI");
+  else if (family.panth === "DIGAMBAR") reasons.push("DIGAMBAR_PANTH");
 
   if (member.status === "DECEASED") reasons.push("DECEASED");
   else if (member.status === "MOVED_OUT" || family.status === "MOVED_OUT") reasons.push("MOVED_OUT");
