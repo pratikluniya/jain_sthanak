@@ -84,7 +84,7 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
               <div className="mt-2 flex flex-wrap gap-1 text-xs">
                 <span className="badge-gray">{t.members}: {f.members.length}</span>
                 {f.panthStatus === "CONFIRMED" ? (
-                  <span className={f.panth === "STHANAKVASI" ? "badge-green" : "badge-gray"}>{t[f.panth]}</span>
+                  <span className={f.panth === "DIGAMBAR" ? "badge-gray" : "badge-green"}>{t[f.panth]}</span>
                 ) : (
                   <span className="badge-amber">{t.panth}: {t.toVerify}</span>
                 )}

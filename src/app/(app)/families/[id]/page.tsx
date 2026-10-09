@@ -113,7 +113,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
         <div className="flex flex-wrap gap-2 items-center text-sm">
           <b>{t.panth}:</b>
           {fam.panthStatus === "CONFIRMED" ? (
-            <span className={fam.panth === "STHANAKVASI" ? "badge-green" : "badge-gray"}>{t[fam.panth]}</span>
+            <span className={fam.panth === "DIGAMBAR" ? "badge-gray" : "badge-green"}>{t[fam.panth]}</span>
           ) : (
             <span className="badge-amber">{fam.panth !== "UNKNOWN" ? `${t[fam.panth]} · ` : ""}{t.toVerify}</span>
           )}
