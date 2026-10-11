@@ -353,6 +353,10 @@ const mr = {
   appErr_nameRequired: "अर्जदाराचे नाव आवश्यक आहे.",
   appErr_relationSelf: "जुन्या कुटुंबात 'स्वतः' नाते निवडता येत नाही.",
   savedForms: "सेव्ह झालेले फॉर्म",
+  devBy: "विकास व व्यवस्थापन:",
+  allRights: "सर्व हक्क राखीव.",
+  call: "फोन करा",
+  whatsapp: "WhatsApp वर संपर्क",
 };
 
 export type Dict = { [K in keyof typeof mr]: string };
@@ -696,6 +700,10 @@ const hi: Dict = {
   appErr_nameRequired: "आवेदक का नाम आवश्यक है.",
   appErr_relationSelf: "मौजूदा परिवार में 'स्वयं' नाता नहीं चुन सकते.",
   savedForms: "सेव किए गए फॉर्म",
+  devBy: "विकास एवं प्रबंधन:",
+  allRights: "सर्वाधिकार सुरक्षित.",
+  call: "कॉल करें",
+  whatsapp: "WhatsApp पर संपर्क",
 };
 
 const en: Dict = {
@@ -1037,6 +1045,10 @@ const en: Dict = {
   appErr_nameRequired: "The applicant's name is required.",
   appErr_relationSelf: "'Self' cannot be chosen for an existing family.",
   savedForms: "Forms saved",
+  devBy: "Developed & Managed by",
+  allRights: "All rights reserved.",
+  call: "Call",
+  whatsapp: "Chat on WhatsApp",
 };
 
 const DICTS: Record<Lang, Dict> = { mr, hi, en };

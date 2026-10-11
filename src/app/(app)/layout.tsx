@@ -5,6 +5,7 @@ import LangToggle from "@/components/LangToggle";
 import { logoutAction } from "../login/actions";
 import AppShell, { type NavLink } from "@/components/AppShell";
 import ProfileMenu from "@/components/ProfileMenu";
+import TechShreeFooter from "@/components/TechShreeFooter";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const s = await requireSession("view");
@@ -27,6 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       appName={t.appName}
       t={{ menu: t.menu, close: t.close, language: t.language }}
       langToggle={<LangToggle />}
+      footer={<TechShreeFooter t={t} />}
       profileMenu={
         <ProfileMenu name={s.name} roleLabel={t[s.role]} logout={logoutAction} t={{ profile: t.profile, changePassword: t.changePassword, logout: t.logout }} />
       }

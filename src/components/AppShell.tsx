@@ -19,6 +19,7 @@ export default function AppShell(props: {
   t: { menu: string; close: string; language: string };
   langToggle: React.ReactNode;
   profileMenu: React.ReactNode;
+  footer?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const path = usePathname();
@@ -96,6 +97,7 @@ export default function AppShell(props: {
           <div className="jain-stripe lg:hidden" />
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-3 py-5 sm:px-4 lg:px-6">{props.children}</main>
+        {props.footer && <div className="mx-auto w-full max-w-6xl px-3 pb-5 sm:px-4 lg:px-6">{props.footer}</div>}
       </div>
     </div>
   );

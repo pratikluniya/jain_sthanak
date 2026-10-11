@@ -2,12 +2,13 @@ import Link from "next/link";
 import { getDict } from "@/lib/i18n";
 import LoginForm from "./LoginForm";
 import LangToggle from "@/components/LangToggle";
+import TechShreeFooter from "@/components/TechShreeFooter";
 
 export default function LoginPage() {
   const t = getDict();
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-b from-brand-50 via-stone-50 to-stone-50">
-      <div className="w-full max-w-sm">
+    <main className="min-h-screen flex flex-col items-center p-4 bg-gradient-to-b from-brand-50 via-stone-50 to-stone-50">
+      <div className="w-full max-w-sm my-auto py-6">
         <div className="text-center mb-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo.png" alt="" className="mx-auto mb-3 h-28 w-auto" />
@@ -26,6 +27,7 @@ export default function LoginPage() {
         </Link>
         <div className="mt-4 flex justify-center"><LangToggle /></div>
       </div>
+      <TechShreeFooter t={t} className="w-full max-w-xl" />
     </main>
   );
 }
