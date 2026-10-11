@@ -15,7 +15,7 @@ const PHRASES: [RegExp, string][] = [
   [/को\.?\s*ऑ?प?\.?\s*हौ\.?\s*सो(?:सायटी|सा)?\.?/g, "Co-op Housing Society"],
   [/हौ\.?\s*सो(?:सायटी|सा)?\.?/g, "Housing Society"],
   [/प्लॉट\s*न(?:ं|ंबर)\.?/g, "Plot No."],
-  [/फ्लॅ?ट\s*न(?:ं|ंबर)\.?|फ्लॅ\.\s*नं\.?/g, "Flat No."],
+  [/(?:फ्लॅ?ट|प्लॅट|फ्लेट)\s*न(?:ं|ंबर)\.?|फ्लॅ\.\s*नं\.?/g, "Flat No."],
   [/रो\.?\s*हा\.?\s*न(?:ं|ंबर)\.?/g, "Row House No."],
   [/सर्वे\s*न(?:ं|ंबर)\.?/g, "Survey No."],
   [/रूम\s*न(?:ं|ंबर)\.?/g, "Room No."],
@@ -32,10 +32,15 @@ const WORDS: Record<string, string> = {
   "जवळ": "Near", "के पास": "Near", "समोर": "Opposite", "के सामने": "Opposite", "सामने": "Opposite",
   "मागे": "Behind", "मागील": "Behind", "पाठीमागे": "Behind", "के पिछे": "Behind", "पिछे": "Behind", "पीछे": "Behind", "शेजारी": "Next to",
   "नाशिक": "Nashik", "नासिक": "Nashik", "फ्लॅट": "Flat", "नं": "No.", "नंबर": "No.", "प्लॉट": "Plot",
-  "रेसिडेन्सी": "Residency", "रेसिडेंसी": "Residency", "रेसीडेंसी": "Residency", "संकुल": "Sankul",
+  "रेसिडेन्सी": "Residency", "रेसीडेन्सी": "Residency", "रेसिडन्सी": "Residency", "व्हीला": "Villa", "व्हिला": "Villa", "रेसिडेंसी": "Residency", "रेसीडेंसी": "Residency", "संकुल": "Sankul",
   "हाऊस": "House", "हाउस": "House", "भवन": "Bhavan", "मंदिर": "Mandir", "मंदीर": "Mandir",
   "टॉकीज": "Talkies", "हॉस्पिटल": "Hospital", "शाळा": "School", "विंग": "Wing", "मजला": "Floor",
 };
+
+// building wing letters written in Devanagari: "ए-९" -> "A-9", "बी/२" -> "B/2"
+const WING: Record<string, string> = { "ए": "A", "बी": "B", "सी": "C", "डी": "D", "ई": "E", "एफ": "F", "जी": "G", "एच": "H" };
+// place words written joined to the name: "गोपाळनगर" -> "गोपाळ नगर", "जगतापमळा" -> "जगताप मळा"
+const SUFFIXES = ["नगर", "मळा", "रोड", "कॉलनी", "सोसायटी", "पार्क", "चौक"];
 
 const toAsciiDigits = (s: string) => s.replace(/[०-९]/g, (d) => String(DEV_DIGITS.indexOf(d)));
 
@@ -43,6 +48,11 @@ const toAsciiDigits = (s: string) => s.replace(/[०-९]/g, (d) => String(DEV_D
 export function addressToEnglish(text: string): string {
   let s = toAsciiDigits((text ?? "").normalize("NFC")).replace(/\s+/g, " ").trim();
   if (!/[ऀ-ॿ]/.test(s)) return s;
+  s = s.replace(/(^|[\s,(])(एफ|एच|बी|सी|डी|जी|ए|ई)\s*(?=[-/]?\s*\d)/g, (_, pre: string, w: string) => pre + WING[w]);
+  // full stops used between parts ("२५. आश्विनी व्हीला. निसर्गदत्तनगर.") become commas; short abbreviations keep theirs
+  s = s.replace(/([^\s.,]+)\.\s+(?=\S)/g, (m, w: string) => (/^\d+$/.test(w) || w.length > 2 ? `${w}, ` : m));
+  for (const suf of SUFFIXES) s = s.replace(new RegExp(`([ऀ-ॿ]{2,})${suf}(?=[\\s,.;)]|$)`, "g"), `$1 ${suf}`);
+  s = s.replace(/\.$/, "");
   for (const [re, en] of PHRASES) s = s.replace(re, ` ${en} `);
   for (const k of Object.keys(WORDS).filter((w) => w.includes(" "))) s = s.split(k).join(` ${WORDS[k]} `);
   // word by word: keep punctuation, translate known words, transliterate the rest
@@ -54,7 +64,7 @@ export function addressToEnglish(text: string): string {
     return toEnglishName(bare) + dot;
   });
   const joined = out.join("").replace(/\s+([,.;)])/g, "$1").replace(/\(\s+/g, "(").replace(/\s{2,}/g, " ").trim();
-  return movePostpositions(joined);
+  return movePostpositions(joined).replace(/(Gaon|Colony|Society|Nagar|Apartment|Residency|Mala) (Nashik Road|Nashik)$/, "$1, $2");
 }
 
 // Marathi/Hindi put "near / behind / opposite" after the landmark ("जैन भवन समोर"). In English it
