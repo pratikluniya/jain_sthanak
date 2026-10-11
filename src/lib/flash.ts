@@ -16,10 +16,7 @@ export type FlashKey =
   | "done"
   | "error"
   | "notAllowed"
-  | "checkForm"
-  | "addrUpdated"
-  | "addrNoFile"
-  | "addrColumns";
+  | "checkForm";
 
 export function flash(kind: "ok" | "err", key: FlashKey | string, n?: number) {
   cookies().set(FLASH_COOKIE, encodeURIComponent(JSON.stringify({ k: kind, m: key, n, t: Date.now() })), {

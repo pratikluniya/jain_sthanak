@@ -70,6 +70,14 @@ Rules:
 - ALSO give each name in English letters (nameEn, headNameEn), the way Marathi Jain families usually spell it:
   title + first + middle + surname in the same order and word count as the Devanagari, e.g. "सौ. निर्मलाबाई कचरदासजी चोरडिया" -> "Sau. Nirmalabai Kachardasji Chordiya", "प्रविणकुमार लुणिया" -> "Pravinkumar Luniya". Do not add or drop words.
 - Digits may be Devanagari (०-९) or English. Copy them as written; do not convert.
+- ALSO give the address in English (addressEn), written the way it would appear on a letter: translate common words
+  (सोसायटी/सो./सोसा. -> Society, हौ. सो. -> Housing Society, अपार्टमेंट/अपा. -> Apartment, बंगला/बंगलो -> Bungalow, रोड -> Road,
+  नगर -> Nagar, कॉलनी -> Colony, मळा -> Mala, चौक -> Chowk, फ्लॅट नं. -> Flat No., प्लॉट नं. -> Plot No., रो हाऊस -> Row House),
+  "near / behind / opposite / next to" (जवळ, के पास, मागे, के पीछे, समोर, के सामने, शेजारी, के बाजू में) go BEFORE the place they refer to
+  ("जैन भवन समोर" -> "Opposite Jain Bhavan"), ना. रोड / नाशिकरोड / NSK Rd -> Nashik Road, दे. गांव -> Deolali Gaon,
+  wing letters ए/बी/सी -> A/B/C ("ए-९" -> "A-9"), digits 0-9, and the usual English spelling of known places and buildings
+  (Artillery Centre Road, Jain Bhavan, Jain Sthanak, Bytco Point, Green Meadows, Jeevan Prabha). Keep the order of the parts as written,
+  separated by commas. If the address is already in English, clean it the same way. If the address is blank, use "".
 - Keep relation words as written (बायको, सून, नातू, पोती, मम्मी, भाई, भाभी, स्वतः, स्वयं...).
 - Education and occupation: copy as written (may be English like "B.Com", "Kirana").
 - Empty cells or a dash: use "".
@@ -88,6 +96,7 @@ const TOOL: Anthropic.Tool = {
       headName: { type: "string" },
       headNameEn: { type: "string", description: "headName in English letters" },
       address: { type: "string" },
+      addressEn: { type: "string", description: "address in English: common words translated, names spelled out, digits 0-9" },
       panth: { type: "string", enum: ["STHANAKVASI", "MANDIRMARGI", "TERAPANTH", "DIGAMBAR", "BLANK"] },
       panthEvidence: { type: "string" },
       continuesOnNextPage: { type: "boolean" },
@@ -114,7 +123,7 @@ const TOOL: Anthropic.Tool = {
       },
       notes: { type: "string" },
     },
-    required: ["headName", "headNameEn", "address", "panth", "panthEvidence", "continuesOnNextPage", "isContinuationPage", "members", "notes"],
+    required: ["headName", "headNameEn", "address", "addressEn", "panth", "panthEvidence", "continuesOnNextPage", "isContinuationPage", "members", "notes"],
   },
 };
 

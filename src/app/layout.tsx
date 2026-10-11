@@ -29,7 +29,7 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, them
 
 function feedbackLabels() {
   const t = getDict();
-  const keys = ["saved", "created", "deleted", "restored", "approved", "rejected", "done", "error", "notAllowed", "checkForm", "imported", "addrUpdated", "addrNoFile", "addrColumns"] as const;
+  const keys = ["saved", "created", "deleted", "restored", "approved", "rejected", "done", "error", "notAllowed", "checkForm", "imported"] as const;
   return {
     toasts: Object.fromEntries(keys.map((k) => [k, t[`toast_${k}`]])),
     confirmTitle: t.fb_confirmTitle,
