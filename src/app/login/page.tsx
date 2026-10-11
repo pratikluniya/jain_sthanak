@@ -27,7 +27,7 @@ export default function LoginPage() {
         </Link>
         <div className="mt-4 flex justify-center"><LangToggle /></div>
       </div>
-      <TechShreeFooter t={t} className="w-full max-w-xl" />
+      <TechShreeFooter t={t} className="w-full max-w-xl mt-6" />
     </main>
   );
 }

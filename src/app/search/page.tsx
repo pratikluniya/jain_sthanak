@@ -104,7 +104,7 @@ export default async function PublicSearchPage({ searchParams }: { searchParams:
         <p className="pt-4 text-center text-xs text-stone-500">
           <Link href="/login" className="underline">{t.staffLogin}</Link>
         </p>
-        <TechShreeFooter t={t} className="pt-2 pb-4" />
+        <TechShreeFooter t={t} className="mt-4" />
       </div>
     </main>
   );
