@@ -11,7 +11,7 @@ async function setLang(fd: FormData) {
 export default function LangToggle() {
   const lang = getLang();
   return (
-    <form action={setLang} className="inline-flex rounded-lg border border-stone-300 overflow-hidden text-sm">
+    <form action={setLang} data-noconfirm className="inline-flex rounded-lg border border-stone-300 overflow-hidden text-sm">
       {LANGS.map((l) => (
         <button key={l} name="lang" value={l} className={`px-2.5 py-1 ${lang === l ? "bg-brand-600 text-white" : "bg-white text-stone-800"}`}>
           {LANG_NAMES[l]}

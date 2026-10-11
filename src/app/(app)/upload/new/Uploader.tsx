@@ -1,4 +1,5 @@
 "use client";
+import { flashNext, showToast } from "@/lib/uiBus";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
@@ -54,9 +55,11 @@ export default function Uploader({ t }: { t: Record<Labels, string> }) {
       const res = await fetch("/api/upload", { method: "POST", body: fd });
       const j = await res.json();
       if (!res.ok) throw new Error(j.error || res.statusText);
+      flashNext("ok", "done");
       router.push(`/upload/${j.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      showToast("err", e instanceof Error ? e.message : String(e));
       setBusy(false);
     }
   }

@@ -26,7 +26,7 @@ export default async function EditUserPage({ params, searchParams }: { params: {
         <form action={deleteUser} className="card flex flex-wrap items-center justify-between gap-3 border-red-200 p-4">
           <input type="hidden" name="id" value={u.id} />
           <p className="text-sm text-stone-600">{t.deleteConfirmSoft}</p>
-          <ConfirmButton className="btn-danger" message={`${u.name}: ${t.deleteConfirmSoft}`}>{t.deleteUser}</ConfirmButton>
+          <ConfirmButton danger className="btn-danger" message={`${u.name}: ${t.deleteConfirmSoft}`}>{t.deleteUser}</ConfirmButton>
         </form>
       )}
     </div>

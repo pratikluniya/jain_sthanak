@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/session";
 import { nextReceiptNo } from "@/lib/counters";
 import { audit } from "@/lib/audit";
 import type { PaymentMode } from "@prisma/client";
+import { flashErr, flashOk } from "@/lib/flash";
 
 const MODES: PaymentMode[] = ["CASH", "UPI", "CHEQUE", "BANK_TRANSFER"];
 
@@ -16,7 +17,10 @@ export async function createReceipt(fd: FormData) {
   const purposes = fd.getAll("purpose").map(String);
   const amounts = fd.getAll("amount").map((a) => Math.round(Number(a) || 0));
   const items = purposes.map((p, i) => ({ purpose: p.trim(), amount: amounts[i] ?? 0 })).filter((x) => x.purpose && x.amount > 0);
-  if (!familyId || items.length === 0) throw new Error("family and at least one amount required");
+  if (!familyId || items.length === 0) {
+    flashErr("checkForm");
+    redirect("/receipts/new");
+  }
   const mode = (MODES.includes(String(fd.get("mode")) as PaymentMode) ? String(fd.get("mode")) : "CASH") as PaymentMode;
   const total = items.reduce((a, b) => a + b.amount, 0);
 
@@ -38,6 +42,7 @@ export async function createReceipt(fd: FormData) {
     });
   });
   await audit(s.uid, "create", "Payment", p.id, { receiptNo: p.receiptNo, total });
+  flashOk("created");
   redirect(`/receipt/${p.id}`);
 }
 
@@ -47,5 +52,6 @@ export async function cancelReceipt(fd: FormData) {
   await prisma.payment.update({ where: { id }, data: { cancelled: true } });
   await audit(s.uid, "cancel", "Payment", id);
   revalidatePath("/receipts");
+  flashOk("done");
   redirect(`/receipt/${id}`);
 }

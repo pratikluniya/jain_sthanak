@@ -2,10 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { hasAadhaarImage, memberGaps } from "./gaps";
 
-const base = { status: "ACTIVE", kycFileKey: null, kycDocType: null, aadhaarBackKey: null, photoKey: null, age: null, dob: null };
+const base = { status: "ACTIVE", kycFileKey: null, kycDocType: null, aadhaarBackKey: null, photoKey: null, mobile: "", age: null, dob: null };
 
 test("flags a living member with nothing on file", () => {
-  assert.deepEqual(memberGaps(base), ["noaadhaar", "nophoto", "noage"]);
+  assert.deepEqual(memberGaps(base), ["noaadhaar", "nophoto", "nomobile", "noage"]);
+  assert.ok(!memberGaps({ ...base, mobile: "9800000001" }).includes("nomobile"));
 });
 test("front alone (or back alone) is enough for Aadhaar", () => {
   assert.equal(hasAadhaarImage({ ...base, kycFileKey: "f.jpg", kycDocType: "AADHAAR" }), true);

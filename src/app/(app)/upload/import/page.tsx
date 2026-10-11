@@ -1,9 +1,11 @@
 import { requireSession } from "@/lib/session";
+import { getDict } from "@/lib/i18n";
 import ImportForm from "./ImportForm";
 
 // Admin only: import a batch of forms read outside the app (forms.json + photos).
 export default async function ImportPage() {
   await requireSession("settings");
+  const t = getDict();
   return (
     <div className="space-y-3 max-w-2xl">
       <h1 className="page-title">Import batch</h1>
@@ -11,7 +13,7 @@ export default async function ImportPage() {
         Choose the batch folder&apos;s <b>forms.json</b> and all its photos (family forms F1.jpg, F1_1.jpg ...; individual applications A1.jpg, A1_2.jpg, A1_photo.jpg ...). Each form goes to the check queue;
         nothing is saved to families without a volunteer&apos;s check. Importing the same batch twice skips forms already imported.
       </p>
-      <ImportForm />
+      <ImportForm t={{ importAsk: t.importAsk, importFailed: t.importFailed }} />
     </div>
   );
 }

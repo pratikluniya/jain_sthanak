@@ -5,6 +5,7 @@ import { requireSession } from "@/lib/session";
 import { audit } from "@/lib/audit";
 import { applicationFromForm, saveApplication, updateApplication } from "@/lib/applications";
 import { prisma } from "@/lib/db";
+import { flashErr, flashOk } from "@/lib/flash";
 
 const s = (fd: FormData, k: string) => String(fd.get(k) ?? "");
 
@@ -47,11 +48,13 @@ export async function saveApplicationAction(fd: FormData) {
     by: { uid: session.uid, name: session.name },
   });
   if (!r.ok) {
+    flashErr(r.error === "alreadySaved" ? "error" : "checkForm");
     if (r.error === "alreadySaved") redirect("/upload");
     redirect(`/upload/${uploadId}?e=${r.error}`);
   }
   await audit(session.uid, "verify", "Upload", uploadId, { kind: "INDIVIDUAL", familyId: r.familyId, memberId: r.memberId, mode: s(fd, "mode") });
   revalidatePath("/upload");
+  flashOk("saved");
   redirect(`/families/${r.familyId}`);
 }
 
@@ -63,5 +66,6 @@ export async function updateApplicationAction(fd: FormData) {
   await updateApplication(memberId, applicationFromForm(fd));
   await audit(session.uid, "update", "Application", memberId, {});
   revalidatePath(`/families/${m.familyId}`);
+  flashOk("saved");
   redirect(`/families/${m.familyId}`);
 }

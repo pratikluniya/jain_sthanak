@@ -7,6 +7,7 @@ import { audit } from "@/lib/audit";
 import { markDeceased, nextDayIST, undoDeceased } from "@/lib/deceased";
 import { matchesSearch } from "@/lib/normalize";
 import { memberFullName } from "@/lib/members";
+import { flashErr, flashOk } from "@/lib/flash";
 
 export type MarkState = { ok?: boolean; error?: "notFound" | "mustChooseHead" | "dateInFuture" | "dateRequired" };
 
@@ -16,9 +17,13 @@ export async function markDeceasedAction(_: MarkState, fd: FormData): Promise<Ma
   const dateOfDeath = String(fd.get("dateOfDeath") ?? "");
   const newHeadId = String(fd.get("newHeadId") ?? "") || undefined;
   const r = await markDeceased({ memberId, dateOfDeath, newHeadId, by: s.uid });
-  if (!r.ok) return { error: r.error };
+  if (!r.ok) {
+    flashErr("checkForm");
+    return { error: r.error };
+  }
   await audit(s.uid, "deceased", "Member", memberId, { dateOfDeath, newHeadId: newHeadId ?? null });
   revalidatePath("/", "layout");
+  flashOk("saved");
   return { ok: true };
 }
 
@@ -28,6 +33,7 @@ export async function undoDeceasedAction(fd: FormData) {
   await undoDeceased(id);
   await audit(s.uid, "undoDeceased", "Member", id, {});
   revalidatePath("/", "layout");
+  flashOk("done");
 }
 
 export interface DemiseCandidate {
@@ -67,6 +73,7 @@ export async function demiseDoneAction() {
   await prisma.user.update({ where: { id: s.uid }, data: { demiseCheckDoneAt: new Date(), demiseSnoozeUntil: null } });
   await audit(s.uid, "demiseCheckDone", "User", s.uid, {});
   revalidatePath("/");
+  flashOk("done");
 }
 
 export async function demiseLaterAction() {

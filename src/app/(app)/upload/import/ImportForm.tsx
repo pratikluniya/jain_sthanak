@@ -1,5 +1,7 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { askConfirm, flashNext, showToast } from "@/lib/uiBus";
 
 interface Item {
   images: string[];
@@ -8,7 +10,8 @@ interface Item {
   form: { headName?: string };
 }
 
-export default function ImportForm() {
+export default function ImportForm({ t }: { t: { importAsk: string; importFailed: string } }) {
+  const router = useRouter();
   const [batch, setBatch] = useState("");
   const [items, setItems] = useState<Item[]>([]);
   const [photos, setPhotos] = useState<File[]>([]);
@@ -31,8 +34,11 @@ export default function ImportForm() {
   const missing = items.flatMap((it) => [...it.images, ...(it.kyc ?? []).map((k) => k.image), ...(it.photo ? [it.photo] : [])]).filter((n) => !byName.has(n));
 
   async function run() {
+    if (!(await askConfirm({ message: t.importAsk.replace("{n}", String(items.length)) }))) return;
     setBusy(true);
     const out: string[] = [];
+    let ok = 0;
+    let failed = 0;
     for (const [i, it] of items.entries()) {
       const fd = new FormData();
       fd.set("batch", batch);
@@ -45,15 +51,27 @@ export default function ImportForm() {
       try {
         const res = await fetch("/api/import", { method: "POST", body: fd });
         const j = await res.json();
-        if (!res.ok) out.push(`✖ ${label}: ${j.error}`);
-        else if (j.status === "skipped") out.push(`· ${label}: already imported`);
-        else out.push(`✔ ${label}: ${j.headName} (${j.members} members, ${j.kyc} KYC)${j.warnings?.length ? " ⚠ " + j.warnings.join("; ") : ""}`);
+        if (!res.ok) {
+          failed++;
+          out.push(`✖ ${label}: ${j.error}`);
+        } else if (j.status === "skipped") out.push(`· ${label}: already imported`);
+        else {
+          ok++;
+          out.push(`✔ ${label}: ${j.headName} (${j.members} members, ${j.kyc} KYC)${j.warnings?.length ? " ⚠ " + j.warnings.join("; ") : ""}`);
+        }
       } catch (e) {
+        failed++;
         out.push(`✖ ${label}: ${e instanceof Error ? e.message : e}`);
       }
       setLog([...out]);
     }
     setBusy(false);
+    // all good: go to the Upload page, where the imported forms wait for checking (decided 11 Oct 2026);
+    // if any form failed, stay here so the operator can read the log
+    if (failed === 0) {
+      flashNext("ok", "imported", ok);
+      router.push("/upload");
+    } else showToast("err", t.importFailed.replace("{n}", String(failed)));
   }
 
   return (

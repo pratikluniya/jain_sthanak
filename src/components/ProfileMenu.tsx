@@ -60,7 +60,7 @@ export default function ProfileMenu(props: {
             <Link role="menuitem" href="/profile/password" className={item} onClick={() => setOpen(false)}>
               <Icon name="key" className="h-4 w-4" /> {props.t.changePassword}
             </Link>
-            <form action={props.logout}>
+            <form action={props.logout} data-noconfirm>
               <button role="menuitem" className={`${item} text-brand-700`}>
                 <Icon name="logout" className="h-4 w-4" /> {props.t.logout}
               </button>

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireSession } from "@/lib/session";
 import { evaluateAll, sortBySurname } from "@/lib/members";
 import { audit } from "@/lib/audit";
+import { flashOk } from "@/lib/flash";
 
 /** Give a permanent voter number to every eligible member who does not have one yet (surname order). */
 export async function assignVoterNumbers() {
@@ -18,4 +19,5 @@ export async function assignVoterNumbers() {
   }
   await audit(s.uid, "assignVoterNos", "Member", null, { count: todo.length, last: n });
   revalidatePath("/voters");
+  flashOk("done");
 }

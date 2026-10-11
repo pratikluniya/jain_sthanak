@@ -148,7 +148,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
           {canDelete && (
             <form action={deleteFamily}>
               <input type="hidden" name="id" value={fam.id} />
-              <ConfirmButton className="btn-danger btn-sm" message={`${fam.code}: ${t.deleteConfirmSoft}`}>{t.delete}</ConfirmButton>
+              <ConfirmButton danger className="btn-danger btn-sm" message={`${fam.code}: ${t.deleteConfirmSoft}`}>{t.delete}</ConfirmButton>
             </form>
           )}
         </div>
@@ -252,7 +252,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
                 {canDelete && (
                   <form action={deleteMember}>
                     <input type="hidden" name="memberId" value={m.id} />
-                    <ConfirmButton className="btn-sm text-red-600 underline" message={`${memberFullName(m)}: ${t.deleteConfirmSoft}`}>{t.delete}</ConfirmButton>
+                    <ConfirmButton danger className="btn-sm text-red-600 underline" message={`${memberFullName(m)}: ${t.deleteConfirmSoft}`}>{t.delete}</ConfirmButton>
                   </form>
                 )}
               </div>

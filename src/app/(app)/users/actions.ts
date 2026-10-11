@@ -7,6 +7,7 @@ import { requireSession } from "@/lib/session";
 import { normalizeMobile } from "@/lib/normalize";
 import { ROLES, type Role } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
+import { flashErr, flashOk } from "@/lib/flash";
 
 export type UserFormResult = { error?: "nameRequired" | "mobileInvalid" | "mobileExists" | "mobileOfDeletedUser" | "passwordTooShort" | "cannotChangeSelf" };
 
@@ -30,12 +31,16 @@ async function readForm(fd: FormData, id: string | null) {
 export async function createUser(_: UserFormResult, fd: FormData): Promise<UserFormResult> {
   const s = await requireSession("users");
   const f = await readForm(fd, null);
-  if ("error" in f) return { error: f.error };
+  if ("error" in f) {
+    flashErr("checkForm");
+    return { error: f.error };
+  }
   const u = await prisma.user.create({
     data: { name: f.name, mobile: f.mobile, role: f.role, active: fd.get("active") === "on", passwordHash: await bcrypt.hash(f.password, 10), createdById: s.uid },
   });
   await audit(s.uid, "create", "User", u.id, { name: f.name, mobile: f.mobile, role: f.role });
   revalidatePath("/users");
+  flashOk("created");
   redirect("/users");
 }
 
@@ -45,14 +50,21 @@ export async function updateUser(_: UserFormResult, fd: FormData): Promise<UserF
   const existing = await prisma.user.findUnique({ where: { id } });
   if (!existing || existing.deletedAt) redirect("/users");
   const f = await readForm(fd, id);
-  if ("error" in f) return { error: f.error };
+  if ("error" in f) {
+    flashErr("checkForm");
+    return { error: f.error };
+  }
   const active = fd.get("active") === "on";
-  if (id === s.uid && (!active || f.role !== "ADMIN")) return { error: "cannotChangeSelf" };
+  if (id === s.uid && (!active || f.role !== "ADMIN")) {
+    flashErr("notAllowed");
+    return { error: "cannotChangeSelf" };
+  }
   const data: { name: string; mobile: string; role: Role; active: boolean; passwordHash?: string } = { name: f.name, mobile: f.mobile, role: f.role, active };
   if (f.password) data.passwordHash = await bcrypt.hash(f.password, 10);
   await prisma.user.update({ where: { id }, data });
   await audit(s.uid, "update", "User", id, { name: f.name, mobile: f.mobile, role: f.role, active, passwordChanged: !!data.passwordHash });
   revalidatePath("/users");
+  flashOk("saved");
   redirect("/users");
 }
 
@@ -60,10 +72,14 @@ export async function updateUser(_: UserFormResult, fd: FormData): Promise<UserF
 export async function deleteUser(fd: FormData) {
   const s = await requireSession("users");
   const id = str(fd, "id");
-  if (id === s.uid) redirect(`/users/${id}/edit?e=cannotChangeSelf`);
+  if (id === s.uid) {
+    flashErr("notAllowed");
+    redirect(`/users/${id}/edit?e=cannotChangeSelf`);
+  }
   await prisma.user.update({ where: { id }, data: { deletedAt: new Date(), deletedById: s.uid } });
   await audit(s.uid, "delete", "User", id, { soft: true });
   revalidatePath("/users");
+  flashOk("deleted");
   redirect("/users");
 }
 
@@ -73,5 +89,6 @@ export async function restoreUser(fd: FormData) {
   await prisma.user.update({ where: { id }, data: { deletedAt: null, deletedById: null } });
   await audit(s.uid, "restore", "User", id, {});
   revalidatePath("/users");
+  flashOk("restored");
   redirect("/users?deleted=1");
 }

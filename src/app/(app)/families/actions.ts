@@ -12,6 +12,7 @@ import { toEnglishName } from "@/lib/translit";
 import { todayIST } from "@/lib/deceased";
 import type { Panth, PanthStatus, FamilyStatus } from "@prisma/client";
 import { restoreFamily as restoreFamilyRecord, restoreMember as restoreMemberRecord, softDeleteFamily, softDeleteMember } from "@/lib/softDelete";
+import { flashErr, flashOk } from "@/lib/flash";
 
 const PANTHS: Panth[] = ["STHANAKVASI", "MANDIRMARGI", "TERAPANTH", "DIGAMBAR", "UNKNOWN"];
 
@@ -52,6 +53,7 @@ export async function saveFamily(fd: FormData) {
     await prisma.family.update({ where: { id }, data });
     await audit(s.uid, "update", "Family", id, data);
     revalidatePath(`/families/${id}`);
+    flashOk("saved");
     redirect(`/families/${id}`);
   }
   const fam = await prisma.$transaction(async (tx) => {
@@ -59,6 +61,7 @@ export async function saveFamily(fd: FormData) {
     return tx.family.create({ data: { ...data, code, formDate: new Date() } });
   });
   await audit(s.uid, "create", "Family", fam.id, data);
+  flashOk("created");
   redirect(`/families/${fam.id}`);
 }
 
@@ -66,9 +69,13 @@ export async function confirmPanth(fd: FormData) {
   const s = await requireSession("approve");
   const id = str(fd, "id");
   const panth = str(fd, "panth") as Panth;
-  if (!PANTHS.includes(panth) || panth === "UNKNOWN") return;
+  if (!PANTHS.includes(panth) || panth === "UNKNOWN") {
+    flashErr("checkForm");
+    return;
+  }
   await prisma.family.update({ where: { id }, data: { panth, panthStatus: "CONFIRMED" } });
   await audit(s.uid, "approve", "Family", id, { panth });
+  flashOk("approved");
   revalidatePath(`/families/${id}`);
   revalidatePath("/families");
 }
@@ -77,10 +84,14 @@ export async function deleteFamily(fd: FormData) {
   const s = await requireSession("delete");
   const id = str(fd, "id");
   const fam = await prisma.family.findUnique({ where: { id }, include: { members: { where: { deletedAt: null } } } });
-  if (!fam || fam.deletedAt) redirect("/families");
+  if (!fam || fam.deletedAt) {
+    flashErr("error");
+    redirect("/families");
+  }
   await softDeleteFamily(id, s.uid);
   await audit(s.uid, "delete", "Family", id, { code: fam.code, headName: fam.headName, members: fam.members.length, soft: true });
   revalidatePath("/", "layout");
+  flashOk("deleted");
   redirect("/families");
 }
 
@@ -90,6 +101,7 @@ export async function restoreFamily(fd: FormData) {
   await restoreFamilyRecord(id);
   await audit(s.uid, "restore", "Family", id, {});
   revalidatePath("/", "layout");
+  flashOk("restored");
   redirect(`/families/${id}`);
 }
 
@@ -143,6 +155,7 @@ export async function saveMember(fd: FormData) {
     // date of death is compulsory (decided 6 Oct 2026); send the volunteer back to the form without saving
     const dod = str(fd, "dateOfDeath");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dod) || dod > todayIST()) {
+      flashErr("checkForm");
       redirect(`/families/${familyId}/member?${new URLSearchParams({ ...(memberId ? { m: memberId } : {}), e: "dod" })}`);
     }
     data.dateOfDeath = new Date(dod);
@@ -207,6 +220,7 @@ export async function saveMember(fd: FormData) {
   const { aadhaarEnc: _omit, ...logged } = data;
   await audit(s.uid, existing ? "update" : "create", "Member", id, logged as object);
   revalidatePath(`/families/${familyId}`);
+  flashOk(existing ? "saved" : "created");
   redirect(`/families/${familyId}`);
 }
 
@@ -216,6 +230,7 @@ export async function deleteMember(fd: FormData) {
   const m = await softDeleteMember(id, s.uid);
   await audit(s.uid, "delete", "Member", id, { name: m.nameRaw, familyId: m.familyId, soft: true });
   revalidatePath("/", "layout");
+  flashOk("deleted");
 }
 
 export async function restoreMember(fd: FormData) {
@@ -224,6 +239,8 @@ export async function restoreMember(fd: FormData) {
   const r = await restoreMemberRecord(id);
   if (r === "ok") await audit(s.uid, "restore", "Member", id, {});
   revalidatePath("/", "layout");
+  if (r === "ok") flashOk("restored");
+  else flashErr("error");
 }
 
 export async function approveKyc(fd: FormData) {
@@ -232,6 +249,7 @@ export async function approveKyc(fd: FormData) {
   const m = await prisma.member.update({ where: { id }, data: { kycVerified: true, kycVerifiedBy: s.name, kycVerifiedAt: new Date() } });
   await audit(s.uid, "approve", "Member", id, { kyc: true });
   revalidatePath(`/families/${m.familyId}`);
+  flashOk("approved");
 }
 
 /** Recompute search keys (e.g. after rule changes). */

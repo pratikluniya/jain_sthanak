@@ -10,7 +10,7 @@ function Submit({ label }: { label: string }) {
 export default function LoginForm({ t }: { t: { mobile: string; password: string; login: string; loginFailed: string } }) {
   const [state, action] = useFormState(loginAction, {});
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} data-noconfirm className="space-y-4">
       <div>
         <label className="label" htmlFor="mobile">{t.mobile}</label>
         <input id="mobile" name="mobile" inputMode="numeric" autoComplete="username" className="input" required />

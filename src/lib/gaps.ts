@@ -3,8 +3,9 @@
 //  - noaadhaar: no Aadhaar image at all. The front alone is enough; a typed number without an image is not.
 //  - nophoto:   no passport photo.
 //  - noage:     both age and date of birth are empty.
+//  - nomobile:  no mobile number (added 11 Oct 2026).
 
-export const GAPS = ["noaadhaar", "nophoto", "noage"] as const;
+export const GAPS = ["noaadhaar", "nophoto", "nomobile", "noage"] as const;
 export type Gap = (typeof GAPS)[number];
 
 export const asGap = (v: string | null | undefined): Gap | null => (GAPS.includes(v as Gap) ? (v as Gap) : null);
@@ -15,6 +16,7 @@ interface GapMember {
   kycDocType: string | null;
   aadhaarBackKey: string | null;
   photoKey: string | null;
+  mobile: string;
   age: number | null;
   dob: Date | null;
 }
@@ -30,6 +32,7 @@ export function memberGaps(m: GapMember): Gap[] {
   const out: Gap[] = [];
   if (!hasAadhaarImage(m)) out.push("noaadhaar");
   if (!m.photoKey) out.push("nophoto");
+  if (!m.mobile.trim()) out.push("nomobile");
   if (m.age === null && !m.dob) out.push("noage");
   return out;
 }

@@ -10,6 +10,7 @@ import { inferHeadGender, prepareMember } from "@/lib/members";
 import { runExtraction } from "@/lib/uploads";
 import { toEnglishName } from "@/lib/translit";
 import type { ExtractedForm } from "@/lib/extract";
+import { flashErr, flashOk } from "@/lib/flash";
 
 const Payload = z.object({
   uploadId: z.string(),
@@ -49,7 +50,10 @@ export async function saveVerified(raw: VerifyPayload): Promise<{ familyId?: str
   const s = await requireSession("upload");
   const p = Payload.parse(raw);
   const up = await prisma.formUpload.findUniqueOrThrow({ where: { id: p.uploadId } });
-  if (up.status === "VERIFIED") return { error: "already saved" };
+  if (up.status === "VERIFIED") {
+    flashErr("error");
+    return { error: "already saved" };
+  }
   const formDate = up.createdAt;
 
   const familyId = await prisma.$transaction(async (tx) => {
@@ -115,6 +119,7 @@ export async function saveVerified(raw: VerifyPayload): Promise<{ familyId?: str
   });
   await audit(s.uid, "verify", "Upload", up.id, { familyId, mode: p.mode, members: p.members.length });
   revalidatePath("/upload");
+  flashOk("saved");
   return { familyId };
 }
 
@@ -123,6 +128,7 @@ export async function rejectUpload(fd: FormData) {
   const id = String(fd.get("id"));
   await prisma.formUpload.update({ where: { id }, data: { status: "REJECTED" } });
   await audit(s.uid, "reject", "Upload", id);
+  flashOk("rejected");
   redirect("/upload");
 }
 
@@ -131,4 +137,7 @@ export async function retryUpload(fd: FormData) {
   const id = String(fd.get("id"));
   await runExtraction(id);
   revalidatePath(`/upload/${id}`);
+  const up = await prisma.formUpload.findUnique({ where: { id }, select: { status: true } });
+  if (up?.status === "FAILED") flashErr("error");
+  else flashOk("done");
 }

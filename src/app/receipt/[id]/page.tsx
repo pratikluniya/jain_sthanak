@@ -25,7 +25,7 @@ export default async function ReceiptPrint({ params }: { params: { id: string } 
       <div className="no-print mb-4 flex flex-wrap gap-2">
         <PrintButton />
         {!p.cancelled && (
-          <form action={cancelReceipt}>
+          <form action={cancelReceipt} data-danger>
             <input type="hidden" name="id" value={p.id} />
             <button className="btn-danger">{t.cancelled}</button>
           </form>
