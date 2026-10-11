@@ -37,17 +37,27 @@ export function parseCsv(text: string): string[][] {
 }
 
 export const ADDRESS_CSV_HEADER = ["code", "headName", "address", "addressEn"];
+/** forms still waiting for a volunteer's check (decided 11 Oct 2026): keyed by the upload id */
+export const FORMS_CSV_HEADER = ["upload", "form", "headName", "address", "addressEn"];
 
-/** Reads the uploaded file: needs columns "code" and "addressEn" (any order). */
-export function readAddressCsv(text: string): { rows: { code: string; addressEn: string }[]; error?: string } {
+export type AddressCsv = { kind: "family" | "form"; rows: { key: string; addressEn: string }[]; error?: string };
+
+/** Reads the uploaded file: needs "addressEn" plus "code" (families) or "upload" (waiting forms), any order. */
+export function readAddressCsv(text: string): AddressCsv {
   const all = parseCsv(text);
-  if (!all.length) return { rows: [], error: "empty" };
+  if (!all.length) return { kind: "family", rows: [], error: "empty" };
   const head = all[0].map((h) => h.trim().toLowerCase());
+  const ui = head.indexOf("upload");
   const ci = head.indexOf("code");
   const ai = head.indexOf("addressen");
-  if (ci < 0 || ai < 0) return { rows: [], error: "columns" };
+  const kind = ui >= 0 ? "form" : "family";
+  const ki = ui >= 0 ? ui : ci;
+  if (ki < 0 || ai < 0) return { kind, rows: [], error: "columns" };
   const rows = all.slice(1)
-    .map((r) => ({ code: (r[ci] ?? "").trim().toUpperCase(), addressEn: (r[ai] ?? "").replace(/\s+/g, " ").trim() }))
-    .filter((r) => r.code);
-  return { rows };
+    .map((r) => {
+      const k = (r[ki] ?? "").trim();
+      return { key: kind === "family" ? k.toUpperCase() : k, addressEn: (r[ai] ?? "").replace(/\s+/g, " ").trim() };
+    })
+    .filter((r) => r.key);
+  return { kind, rows };
 }

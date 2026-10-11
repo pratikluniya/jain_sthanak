@@ -7,20 +7,24 @@ import { importEnglishAddresses } from "./actions";
 export default async function EnglishAddressesPage({ searchParams }: { searchParams: { done?: string; unknown?: string } }) {
   await requireSession("settings");
   const t = getDict();
-  const [total, missing] = await Promise.all([
+  const [total, missing, waiting] = await Promise.all([
     prisma.family.count({ where: { deletedAt: null } }),
     prisma.family.count({ where: { deletedAt: null, addressEn: "" } }),
+    prisma.formUpload.count({ where: { kind: "FAMILY", status: { in: ["EXTRACTED", "FAILED", "UPLOADED"] } } }),
   ]);
   return (
     <div className="space-y-4 max-w-2xl">
       <h1 className="page-title">{t.addrPageTitle}</h1>
       <p className="text-sm text-stone-600">{t.addrPageHelp}</p>
       <p className="text-sm">
-        {t.addrMissingCount}: <b>{missing}</b> / {total}
+        {t.addrMissingCount}: <b>{missing}</b> / {total} · {t.addrWaitingForms}: <b>{waiting}</b>
       </p>
       <section className="card p-4 space-y-2">
         <h2 className="section-title">1. {t.addrStepDownload}</h2>
-        <a href="/api/addresses" className="btn-secondary inline-block">⬇ family-addresses.csv</a>
+        <div className="flex flex-wrap gap-2">
+          <a href="/api/addresses" className="btn-secondary inline-block">⬇ {t.addrSavedFamilies} (family-addresses.csv)</a>
+          <a href="/api/addresses?list=forms" className="btn-secondary inline-block">⬇ {t.addrWaitingForms} (waiting-form-addresses.csv)</a>
+        </div>
       </section>
       <section className="card p-4 space-y-2">
         <h2 className="section-title">2. {t.addrStepUpload}</h2>
