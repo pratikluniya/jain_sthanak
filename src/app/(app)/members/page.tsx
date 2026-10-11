@@ -2,6 +2,7 @@ import { MISSING_DOD_WHERE } from "@/lib/deceased";
 import Link from "next/link";
 import DownloadButton from "@/components/DownloadButton";
 import { downloadProps } from "@/lib/downloadProps";
+import { GAPS, asGap, hasGap, type Gap } from "@/lib/gaps";
 import { prisma } from "@/lib/db";
 import { getDict, getLang } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
@@ -15,7 +16,7 @@ import { restoreMember } from "../families/actions";
 export const dynamic = "force-dynamic";
 const PAGE = 100;
 
-export default async function MembersPage({ searchParams }: { searchParams: { q?: string; blood?: string; page?: string; deleted?: string; nodod?: string; moved?: string } }) {
+export default async function MembersPage({ searchParams }: { searchParams: { q?: string; blood?: string; page?: string; deleted?: string; nodod?: string; moved?: string; gap?: string } }) {
   const s = await requireSession("view");
   const t = getDict();
   const lang = getLang();
@@ -40,19 +41,23 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
           : { deletedAt: null, status: { not: "MOVED_OUT" }, family: { deletedAt: null, status: { not: "MOVED_OUT" } } },
     include: { family: { select: { id: true, code: true, deletedAt: true } } },
   });
+  // missing-data lists (Aadhaar, photo, age & DOB): only on the normal list of living members
+  const normalList = !showDeleted && !showMoved && !onlyNoDod;
+  const gap = normalList ? asGap(searchParams.gap) : null;
+  const gapCounts = normalList ? Object.fromEntries(GAPS.map((g) => [g, all.filter((m) => hasGap(m, g)).length])) as Record<Gap, number> : null;
   const filtered = sortBySurname(
     all
-      .filter((m) => (!q || matchesSearch(m.searchKey, q)) && (!blood || m.bloodGroup === blood))
+      .filter((m) => (!q || matchesSearch(m.searchKey, q)) && (!blood || m.bloodGroup === blood) && (!gap || hasGap(m, gap)))
       .map((m) => ({ member: m })),
   ).map((r) => r.member);
   const shown = filtered.slice((page - 1) * PAGE, page * PAGE);
-  const qs = (p: number) => `?${new URLSearchParams({ q, blood, page: String(p), ...(showDeleted ? { deleted: "1" } : {}), ...(onlyNoDod ? { nodod: "1" } : {}), ...(showMoved ? { moved: "1" } : {}) })}`;
+  const qs = (p: number) => `?${new URLSearchParams({ q, blood, page: String(p), ...(showDeleted ? { deleted: "1" } : {}), ...(onlyNoDod ? { nodod: "1" } : {}), ...(showMoved ? { moved: "1" } : {}), ...(gap ? { gap } : {}) })}`;
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="page-title">{t.members} <span className="text-stone-500 text-base">({filtered.length})</span></h1>
-        {can(s.role, "export") && !showDeleted && !showMoved && !onlyNoDod && <DownloadButton {...downloadProps("members", t, lang)} />}
+        <h1 className="page-title">{gap ? t[`list_${gap}`] : t.members} <span className="text-stone-500 text-base">({filtered.length})</span></h1>
+        {can(s.role, "export") && normalList && <DownloadButton {...downloadProps("members", t, lang, gap)} />}
       </div>
       <SearchBox
         q={q}
@@ -65,6 +70,16 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
           </select>
         }
       />
+      {gapCounts && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          {GAPS.map((g) => (
+            <Link key={g} href={gap === g ? "/members" : `/members?gap=${g}`} className={gap === g ? "badge-red font-semibold ring-1 ring-red-300" : "badge-red opacity-70 hover:opacity-100"}>
+              {t[g]} · {gapCounts[g]}
+            </Link>
+          ))}
+          {gap && <span className="text-xs text-stone-500">{t.gapHelp} <Link href="/members" className="underline">{t.showActive}</Link></span>}
+        </div>
+      )}
       {(can(s.role, "restore") || can(s.role, "approve")) && (
         <div className="flex gap-2 text-sm">
           {can(s.role, "approve") && (

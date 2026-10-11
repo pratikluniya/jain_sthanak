@@ -357,6 +357,13 @@ const mr = {
   allRights: "सर्व हक्क राखीव.",
   call: "फोन करा",
   whatsapp: "WhatsApp वर संपर्क",
+  noaadhaar: "आधार नाही",
+  nophoto: "फोटो नाही",
+  noage: "वय/जन्मतारीख नाही",
+  list_noaadhaar: "आधार नसलेले सदस्य",
+  list_nophoto: "फोटो नसलेले सदस्य",
+  list_noage: "वय व जन्मतारीख नसलेले सदस्य",
+  gapHelp: "फक्त हयात सदस्य (मृत, बाहेरगावी गेलेले वगळून).",
 };
 
 export type Dict = { [K in keyof typeof mr]: string };
@@ -704,6 +711,13 @@ const hi: Dict = {
   allRights: "सर्वाधिकार सुरक्षित.",
   call: "कॉल करें",
   whatsapp: "WhatsApp पर संपर्क",
+  noaadhaar: "आधार नहीं",
+  nophoto: "फोटो नहीं",
+  noage: "आयु/जन्मतिथि नहीं",
+  list_noaadhaar: "बिना आधार वाले सदस्य",
+  list_nophoto: "बिना फोटो वाले सदस्य",
+  list_noage: "बिना आयु व जन्मतिथि वाले सदस्य",
+  gapHelp: "केवल जीवित सदस्य (दिवंगत, बाहर गए हुए छोड़कर).",
 };
 
 const en: Dict = {
@@ -1049,6 +1063,13 @@ const en: Dict = {
   allRights: "All rights reserved.",
   call: "Call",
   whatsapp: "Chat on WhatsApp",
+  noaadhaar: "Aadhaar missing",
+  nophoto: "Photo missing",
+  noage: "Age & DOB missing",
+  list_noaadhaar: "Members without Aadhaar",
+  list_nophoto: "Members without photo",
+  list_noage: "Members without age or date of birth",
+  gapHelp: "Living members only (deceased and moved-out left out).",
 };
 
 const DICTS: Record<Lang, Dict> = { mr, hi, en };
