@@ -3,6 +3,7 @@
 // so typing only a surname does not list a whole family or community.
 import { searchKey, matchesSearch } from "./normalize";
 import { evaluateAll, memberFullName, sortBySurname } from "./members";
+import { familyAddress } from "./addressEn";
 
 export function queryWords(q: string): string[] {
   return searchKey(q).split(" ").filter((w) => w.length >= 2);
@@ -21,5 +22,5 @@ export async function publicVoterSearch(q: string, english: boolean): Promise<Pu
   const words = queryWords(q).join(" ");
   const { rows } = await evaluateAll();
   const hits = rows.filter((r) => r.result.eligible && matchesSearch(r.member.searchKey, words));
-  return sortBySurname(hits).map((r) => ({ name: memberFullName(r.member, true, english), voterNo: r.member.voterNo, address: r.family.address }));
+  return sortBySurname(hits).map((r) => ({ name: memberFullName(r.member, true, english), voterNo: r.member.voterNo, address: familyAddress(r.family, english) }));
 }

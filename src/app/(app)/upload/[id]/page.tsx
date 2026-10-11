@@ -9,6 +9,7 @@ import { normalizeBloodGroup, normalizeMobile, parseAge, splitName } from "@/lib
 import Verifier, { type Row } from "./Verifier";
 import ApplicationCheck from "./ApplicationCheck";
 import { toEnglishName } from "@/lib/translit";
+import { addressToEnglish } from "@/lib/addressEn";
 
 /**
  * English spelling for the name parts. Uses the AI's English name when its words line up with the
@@ -95,6 +96,7 @@ export default async function VerifyPage({ params, searchParams }: { params: { i
           headName: x.headName,
           headNameEn: x.headNameEn || toEnglishName(x.headName),
           address: x.address,
+          addressEn: x.addressEn || addressToEnglish(x.address),
           panth: PANTH_MAP[x.panth],
           panthEvidence: x.panthEvidence,
           notes: [x.notes, x.continuesOnNextPage ? t.continuesNext : ""].filter(Boolean).join(" | "),

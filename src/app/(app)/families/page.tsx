@@ -8,6 +8,7 @@ import { can } from "@/lib/rbac";
 import { matchesSearch, searchKey } from "@/lib/normalize";
 import { collator, headLabel } from "@/lib/members";
 import SearchBox from "@/components/SearchBox";
+import { familyAddress } from "@/lib/addressEn";
 
 export const dynamic = "force-dynamic";
 
@@ -77,7 +78,7 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="font-semibold truncate">{headLabel(f, en) || "?"}</div>
-                  <div className="text-xs text-stone-500 truncate">{f.address}</div>
+                  <div className="text-xs text-stone-500 truncate">{familyAddress(f, en)}</div>
                 </div>
                 <span className="badge-gray shrink-0 whitespace-nowrap">{f.code}</span>
               </div>

@@ -107,6 +107,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
           <div>
             <h1 className="page-title">{headLabel(fam, en)}</h1>
             <p className="text-stone-600 text-sm">{fam.address}</p>
+            {fam.addressEn && fam.addressEn !== fam.address && <p className="text-stone-500 text-sm">{fam.addressEn}</p>}
             {fam.area && <p className="text-stone-500 text-xs">{t.area}: {fam.area}</p>}
           </div>
           <span className="badge-gray text-sm whitespace-nowrap">{fam.code}</span>

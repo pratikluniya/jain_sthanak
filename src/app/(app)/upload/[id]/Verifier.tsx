@@ -5,6 +5,7 @@ import type { Dict } from "@/lib/i18n";
 import type { DuplicateCandidate } from "@/lib/uploads";
 import { saveVerified } from "../actions";
 import { toEnglishName } from "@/lib/translit";
+import { addressToEnglish } from "@/lib/addressEn";
 
 export interface Row {
   key: string; // stable id so KYC links survive row deletes
@@ -48,7 +49,7 @@ const EMPTY: Omit<Row, "key"> = {
 export default function Verifier(props: {
   uploadId: string;
   images: string[];
-  initial: { headName: string; headNameEn: string; address: string; panth: Panth; panthEvidence: string; notes: string; rows: Row[] };
+  initial: { headName: string; headNameEn: string; address: string; addressEn: string; panth: Panth; panthEvidence: string; notes: string; rows: Row[] };
   duplicates: DuplicateCandidate[];
   kyc: KycInfo[];
   relations: { code: string; label: string }[];
@@ -60,6 +61,8 @@ export default function Verifier(props: {
   const [headEn, setHeadEn] = useState(props.initial.headNameEn);
   const [headEnTouched, setHeadEnTouched] = useState(false);
   const [address, setAddress] = useState(props.initial.address);
+  const [addressEn, setAddressEn] = useState(props.initial.addressEn);
+  const [addressEnTouched, setAddressEnTouched] = useState(false);
   const [panth, setPanth] = useState<Panth>(props.initial.panth);
   const [notes, setNotes] = useState(props.initial.notes);
   const [rows, setRows] = useState<Row[]>(props.initial.rows.length ? props.initial.rows : [{ ...EMPTY, key: "n0", relation: "SELF" }]);
@@ -105,6 +108,7 @@ export default function Verifier(props: {
         headName: head,
         headNameEn: headEn,
         address,
+        addressEn,
         panth,
         panthConfirmed: panth !== "UNKNOWN",
         notes,
@@ -166,7 +170,19 @@ export default function Verifier(props: {
           </div>
           <div>
             <label className="label">{t.address}</label>
-            <textarea className="input" rows={2} value={address} onChange={(e) => setAddress(e.target.value)} />
+            <textarea
+              className="input"
+              rows={2}
+              value={address}
+              onChange={(e) => {
+                setAddress(e.target.value);
+                if (!addressEnTouched) setAddressEn(addressToEnglish(e.target.value));
+              }}
+            />
+          </div>
+          <div>
+            <label className="label">{t.addressEn}</label>
+            <textarea className="input" rows={2} value={addressEn} onChange={(e) => { setAddressEn(e.target.value); setAddressEnTouched(true); }} />
           </div>
           <div>
             <label className="label">{t.panth}</label>

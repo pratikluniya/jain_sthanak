@@ -2,6 +2,7 @@
 // the applicant joins an existing family (e.g. a newly married wife or daughter-in-law) with a relation,
 // or starts a new family whose panth is "to verify". The application details are kept with the member.
 import type { Prisma } from "@prisma/client";
+import { addressToEnglish } from "./addressEn";
 import { prisma } from "./db";
 import { LIVE } from "./softDelete";
 import { nextFamilyCode } from "./counters";
@@ -219,6 +220,7 @@ export async function saveApplication(input: SaveApplicationInput): Promise<Save
           headName: fullName(a, false),
           headNameEn: [a.firstNameEn, a.middleNameEn, a.surnameEn].filter(Boolean).join(" "),
           address: app.homeAddress,
+          addressEn: addressToEnglish(app.homeAddress),
           panth: "UNKNOWN",
           panthStatus: "TO_VERIFY", // the form has no panth (decided 8 Oct 2026)
           formDate: recordedOn,

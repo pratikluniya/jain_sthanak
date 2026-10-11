@@ -25,6 +25,7 @@ export default async function UploadList() {
         <h1 className="page-title">{t.upload}</h1>
         <div className="flex gap-2">
           {can(session.role, "settings") && <Link href="/upload/import" className="btn-secondary">⬆ Import batch</Link>}
+          {can(session.role, "settings") && <Link href="/upload/addresses" className="btn-secondary">🔤 {t.addressEn}</Link>}
           <Link href="/upload/new" className="btn-primary">📷 {t.uploadForm}</Link>
         </div>
       </div>

@@ -9,6 +9,7 @@ import { computeSearchKey, inferHeadGender, prepareMember } from "@/lib/members"
 import { cleanAadhaar, encrypt } from "@/lib/crypto";
 import { putFile } from "@/lib/storage";
 import { toEnglishName } from "@/lib/translit";
+import { addressToEnglish } from "@/lib/addressEn";
 import { todayIST } from "@/lib/deceased";
 import type { Panth, PanthStatus, FamilyStatus } from "@prisma/client";
 import { restoreFamily as restoreFamilyRecord, restoreMember as restoreMemberRecord, softDeleteFamily, softDeleteMember } from "@/lib/softDelete";
@@ -32,7 +33,7 @@ function freshEnglish(postedEn: string, postedDev: string, old?: { en: string; d
 export async function saveFamily(fd: FormData) {
   const s = await requireSession("edit");
   const id = str(fd, "id");
-  const old = id ? await prisma.family.findUnique({ where: { id }, select: { headName: true, headNameEn: true, deletedAt: true, status: true } }) : null;
+  const old = id ? await prisma.family.findUnique({ where: { id }, select: { headName: true, headNameEn: true, address: true, addressEn: true, deletedAt: true, status: true } }) : null;
   if (old?.deletedAt) throw new Error("Family is deleted");
   const panth = (PANTHS.includes(str(fd, "panth") as Panth) ? str(fd, "panth") : "UNKNOWN") as Panth;
   const data = {
@@ -41,6 +42,9 @@ export async function saveFamily(fd: FormData) {
       freshEnglish(str(fd, "headNameEn"), str(fd, "headName"), old && { en: old.headNameEn, dev: old.headName }) ||
       toEnglishName(str(fd, "headName")),
     address: str(fd, "address"),
+    addressEn:
+      freshEnglish(str(fd, "addressEn"), str(fd, "address"), old && { en: old.addressEn, dev: old.address }) ||
+      addressToEnglish(str(fd, "address")),
     area: str(fd, "area"),
     panth,
     // choosing a real panth while editing counts as confirming it (edit is done by trusted roles)

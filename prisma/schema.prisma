@@ -109,6 +109,7 @@ model Family {
   headName    String       // as written on the form
   headNameEn  String       @default("") // English spelling
   address     String       @default("")
+  addressEn   String       @default("") // English spelling of the address
   area        String       @default("")
   panth       Panth        @default(UNKNOWN)
   panthStatus PanthStatus  @default(TO_VERIFY)

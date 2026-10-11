@@ -1,6 +1,6 @@
 // Builds rows for voter list / member list exports (Excel and print).
 // Headings in the chosen language (Marathi by default), digits always English (decided 27 Sep 2026).
-// In English, names use the saved English spelling; addresses, education and occupation stay as entered.
+// In English, names and addresses use the saved English spelling (address added 11 Oct 2026); education and occupation stay as entered.
 import { exportDictFor, type Dict, type Lang } from "./i18n";
 import { relationLabel } from "./relations";
 import { evaluateAll, memberFullName, sortBySurname, type VoterRow } from "./members";
@@ -8,6 +8,7 @@ import { toEnglishName } from "./translit";
 import { prisma } from "./db";
 import { collator } from "./members";
 import { hasAadhaarImage, hasGap, type Gap } from "./gaps";
+import { familyAddress } from "./addressEn";
 
 export type ListKind = "voters" | "members" | "families";
 export const LIST_KINDS: ListKind[] = ["voters", "members", "families"];
@@ -121,7 +122,7 @@ async function buildFamilyExport(fields: Field[], lang: Lang): Promise<ExportDat
       serial: i + 1,
       familyCode: f.code,
       headName: head(f),
-      address: f.address,
+      address: familyAddress(f, english),
       area: f.area,
       phone: familyPhone(f.members),
       memberCount: f.members.length,
@@ -153,7 +154,7 @@ export async function buildExport(list: ListKind, fields: Field[], lang: Lang = 
       gender: m.gender === "UNKNOWN" ? "" : t[m.gender],
       age,
       relation: relationLabel(m.relation, lang),
-      address: f.address,
+      address: familyAddress(f, english),
       mobile: m.mobile,
       familyCode: f.code,
       headName: english ? f.headNameEn || toEnglishName(f.headName) : f.headName,

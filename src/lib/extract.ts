@@ -39,6 +39,7 @@ export const ExtractedForm = z.object({
   headName: z.string(),
   headNameEn: z.string().optional(),
   address: z.string(),
+  addressEn: z.string().optional(),
   panth: z.enum(["STHANAKVASI", "MANDIRMARGI", "TERAPANTH", "DIGAMBAR", "BLANK"]),
   panthEvidence: z.string(),
   continuesOnNextPage: z.boolean(),

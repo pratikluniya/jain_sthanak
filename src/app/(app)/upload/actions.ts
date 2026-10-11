@@ -9,6 +9,7 @@ import { nextFamilyCode } from "@/lib/counters";
 import { inferHeadGender, prepareMember } from "@/lib/members";
 import { runExtraction } from "@/lib/uploads";
 import { toEnglishName } from "@/lib/translit";
+import { addressToEnglish } from "@/lib/addressEn";
 import type { ExtractedForm } from "@/lib/extract";
 import { flashErr, flashOk } from "@/lib/flash";
 
@@ -19,6 +20,7 @@ const Payload = z.object({
   headName: z.string(),
   headNameEn: z.string().default(""),
   address: z.string(),
+  addressEn: z.string().default(""),
   panth: z.enum(["STHANAKVASI", "MANDIRMARGI", "TERAPANTH", "DIGAMBAR", "UNKNOWN"]),
   panthConfirmed: z.boolean(),
   notes: z.string(),
@@ -75,6 +77,7 @@ export async function saveVerified(raw: VerifyPayload): Promise<{ familyId?: str
           headName: p.headName,
           headNameEn: p.headNameEn.trim() || toEnglishName(p.headName),
           address: p.address,
+          addressEn: p.addressEn.trim() || addressToEnglish(p.address),
           panth: p.panth,
           panthStatus: p.panth !== "UNKNOWN" && p.panthConfirmed ? "CONFIRMED" : "TO_VERIFY",
           notes: p.notes,
