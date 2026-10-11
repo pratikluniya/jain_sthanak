@@ -24,6 +24,8 @@ export default function DownloadButton(props: {
   defaults: string[];
   langs: { code: string; label: string }[];
   initialLang: string;
+  /** extra filter passed to the Excel / print links, e.g. "&gap=nophoto" */
+  extraQuery?: string;
   t: DownloadLabels;
 }) {
   const [open, setOpen] = useState(false);
@@ -43,7 +45,7 @@ export default function DownloadButton(props: {
 
   // keep the standard column order whatever order they were ticked in
   const ordered = props.fields.map((f) => f.key).filter((k) => picked.includes(k));
-  const qs = `list=${props.list}&fields=${ordered.join(",")}&lang=${lang}`;
+  const qs = `list=${props.list}&fields=${ordered.join(",")}&lang=${lang}${props.extraQuery ?? ""}`;
   const none = ordered.length === 0;
   const off = none ? "pointer-events-none opacity-50" : "";
 

@@ -21,6 +21,7 @@ import { LIVE } from "@/lib/softDelete";
 import ConfirmButton from "@/components/ConfirmButton";
 import { formImageUrls } from "@/lib/storage";
 import ApplicationSummary from "@/components/ApplicationSummary";
+import { memberGaps } from "@/lib/gaps";
 
 export const dynamic = "force-dynamic";
 
@@ -194,6 +195,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
                   {m.aadhaarLast4 || m.kycFileKey || m.aadhaarBackKey ? (
                     m.kycVerified ? <span className="badge-green">{t.kycVerified}</span> : <span className="badge-amber">{t.kycPending}</span>
                   ) : null}
+                  {!deleted && fam.status !== "MOVED_OUT" && memberGaps(m).filter((g) => g !== "noage").map((g) => <span key={g} className="badge-red">{t[g]}</span>)}
                 </div>
               </div>
               {m.application && <ApplicationSummary a={m.application} t={t} editHref={canEdit ? `/families/${fam.id}/application?m=${m.id}` : undefined} />}

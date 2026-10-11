@@ -4,6 +4,7 @@ import { getLiveSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import { asListKind, buildExport, fileBase, parseFields } from "@/lib/exportRows";
 import { audit } from "@/lib/audit";
+import { asGap } from "@/lib/gaps";
 import { asLang, exportDictFor } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,8 @@ export async function GET(req: Request) {
   const list = asListKind(url.searchParams.get("list"));
   const fields = parseFields(url.searchParams.get("fields"), list);
   const lang = asLang(url.searchParams.get("lang"));
-  const data = await buildExport(list, fields, lang);
+  const gap = list === "members" ? asGap(url.searchParams.get("gap")) : null;
+  const data = await buildExport(list, fields, lang, gap);
   const t = exportDictFor(lang);
 
   const wb = new ExcelJS.Workbook();
@@ -46,8 +48,8 @@ export async function GET(req: Request) {
   ws.pageSetup.printTitlesRow = "3:3";
 
   const buf = await wb.xlsx.writeBuffer();
-  await audit(s.uid, "export", list, null, { format: "xlsx", lang, fields, rows: data.rows.length });
-  const name = `${fileBase(list)}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+  await audit(s.uid, "export", list, null, { format: "xlsx", lang, fields, gap, rows: data.rows.length });
+  const name = `${fileBase(list)}${gap ? `-${gap}` : ""}-${new Date().toISOString().slice(0, 10)}.xlsx`;
   return new NextResponse(buf as ArrayBuffer, {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

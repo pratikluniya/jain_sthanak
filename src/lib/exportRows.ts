@@ -7,6 +7,7 @@ import { evaluateAll, memberFullName, sortBySurname, type VoterRow } from "./mem
 import { toEnglishName } from "./translit";
 import { prisma } from "./db";
 import { collator } from "./members";
+import { hasAadhaarImage, hasGap, type Gap } from "./gaps";
 
 export type ListKind = "voters" | "members" | "families";
 export const LIST_KINDS: ListKind[] = ["voters", "members", "families"];
@@ -131,13 +132,13 @@ async function buildFamilyExport(fields: Field[], lang: Lang): Promise<ExportDat
   return { title: t.headList, subtitle: `${t.sangh} · ${t.total}: ${rows.length}`, headers: fields.map((k) => labels[k]), rows };
 }
 
-export async function buildExport(list: ListKind, fields: Field[], lang: Lang = "mr"): Promise<ExportData> {
+export async function buildExport(list: ListKind, fields: Field[], lang: Lang = "mr", gap: Gap | null = null): Promise<ExportData> {
   if (list === "families") return buildFamilyExport(fields, lang);
   const t = exportDictFor(lang);
   const english = lang === "en";
   const labels = fieldLabels(t);
   const { rows, ageDate } = await evaluateAll();
-  const picked = list === "voters" ? rows.filter((r) => r.result.eligible) : rows;
+  const picked = list === "voters" ? rows.filter((r) => r.result.eligible) : gap ? rows.filter((r) => hasGap(r.member, gap)) : rows;
   const sorted = english ? sortByEnglishSurname(picked) : sortBySurname(picked);
   const dateStr = ageDate.toLocaleDateString("en-IN");
 
@@ -161,13 +162,13 @@ export async function buildExport(list: ListKind, fields: Field[], lang: Lang = 
       bloodGroup: m.bloodGroup,
       panth: f.panthStatus === "CONFIRMED" ? t[f.panth] : t.toVerify,
       status: t[m.status],
-      kyc: m.kycVerified ? t.kycVerified : m.aadhaarLast4 || m.kycFileKey ? t.kycPending : "",
+      kyc: m.kycVerified ? t.kycVerified : hasAadhaarImage(m) || m.aadhaarLast4 ? t.kycPending : m.status === "ACTIVE" ? t.noaadhaar : "",
     };
     return fields.map((k) => value[k] ?? "");
   });
 
   return {
-    title: list === "voters" ? t.voterList : t.allMembers,
+    title: list === "voters" ? t.voterList : gap ? t[`list_${gap}`] : t.allMembers,
     subtitle:
       list === "voters"
         ? `${t.sangh} · ${t.ageRuleShort} ${dateStr} · ${t.total}: ${out.length}`
