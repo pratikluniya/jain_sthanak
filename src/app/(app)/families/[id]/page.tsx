@@ -8,7 +8,7 @@ import { relationLabel } from "@/lib/relations";
 import { checkVoter } from "@/lib/eligibility";
 import { effectiveAgeDate, getSettings } from "@/lib/settings";
 import { memberFullName, headLabel } from "@/lib/members";
-import { approveKyc, confirmPanth, deleteFamily, deleteMember, restoreFamily } from "../actions";
+import { confirmPanth, deleteFamily, deleteMember, restoreFamily } from "../actions";
 import { RECEIPTS_ENABLED } from "@/lib/features";
 import { initials } from "@/lib/initials";
 import MarkDeceasedButton from "@/components/MarkDeceasedButton";
@@ -21,7 +21,7 @@ import { LIVE } from "@/lib/softDelete";
 import ConfirmButton from "@/components/ConfirmButton";
 import { formImageUrls } from "@/lib/storage";
 import ApplicationSummary from "@/components/ApplicationSummary";
-import { memberGaps } from "@/lib/gaps";
+import { aadhaarPendingCount, memberGaps } from "@/lib/gaps";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +42,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
   });
   if (!fam) notFound();
   const deleted = !!fam.deletedAt;
+  const aadhaarPending = aadhaarPendingCount(fam.members.filter((m) => !m.deletedAt));
   // moved-out families and members are seen only by Admin and Operator (who can undo)
   const seesMoved = can(s.role, "approve");
   const familyMoved = fam.status === "MOVED_OUT";
@@ -109,6 +110,11 @@ export default async function FamilyPage({ params }: { params: { id: string } })
             <p className="text-stone-600 text-sm">{fam.address}</p>
             {fam.addressEn && fam.addressEn !== fam.address && <p className="text-stone-500 text-sm">{fam.addressEn}</p>}
             {fam.area && <p className="text-stone-500 text-xs">{t.area}: {fam.area}</p>}
+            {!deleted && fam.status !== "MOVED_OUT" && (aadhaarPending === 0 ? (
+              <span className="badge-green text-xs mt-1 inline-block">✔ {t.aadhaarUploaded}</span>
+            ) : (
+              <span className="badge-amber text-xs mt-1 inline-block">{t.aadhaarPending}: {aadhaarPending}</span>
+            ))}
           </div>
           <span className="badge-gray text-sm whitespace-nowrap">{fam.code}</span>
         </div>
@@ -193,21 +199,12 @@ export default async function FamilyPage({ params }: { params: { id: string } })
                     <span className="badge-red">{t[m.status]}{m.status === "DECEASED" && m.dateOfDeath ? ` · ${m.dateOfDeath.toLocaleDateString("en-IN")}` : ""}</span>
                   )}
                   {m.status === "DECEASED" && !m.dateOfDeath && <span className="badge-amber">⚠ {t.missingDod}</span>}
-                  {m.aadhaarLast4 || m.kycFileKey || m.aadhaarBackKey ? (
-                    m.kycVerified ? <span className="badge-green">{t.kycVerified}</span> : <span className="badge-amber">{t.kycPending}</span>
-                  ) : null}
-                  {!deleted && fam.status !== "MOVED_OUT" && memberGaps(m).filter((g) => g !== "noage").map((g) => <span key={g} className="badge-red">{t[g]}</span>)}
+                  {!deleted && fam.status !== "MOVED_OUT" && memberGaps(m).map((g) => <span key={g} className="badge-red">{t[g]}</span>)}
                 </div>
               </div>
               {m.application && <ApplicationSummary a={m.application} t={t} editHref={canEdit ? `/families/${fam.id}/application?m=${m.id}` : undefined} />}
               <div className="mt-2 flex flex-wrap gap-2">
                 {canEdit && <Link href={`/families/${fam.id}/member?m=${m.id}`} className="btn-secondary btn-sm">{t.edit}</Link>}
-                {can(s.role, "approve") && !deleted && !m.kycVerified && (m.aadhaarLast4 || m.kycFileKey || m.aadhaarBackKey) && (
-                  <form action={approveKyc}>
-                    <input type="hidden" name="memberId" value={m.id} />
-                    <button className="btn-secondary btn-sm">KYC {t.approve}</button>
-                  </form>
-                )}
                 {can(s.role, "viewAadhaar") && m.kycFileKey && (
                   <a href={`/api/files/kyc/${m.kycFileKey}`} target="_blank" className="btn-secondary btn-sm">{m.kycDocType && m.kycDocType !== "AADHAAR" ? m.kycDocType : t.aadhaarFront} 📄</a>
                 )}

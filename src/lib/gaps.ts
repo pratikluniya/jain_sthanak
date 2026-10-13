@@ -1,16 +1,19 @@
-// Missing-data lists (decided 11 Oct 2026). Only living members count: status ACTIVE
+// Missing-data flags (decided 11 Oct 2026, changed 12 Oct 2026). Only living members count: status ACTIVE
 // (deceased, married-out and moved-out members, and deleted ones, are never flagged).
-//  - noaadhaar: no Aadhaar image at all. The front alone is enough; a typed number without an image is not.
-//  - nophoto:   no passport photo.
-//  - noage:     both age and date of birth are empty.
-//  - nomobile:  no mobile number (added 11 Oct 2026).
+//  - noaadhaar: no Aadhaar image, for members 18 or older (or whose age is unknown). The front alone is
+//               enough and an uploaded Aadhaar is never "pending": there is no separate KYC approval.
+//  - nophoto:   no photo.
+//  - nomobile:  no mobile number.
+//  - nodob:     no date of birth (even when an age is written).
+//  - noage:     neither age nor date of birth.
+import { ageOn } from "./eligibility";
 
-export const GAPS = ["noaadhaar", "nophoto", "nomobile", "noage"] as const;
+export const GAPS = ["noaadhaar", "nophoto", "nomobile", "nodob", "noage"] as const;
 export type Gap = (typeof GAPS)[number];
 
 export const asGap = (v: string | null | undefined): Gap | null => (GAPS.includes(v as Gap) ? (v as Gap) : null);
 
-interface GapMember {
+export interface GapMember {
   status: string;
   kycFileKey: string | null;
   kycDocType: string | null;
@@ -19,6 +22,7 @@ interface GapMember {
   mobile: string;
   age: number | null;
   dob: Date | null;
+  ageRecordedOn?: Date | null;
 }
 
 /** An Aadhaar image is on file: the front (when the single KYC file is an Aadhaar) or the back. */
@@ -27,14 +31,26 @@ export function hasAadhaarImage(m: GapMember): boolean {
   return !!m.kycFileKey && (!m.kycDocType || m.kycDocType === "AADHAAR");
 }
 
-export function memberGaps(m: GapMember): Gap[] {
+/** Aadhaar is expected from members who are 18 or older today, and from those whose age is not known. */
+export function needsAadhaar(m: GapMember, today = new Date()): boolean {
+  const a = ageOn({ age: m.age, dob: m.dob, ageRecordedOn: m.ageRecordedOn ?? null }, today);
+  return a.max === null || a.max >= 18;
+}
+
+export function memberGaps(m: GapMember, today = new Date()): Gap[] {
   if (m.status !== "ACTIVE") return [];
   const out: Gap[] = [];
-  if (!hasAadhaarImage(m)) out.push("noaadhaar");
+  if (!hasAadhaarImage(m) && needsAadhaar(m, today)) out.push("noaadhaar");
   if (!m.photoKey) out.push("nophoto");
   if (!m.mobile.trim()) out.push("nomobile");
+  if (!m.dob) out.push("nodob");
   if (m.age === null && !m.dob) out.push("noage");
   return out;
 }
 
 export const hasGap = (m: GapMember, g: Gap) => memberGaps(m).includes(g);
+
+/** Family summary: how many living members of 18+ still have no Aadhaar uploaded (0 = all uploaded). */
+export function aadhaarPendingCount(members: GapMember[], today = new Date()): number {
+  return members.filter((m) => memberGaps(m, today).includes("noaadhaar")).length;
+}

@@ -247,15 +247,6 @@ export async function restoreMember(fd: FormData) {
   else flashErr("error");
 }
 
-export async function approveKyc(fd: FormData) {
-  const s = await requireSession("approve");
-  const id = str(fd, "memberId");
-  const m = await prisma.member.update({ where: { id }, data: { kycVerified: true, kycVerifiedBy: s.name, kycVerifiedAt: new Date() } });
-  await audit(s.uid, "approve", "Member", id, { kyc: true });
-  revalidatePath(`/families/${m.familyId}`);
-  flashOk("approved");
-}
-
 /** Recompute search keys (e.g. after rule changes). */
 export async function reindexFamily(familyId: string) {
   const fam = await prisma.family.findUniqueOrThrow({ where: { id: familyId }, include: { members: true } });

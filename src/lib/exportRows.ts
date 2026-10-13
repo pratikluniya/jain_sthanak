@@ -163,7 +163,7 @@ export async function buildExport(list: ListKind, fields: Field[], lang: Lang = 
       bloodGroup: m.bloodGroup,
       panth: f.panthStatus === "CONFIRMED" ? t[f.panth] : t.toVerify,
       status: t[m.status],
-      kyc: m.kycVerified ? t.kycVerified : hasAadhaarImage(m) || m.aadhaarLast4 ? t.kycPending : m.status === "ACTIVE" ? t.noaadhaar : "",
+      kyc: hasAadhaarImage(m) ? t.aadhaarUploaded : hasGap(m, "noaadhaar") ? t.noaadhaar : "",
     };
     return fields.map((k) => value[k] ?? "");
   });

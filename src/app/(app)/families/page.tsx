@@ -1,3 +1,4 @@
+import { aadhaarPendingCount } from "@/lib/gaps";
 import Link from "next/link";
 import DownloadButton from "@/components/DownloadButton";
 import { downloadProps } from "@/lib/downloadProps";
@@ -33,7 +34,7 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
     include: {
       members: {
         where: showDeleted ? { deletedAt: { not: null } } : showMoved ? { deletedAt: null } : { deletedAt: null, status: { not: "MOVED_OUT" } },
-        select: { searchKey: true, mobile: true },
+        select: { searchKey: true, mobile: true, status: true, kycFileKey: true, kycDocType: true, aadhaarBackKey: true, photoKey: true, age: true, dob: true, ageRecordedOn: true },
       },
     },
   });
@@ -89,6 +90,11 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
                 ) : (
                   <span className="badge-amber">{t.panth}: {t.toVerify}</span>
                 )}
+                {!showDeleted && f.status === "ACTIVE" && (aadhaarPendingCount(f.members) === 0 ? (
+                  <span className="badge-green">✔ {t.aadhaarUploaded}</span>
+                ) : (
+                  <span className="badge-amber">{t.aadhaarPending}: {aadhaarPendingCount(f.members)}</span>
+                ))}
                 {f.status !== "ACTIVE" && <span className="badge-red">{t[f.status]}</span>}
                 {f.deletedAt && <span className="badge-red">{t.deletedTag} · {f.deletedAt.toLocaleDateString("en-IN")}</span>}
               </div>
