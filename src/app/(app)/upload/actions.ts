@@ -12,6 +12,8 @@ import { toEnglishName } from "@/lib/translit";
 import { addressToEnglish } from "@/lib/addressEn";
 import type { ExtractedForm } from "@/lib/extract";
 import { flashErr, flashOk } from "@/lib/flash";
+import { fillMarathi, fillMarathiAddress } from "@/lib/toMarathi";
+import { loadLearnedNames } from "@/lib/learnedNames";
 
 const Payload = z.object({
   uploadId: z.string(),
@@ -37,6 +39,7 @@ const Payload = z.object({
       middleNameEn: z.string().default(""),
       surnameEn: z.string().default(""),
       age: z.string(),
+      dob: z.string().default(""),
       relation: z.string(),
       relationRaw: z.string(),
       education: z.string(),
@@ -57,6 +60,9 @@ export async function saveVerified(raw: VerifyPayload): Promise<{ familyId?: str
     return { error: "already saved" };
   }
   const formDate = up.createdAt;
+  await loadLearnedNames();
+  const head = fillMarathi(p.headName, p.headNameEn);
+  const addr = fillMarathiAddress(p.address, p.addressEn);
 
   const familyId = await prisma.$transaction(async (tx) => {
     let fam;
@@ -74,10 +80,10 @@ export async function saveVerified(raw: VerifyPayload): Promise<{ familyId?: str
       fam = await tx.family.create({
         data: {
           code,
-          headName: p.headName,
-          headNameEn: p.headNameEn.trim() || toEnglishName(p.headName),
-          address: p.address,
-          addressEn: p.addressEn.trim() || addressToEnglish(p.address),
+          headName: head.dev,
+          headNameEn: head.en || toEnglishName(head.dev),
+          address: addr.dev,
+          addressEn: addr.en || addressToEnglish(addr.dev),
           panth: p.panth,
           panthStatus: p.panth !== "UNKNOWN" && p.panthConfirmed ? "CONFIRMED" : "TO_VERIFY",
           notes: p.notes,
@@ -92,7 +98,8 @@ export async function saveVerified(raw: VerifyPayload): Promise<{ familyId?: str
     for (const m of p.members) {
       if (!m.firstName.trim() && !m.nameRaw.trim()) continue;
       i++;
-      const { key, ...input } = m;
+      const { key, ...rest } = m;
+      const input = { ...rest, dob: /^\d{4}-\d{2}-\d{2}$/.test(rest.dob) ? rest.dob : null };
       const data = prepareMember({ ...input, serial: start + i }, fam.code, formDate);
       data.nameRaw = m.nameRaw || data.nameRaw;
       const created = await tx.member.create({ data: { ...data, familyId: fam.id } });
@@ -111,7 +118,8 @@ export async function saveVerified(raw: VerifyPayload): Promise<{ familyId?: str
           kycDocType: k.docType,
           aadhaarEnc: k.enc ?? undefined,
           aadhaarLast4: k.last4 ?? undefined,
-          dob: k.dob ? new Date(k.dob) : undefined,
+          // a date typed on the check screen wins over the one read from the Aadhaar
+          dob: k.dob && !p.members.find((m) => m.key === a.key)?.dob ? new Date(k.dob) : undefined,
           kycVerified: false,
         },
       });

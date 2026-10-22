@@ -19,6 +19,7 @@ export interface Row {
   surnameEn: string;
   enTouched?: boolean; // volunteer typed the English spelling: stop auto-filling it
   age: string;
+  dob: string; // YYYY-MM-DD, prefilled from the member's Aadhaar when the form reader found one (added 22 Oct 2026)
   relation: string;
   relationRaw: string;
   education: string;
@@ -42,7 +43,7 @@ export interface KycInfo {
 type Panth = "STHANAKVASI" | "MANDIRMARGI" | "TERAPANTH" | "DIGAMBAR" | "UNKNOWN";
 
 const EMPTY: Omit<Row, "key"> = {
-  nameRaw: "", title: "", firstName: "", middleName: "", surname: "", firstNameEn: "", middleNameEn: "", surnameEn: "", age: "", relation: "OTHER", relationRaw: "",
+  nameRaw: "", title: "", firstName: "", middleName: "", surname: "", firstNameEn: "", middleNameEn: "", surnameEn: "", age: "", dob: "", relation: "OTHER", relationRaw: "",
   education: "", occupation: "", mobile: "", bloodGroup: "", uncertain: [], low: false,
 };
 
@@ -232,6 +233,10 @@ export default function Verifier(props: {
               <div>
                 <label className="label text-xs">{t.age}</label>
                 <input className={`input ${warn(r, "age")}`} inputMode="numeric" value={r.age} onChange={(e) => upd(i, "age", e.target.value)} />
+              </div>
+              <div>
+                <label className="label text-xs">{t.dob}</label>
+                <input className="input" type="date" max={new Date().toISOString().slice(0, 10)} value={r.dob} onChange={(e) => upd(i, "dob", e.target.value)} />
               </div>
               <div>
                 <label className="label text-xs">{t.relation} {r.relationRaw && <span className="text-stone-400">({r.relationRaw})</span>}</label>

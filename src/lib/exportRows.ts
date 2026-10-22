@@ -3,7 +3,7 @@
 // In English, names and addresses use the saved English spelling (address added 11 Oct 2026); education and occupation stay as entered.
 import { exportDictFor, type Dict, type Lang } from "./i18n";
 import { relationLabel } from "./relations";
-import { evaluateAll, memberFullName, sortBySurname, type VoterRow } from "./members";
+import { evaluateAll, memberFullName, surnameFirstName, sortBySurname, type VoterRow } from "./members";
 import { toEnglishName } from "./translit";
 import { prisma } from "./db";
 import { collator } from "./members";
@@ -150,7 +150,7 @@ export async function buildExport(list: ListKind, fields: Field[], lang: Lang = 
     const value: Partial<Record<Field, string | number>> = {
       serial: i + 1,
       voterNo: m.voterNo ?? "",
-      fullName: memberFullName(m, true, english),
+      fullName: list === "voters" ? surnameFirstName(m, english) : memberFullName(m, true, english),
       gender: m.gender === "UNKNOWN" ? "" : t[m.gender],
       age,
       relation: relationLabel(m.relation, lang),

@@ -60,6 +60,7 @@ export default async function VerifyPage({ params, searchParams }: { params: { i
       surname: n.surname,
       ...englishFor(n, m.nameEn),
       age: parseAge(m.age)?.toString() ?? "",
+      dob: (x.kyc ?? []).find((k) => k.memberSerial === m.serial && k.dob)?.dob ?? "",
       relation: relationFromRaw(m.relationRaw),
       relationRaw: m.relationRaw,
       education: m.education,

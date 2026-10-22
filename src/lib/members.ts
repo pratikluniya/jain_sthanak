@@ -1,4 +1,5 @@
 import type { Family, Member, Prisma } from "@prisma/client";
+import { fillMarathi, isLatinOnly, wordToMarathi } from "./toMarathi";
 import { LIVE } from "./softDelete";
 import { prisma } from "./db";
 import { fullName, normalizeBloodGroup, normalizeMobile, parseAge, searchKey, splitName } from "./normalize";
@@ -24,6 +25,14 @@ export function memberFullName(m: NameFields, withTitle = true, english = false)
     },
     withTitle,
   );
+}
+
+/** Voter-list style name: surname first, then first and middle name, no title (decided 22 Oct 2026). */
+export function surnameFirstName(m: NameFields, english = false): string {
+  const p = english
+    ? { surname: m.surnameEn || toEnglishName(m.surname), firstName: m.firstNameEn || toEnglishName(m.firstName), middleName: m.middleNameEn || toEnglishName(m.middleName) }
+    : { surname: m.surname, firstName: m.firstName, middleName: m.middleName };
+  return [p.surname, p.firstName, p.middleName].map((x) => (x ?? "").trim()).filter(Boolean).join(" ");
 }
 
 export function computeSearchKey(
@@ -78,8 +87,22 @@ export interface MemberInput {
   serial?: number;
 }
 
+/**
+ * Names typed in English are written in Marathi too (decided 22 Oct 2026): English letters in a Marathi box
+ * move to the English box, and an empty Marathi name is written from the English one.
+ */
+function marathiBothWays(input: MemberInput): MemberInput {
+  if (input.firstName === undefined) return input;
+  const f = fillMarathi(input.firstName ?? "", input.firstNameEn ?? "");
+  const mid = fillMarathi(input.middleName ?? "", input.middleNameEn ?? "");
+  const s = fillMarathi(input.surname ?? "", input.surnameEn ?? "");
+  const title = isLatinOnly(input.title ?? "") ? wordToMarathi(input.title ?? "") : input.title;
+  return { ...input, title, firstName: f.dev, firstNameEn: f.en, middleName: mid.dev, middleNameEn: mid.en, surname: s.dev, surnameEn: s.en };
+}
+
 /** Turn raw input into clean DB fields (name split, digits, relation, gender, search key). */
 export function prepareMember(input: MemberInput, familyCode: string, ageRecordedOn: Date) {
+  input = marathiBothWays(input);
   const parts =
     input.firstName !== undefined
       ? { title: input.title ?? "", firstName: input.firstName ?? "", middleName: input.middleName ?? "", surname: input.surname ?? "", deceasedHint: false }

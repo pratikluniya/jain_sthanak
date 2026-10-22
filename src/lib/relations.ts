@@ -61,7 +61,7 @@ export function relationFromRaw(raw: string): string {
   return "OTHER";
 }
 
-export function relationLabel(code: string, lang: "mr" | "hi" | "en"): string {
+export function relationLabel(code: string, lang: "mr" | "en"): string {
   const r = BY_CODE.get(code) ?? BY_CODE.get("OTHER")!;
   return r[lang];
 }

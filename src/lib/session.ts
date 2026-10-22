@@ -5,7 +5,7 @@ import { can, type Permission, type Role } from "./rbac";
 import { prisma } from "./db";
 
 const COOKIE = "js_session";
-const MAX_AGE = 60 * 60 * 12; // 12 hours
+const MAX_AGE = 60 * 60 * 24 * 8; // 8 days from login (decided 22 Oct 2026)
 
 export interface Session {
   uid: string;
@@ -51,7 +51,7 @@ export async function getSession(): Promise<Session | null> {
 
 /**
  * The login cookie checked against the database: null when the user was disabled or deleted after logging in.
- * Name and role come from the database, so changes apply at once instead of after the 12-hour login ends.
+ * Name and role come from the database, so changes apply at once instead of after the 8-day login ends.
  * Use this (not getSession) wherever access is decided.
  */
 export async function getLiveSession(): Promise<Session | null> {

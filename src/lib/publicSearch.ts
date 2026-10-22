@@ -2,7 +2,7 @@
 // The query must have at least two words of two letters or more (first name + surname, decided 7 Oct 2026),
 // so typing only a surname does not list a whole family or community.
 import { searchKey, matchesSearch } from "./normalize";
-import { evaluateAll, memberFullName, sortBySurname } from "./members";
+import { evaluateAll, sortBySurname, surnameFirstName } from "./members";
 import { familyAddress } from "./addressEn";
 
 export function queryWords(q: string): string[] {
@@ -22,5 +22,5 @@ export async function publicVoterSearch(q: string, english: boolean): Promise<Pu
   const words = queryWords(q).join(" ");
   const { rows } = await evaluateAll();
   const hits = rows.filter((r) => r.result.eligible && matchesSearch(r.member.searchKey, words));
-  return sortBySurname(hits).map((r) => ({ name: memberFullName(r.member, true, english), voterNo: r.member.voterNo, address: familyAddress(r.family, english) }));
+  return sortBySurname(hits).map((r) => ({ name: surnameFirstName(r.member, english), voterNo: r.member.voterNo, address: familyAddress(r.family, english) }));
 }
