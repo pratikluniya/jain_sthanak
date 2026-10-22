@@ -9,6 +9,7 @@ import { requireSession } from "@/lib/session";
 import { RELATIONS } from "@/lib/relations";
 import { saveMember } from "../../actions";
 import { headLabel } from "@/lib/members";
+import LiveBilingual from "@/components/LiveBilingual";
 
 export default async function MemberFormPage({ params, searchParams }: { params: { id: string }; searchParams: { m?: string; e?: string } }) {
   const s = await requireSession("edit");
@@ -33,6 +34,7 @@ export default async function MemberFormPage({ params, searchParams }: { params:
       {searchParams.e === "dod" && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{t.dateRequiredEdit}</p>}
       {m?.nameRaw && <p className="text-sm text-stone-500">{t.onForm}: {m.nameRaw} {m.relationRaw && `· ${m.relationRaw}`}</p>}
       <form action={saveMember} className="card p-4 space-y-3" encType="multipart/form-data">
+        <LiveBilingual />
         <input type="hidden" name="familyId" value={fam.id} />
         {m && <input type="hidden" name="memberId" value={m.id} />}
         <div className="grid grid-cols-3 gap-3">
