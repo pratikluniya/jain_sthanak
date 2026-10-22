@@ -6,6 +6,7 @@ import type { DuplicateCandidate } from "@/lib/uploads";
 import { saveVerified } from "../actions";
 import { toEnglishName } from "@/lib/translit";
 import { addressToEnglish } from "@/lib/addressEn";
+import { addressToMarathi, isLatinOnly, toMarathiName } from "@/lib/toMarathi";
 
 export interface Row {
   key: string; // stable id so KYC links survive row deletes
@@ -18,6 +19,7 @@ export interface Row {
   middleNameEn: string;
   surnameEn: string;
   enTouched?: boolean; // volunteer typed the English spelling: stop auto-filling it
+  devAuto?: boolean; // Marathi name is empty or was written from the English: keep writing it live (22 Oct 2026)
   age: string;
   dob: string; // YYYY-MM-DD, prefilled from the member's Aadhaar when the form reader found one (added 22 Oct 2026)
   relation: string;
@@ -61,12 +63,20 @@ export default function Verifier(props: {
   const [head, setHead] = useState(props.initial.headName);
   const [headEn, setHeadEn] = useState(props.initial.headNameEn);
   const [headEnTouched, setHeadEnTouched] = useState(false);
+  // Marathi written live from the English while it is empty or was written that way (never over the form's own Marathi)
+  const [headAuto, setHeadAuto] = useState(!props.initial.headName.trim() || isLatinOnly(props.initial.headName));
   const [address, setAddress] = useState(props.initial.address);
   const [addressEn, setAddressEn] = useState(props.initial.addressEn);
   const [addressEnTouched, setAddressEnTouched] = useState(false);
+  const [addressAuto, setAddressAuto] = useState(!props.initial.address.trim() || isLatinOnly(props.initial.address));
   const [panth, setPanth] = useState<Panth>(props.initial.panth);
   const [notes, setNotes] = useState(props.initial.notes);
-  const [rows, setRows] = useState<Row[]>(props.initial.rows.length ? props.initial.rows : [{ ...EMPTY, key: "n0", relation: "SELF" }]);
+  const [rows, setRows] = useState<Row[]>(
+    (props.initial.rows.length ? props.initial.rows : [{ ...EMPTY, key: "n0", relation: "SELF" }]).map((r) => ({
+      ...r,
+      devAuto: [r.firstName, r.middleName, r.surname].every((x) => !x.trim() || isLatinOnly(x)),
+    })),
+  );
   const [mode, setMode] = useState<"new" | "merge" | "linked">("new");
   const [target, setTarget] = useState(props.duplicates[0]?.id ?? "");
   const [imgIdx, setImgIdx] = useState(0);
@@ -78,6 +88,7 @@ export default function Verifier(props: {
   );
 
   const EN_OF: Partial<Record<keyof Row, keyof Row>> = { firstName: "firstNameEn", middleName: "middleNameEn", surname: "surnameEn" };
+  const DEV_OF: Partial<Record<keyof Row, keyof Row>> = { firstNameEn: "firstName", middleNameEn: "middleName", surnameEn: "surname" };
   const upd = (i: number, k: keyof Row, v: string) =>
     setRows((rs) =>
       rs.map((r, j) => {
@@ -86,7 +97,13 @@ export default function Verifier(props: {
         // Devanagari name changed and the English spelling was not typed by hand: spell it again
         const enKey = EN_OF[k];
         if (enKey && !r.enTouched) (next as unknown as Record<string, string>)[enKey] = toEnglishName(v);
-        if (k === "firstNameEn" || k === "middleNameEn" || k === "surnameEn") next.enTouched = true;
+        if (k === "firstNameEn" || k === "middleNameEn" || k === "surnameEn") {
+          next.enTouched = true;
+          // English typed and the Marathi name is empty / auto-written: write the Marathi live
+          const devKey = DEV_OF[k];
+          if (devKey && r.devAuto) (next as unknown as Record<string, string>)[devKey] = toMarathiName(v);
+        }
+        if (enKey) next.devAuto = false;
         return next;
       }),
     );
@@ -113,7 +130,7 @@ export default function Verifier(props: {
         panth,
         panthConfirmed: panth !== "UNKNOWN",
         notes,
-        members: rows.map(({ uncertain: _u, low: _l, enTouched: _e, ...r }) => r),
+        members: rows.map(({ uncertain: _u, low: _l, enTouched: _e, devAuto: _d, ...r }) => r),
         kycAssign: Object.entries(kycTo)
           .filter(([, key]) => key && rows.some((r) => r.key === key))
           .map(([idx, key]) => ({ idx: Number(idx), key })),
@@ -161,13 +178,22 @@ export default function Verifier(props: {
               value={head}
               onChange={(e) => {
                 setHead(e.target.value);
+                setHeadAuto(false);
                 if (!headEnTouched) setHeadEn(toEnglishName(e.target.value));
               }}
             />
           </div>
           <div>
             <label className="label">{t.headNameEn}</label>
-            <input className="input" value={headEn} onChange={(e) => { setHeadEn(e.target.value); setHeadEnTouched(true); }} />
+            <input
+              className="input"
+              value={headEn}
+              onChange={(e) => {
+                setHeadEn(e.target.value);
+                setHeadEnTouched(true);
+                if (headAuto) setHead(toMarathiName(e.target.value));
+              }}
+            />
           </div>
           <div>
             <label className="label">{t.address}</label>
@@ -177,13 +203,23 @@ export default function Verifier(props: {
               value={address}
               onChange={(e) => {
                 setAddress(e.target.value);
+                setAddressAuto(false);
                 if (!addressEnTouched) setAddressEn(addressToEnglish(e.target.value));
               }}
             />
           </div>
           <div>
             <label className="label">{t.addressEn}</label>
-            <textarea className="input" rows={2} value={addressEn} onChange={(e) => { setAddressEn(e.target.value); setAddressEnTouched(true); }} />
+            <textarea
+              className="input"
+              rows={2}
+              value={addressEn}
+              onChange={(e) => {
+                setAddressEn(e.target.value);
+                setAddressEnTouched(true);
+                if (addressAuto) setAddress(addressToMarathi(e.target.value));
+              }}
+            />
           </div>
           <div>
             <label className="label">{t.panth}</label>
@@ -265,7 +301,7 @@ export default function Verifier(props: {
             </div>
           </div>
         ))}
-        <button type="button" className="btn-secondary w-full" onClick={() => setRows((rs) => [...rs, { ...EMPTY, key: `n${Date.now()}` }])}>+ {t.addMember}</button>
+        <button type="button" className="btn-secondary w-full" onClick={() => setRows((rs) => [...rs, { ...EMPTY, key: `n${Date.now()}`, devAuto: true }])}>+ {t.addMember}</button>
 
         {props.kyc.length > 0 && (
           <div className="card p-3 border-sky-200 bg-sky-50 space-y-2 text-sm">
