@@ -10,8 +10,6 @@ import { inferHeadGender, prepareMember } from "./members";
 import { fullName, normalizeMobile, searchKey } from "./normalize";
 import { DOC_CODES, parseFormDate, parseRupees } from "./applicationForm";
 import { getFile, putFile } from "./storage";
-import { fillMarathi, fillMarathiAddress } from "./toMarathi";
-import { loadLearnedNames } from "./learnedNames";
 
 type Tx = Prisma.TransactionClient;
 
@@ -188,7 +186,6 @@ export interface SaveApplicationInput {
 export type SaveApplicationResult = { ok: true; familyId: string; memberId: string } | { ok: false; error: "alreadySaved" | "familyNotFound" | "nameRequired" | "relationSelf" };
 
 export async function saveApplication(input: SaveApplicationInput): Promise<SaveApplicationResult> {
-  await loadLearnedNames();
   const up = await prisma.formUpload.findUniqueOrThrow({ where: { id: input.uploadId } });
   if (up.status === "VERIFIED") return { ok: false, error: "alreadySaved" };
   const a = input.applicant;
@@ -220,18 +217,10 @@ export async function saveApplication(input: SaveApplicationInput): Promise<Save
       fam = await tx.family.create({
         data: {
           code: await nextFamilyCode(tx),
-          headName: fullName(
-            {
-              title: a.title,
-              firstName: fillMarathi(a.firstName, a.firstNameEn).dev,
-              middleName: fillMarathi(a.middleName, a.middleNameEn).dev,
-              surname: fillMarathi(a.surname, a.surnameEn).dev,
-            },
-            false,
-          ),
+          headName: fullName(a, false),
           headNameEn: [a.firstNameEn, a.middleNameEn, a.surnameEn].filter(Boolean).join(" "),
-          address: fillMarathiAddress(app.homeAddress, "").dev,
-          addressEn: fillMarathiAddress(app.homeAddress, "").en || addressToEnglish(app.homeAddress),
+          address: app.homeAddress,
+          addressEn: addressToEnglish(app.homeAddress),
           panth: "UNKNOWN",
           panthStatus: "TO_VERIFY", // the form has no panth (decided 8 Oct 2026)
           formDate: recordedOn,

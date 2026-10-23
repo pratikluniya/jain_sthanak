@@ -12,8 +12,6 @@ import { toEnglishName } from "@/lib/translit";
 import { addressToEnglish } from "@/lib/addressEn";
 import type { ExtractedForm } from "@/lib/extract";
 import { flashErr, flashOk } from "@/lib/flash";
-import { fillMarathi, fillMarathiAddress } from "@/lib/toMarathi";
-import { loadLearnedNames } from "@/lib/learnedNames";
 
 const Payload = z.object({
   uploadId: z.string(),
@@ -60,9 +58,6 @@ export async function saveVerified(raw: VerifyPayload): Promise<{ familyId?: str
     return { error: "already saved" };
   }
   const formDate = up.createdAt;
-  await loadLearnedNames();
-  const head = fillMarathi(p.headName, p.headNameEn);
-  const addr = fillMarathiAddress(p.address, p.addressEn);
 
   const familyId = await prisma.$transaction(async (tx) => {
     let fam;
@@ -80,10 +75,10 @@ export async function saveVerified(raw: VerifyPayload): Promise<{ familyId?: str
       fam = await tx.family.create({
         data: {
           code,
-          headName: head.dev,
-          headNameEn: head.en || toEnglishName(head.dev),
-          address: addr.dev,
-          addressEn: addr.en || addressToEnglish(addr.dev),
+          headName: p.headName,
+          headNameEn: p.headNameEn.trim() || toEnglishName(p.headName),
+          address: p.address,
+          addressEn: p.addressEn.trim() || addressToEnglish(p.address),
           panth: p.panth,
           panthStatus: p.panth !== "UNKNOWN" && p.panthConfirmed ? "CONFIRMED" : "TO_VERIFY",
           notes: p.notes,
