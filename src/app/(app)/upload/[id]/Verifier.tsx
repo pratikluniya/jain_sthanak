@@ -1,4 +1,5 @@
 "use client";
+import { ageFromDobString } from "@/lib/eligibility";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Dict } from "@/lib/i18n";
@@ -232,7 +233,13 @@ export default function Verifier(props: {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               <div>
                 <label className="label text-xs">{t.age}</label>
-                <input className={`input ${warn(r, "age")}`} inputMode="numeric" value={r.age} onChange={(e) => upd(i, "age", e.target.value)} />
+                <input
+                  className={`input ${ageFromDobString(r.dob) ? "bg-stone-100 text-stone-600" : warn(r, "age")}`}
+                  inputMode="numeric"
+                  value={ageFromDobString(r.dob) || r.age}
+                  readOnly={!!ageFromDobString(r.dob)}
+                  onChange={(e) => upd(i, "age", e.target.value)}
+                />
               </div>
               <div>
                 <label className="label text-xs">{t.dob}</label>

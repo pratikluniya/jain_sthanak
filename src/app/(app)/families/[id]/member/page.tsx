@@ -1,5 +1,7 @@
 import StatusField from "@/components/StatusField";
 import ImageInput from "@/components/ImageInput";
+import AgeDobFields from "@/components/AgeDobFields";
+import { currentAge } from "@/lib/eligibility";
 import { can } from "@/lib/rbac";
 import { todayIST } from "@/lib/deceased";
 import { notFound } from "next/navigation";
@@ -72,8 +74,7 @@ export default async function MemberFormPage({ params, searchParams }: { params:
               <option value="FEMALE">{t.FEMALE}</option>
             </select>
           </div>
-          {field("age", t.age, m?.age?.toString() ?? "", { inputMode: "numeric" })}
-          {field("dob", t.dob, m?.dob ? m.dob.toISOString().slice(0, 10) : "", { type: "date" })}
+          <AgeDobFields ageLabel={t.age} dobLabel={t.dob} age={m ? (currentAge(m)?.toString() ?? "") : ""} dob={m?.dob ? m.dob.toISOString().slice(0, 10) : ""} />
           {field("education", t.education, m?.education ?? "")}
           {field("occupation", t.occupation, m?.occupation ?? "")}
           {field("mobile", t.mobile, m?.mobile ?? "", { inputMode: "tel" })}

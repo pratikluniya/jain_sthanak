@@ -48,6 +48,23 @@ export function ageOn(m: AgeInput, target: Date): AgeRange {
   return { min: m.age + yrs, max: sameDay ? m.age + yrs : m.age + yrs + 1, exact: sameDay };
 }
 
+/**
+ * Age today, for screens and downloads (decided 23 Oct 2026). With a DOB it is exact; with only
+ * "age N as of date R" it grows by the whole years since R (the lower number while a birthday
+ * may or may not have passed). Nothing is stored, so it never goes stale.
+ */
+export function currentAge(m: AgeInput, today: Date = new Date()): number | null {
+  return ageOn(m, today).min;
+}
+
+/** Whole years from a YYYY-MM-DD birth date to today, or "" when the date is missing or invalid. */
+export function ageFromDobString(dob: string, today: Date = new Date()): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) return "";
+  const d = new Date(`${dob}T00:00:00`);
+  if (isNaN(d.getTime()) || d > today) return "";
+  return String(fullYearsBetween(d, today));
+}
+
 export type Reason =
   | "UNDER_AGE"
   | "AGE_UNKNOWN"
