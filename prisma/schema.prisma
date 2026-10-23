@@ -5,15 +5,15 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 enum Role {
-  ADMIN      // everything, incl. users, settings, full Aadhaar view
-  OPERATOR   // add / edit / update everything, approve KYC and panth
+  ADMIN // everything, incl. users, settings, full Aadhaar view
+  OPERATOR // add / edit / update everything, approve KYC and panth
   DATA_ENTRY // upload forms, verify extraction, edit families
-  VIEWER     // view and search only
+  VIEWER // view and search only
 }
 
 enum Panth {
@@ -49,11 +49,11 @@ enum FamilyStatus {
 }
 
 enum UploadStatus {
-  UPLOADED   // image stored, not yet read
-  EXTRACTED  // AI has read it, waiting for human check
-  VERIFIED   // saved to a family
+  UPLOADED // image stored, not yet read
+  EXTRACTED // AI has read it, waiting for human check
+  VERIFIED // saved to a family
   REJECTED
-  FAILED     // AI call failed
+  FAILED // AI call failed
 }
 
 // Individual membership application (सभासद अर्ज). Only approved applicants can be voters.
@@ -79,15 +79,15 @@ model User {
   active       Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  createdById  String?  // user id of the admin who added this user (empty for users added before Oct 2026)
+  createdById  String? // user id of the admin who added this user (empty for users added before Oct 2026)
 
   // Soft delete: nothing is erased. A deleted user cannot log in and is hidden; Admin can restore.
   deletedAt   DateTime?
   deletedById String?
 
   // 15-day demise reminder (Admin and Operator): when this user last clicked "Done", and "Remind me later" until when
-  demiseCheckDoneAt  DateTime?
-  demiseSnoozeUntil  DateTime?
+  demiseCheckDoneAt DateTime?
+  demiseSnoozeUntil DateTime?
 
   auditLogs AuditLog[]
 }
@@ -106,7 +106,7 @@ model Counter {
 model Family {
   id          String       @id @default(cuid())
   code        String       @unique // NR-0001
-  headName    String       // as written on the form
+  headName    String // as written on the form
   headNameEn  String       @default("") // English spelling
   address     String       @default("")
   addressEn   String       @default("") // English spelling of the address
@@ -115,7 +115,7 @@ model Family {
   panthStatus PanthStatus  @default(TO_VERIFY)
   status      FamilyStatus @default(ACTIVE)
   notes       String       @default("")
-  formDate    DateTime?    // date the census form was filled / received
+  formDate    DateTime? // date the census form was filled / received
 
   // A separate household that belongs to the same larger family (volunteer decides)
   parentFamilyId String?
@@ -125,6 +125,7 @@ model Family {
   members   Member[]
   uploads   FormUpload[]
   payments  Payment[]
+  donations Donation[]
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -148,20 +149,20 @@ model Member {
   family   Family @relation(fields: [familyId], references: [id], onDelete: Cascade)
   serial   Int    @default(0) // order within family, as on form
 
-  title       String  @default("") // सौ. / कु. / श्रीमती / श्री / चि.
-  firstName   String
-  middleName  String  @default("") // father's or husband's name
-  surname     String  @default("")
-  nameRaw     String  @default("") // exactly as read from the form
+  title        String @default("") // सौ. / कु. / श्रीमती / श्री / चि.
+  firstName    String
+  middleName   String @default("") // father's or husband's name
+  surname      String @default("")
+  nameRaw      String @default("") // exactly as read from the form
   // English spelling of the name: filled automatically, corrected by a volunteer
   firstNameEn  String @default("")
   middleNameEn String @default("")
   surnameEn    String @default("")
-  searchKey   String  @default("") // phonetic key for fuzzy search
+  searchKey    String @default("") // phonetic key for fuzzy search
 
   isHead      Boolean @default(false)
   relation    String  @default("OTHER") // code from src/lib/relations.ts
-  relationRaw String  @default("")      // as written (बायको, सून, नातू...)
+  relationRaw String  @default("") // as written (बायको, सून, नातू...)
   gender      Gender  @default(UNKNOWN)
 
   age           Int?
@@ -193,15 +194,15 @@ model Member {
   application MembershipApplication?
 
   // KYC (Aadhaar). Number stored encrypted; last 4 kept for display.
-  aadhaarEnc    String?
-  aadhaarLast4  String?
-  kycFileKey    String?   // Aadhaar front (or the single KYC document)
-  aadhaarBackKey String?  // Aadhaar back
-  photoKey       String?  // passport-size photo (bucket "photos")
-  kycDocType    String?   // AADHAAR / PAN / VOTER_ID / OTHER
-  kycVerified   Boolean   @default(false)
-  kycVerifiedBy String?
-  kycVerifiedAt DateTime?
+  aadhaarEnc     String?
+  aadhaarLast4   String?
+  kycFileKey     String? // Aadhaar front (or the single KYC document)
+  aadhaarBackKey String? // Aadhaar back
+  photoKey       String? // passport-size photo (bucket "photos")
+  kycDocType     String? // AADHAAR / PAN / VOTER_ID / OTHER
+  kycVerified    Boolean   @default(false)
+  kycVerifiedBy  String?
+  kycVerifiedAt  DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -218,9 +219,9 @@ model Member {
 model FormUpload {
   id         String       @id @default(cuid())
   kind       String       @default("FAMILY") // FAMILY = census form, INDIVIDUAL = membership application (सभासद अर्ज)
-  imageKeys  String[]     // storage keys, one per page
+  imageKeys  String[] // storage keys, one per page
   status     UploadStatus @default(UPLOADED)
-  extracted  Json?        // AI result
+  extracted  Json? // AI result
   error      String?
   aiCostUsd  Float?
   familyId   String?
@@ -247,21 +248,21 @@ model MembershipApplication {
   email           String    @default("")
   landline        String    @default("")
 
-  feeEntry    Int?      // प्रवेश फी (rupees)
-  feeAnnual   Int?      // वार्षिक सभासद फी
-  feeLifetime Int?      // अजीवन सभासद फी
-  feeTotal    Int?      // एकूण
+  feeEntry    Int? // प्रवेश फी (rupees)
+  feeAnnual   Int? // वार्षिक सभासद फी
+  feeLifetime Int? // अजीवन सभासद फी
+  feeTotal    Int? // एकूण
   receiptNo   String    @default("") // पावती क्र.
   receiptDate DateTime?
 
-  proposerName      String @default("") // सूचक सभासद
-  proposerAddress   String @default("")
-  proposerMobile    String @default("")
-  proposerLandline  String @default("")
-  seconderName      String @default("") // अनुमोदक सभासद
-  seconderAddress   String @default("")
-  seconderMobile    String @default("")
-  seconderLandline  String @default("")
+  proposerName     String @default("") // सूचक सभासद
+  proposerAddress  String @default("")
+  proposerMobile   String @default("")
+  proposerLandline String @default("")
+  seconderName     String @default("") // अनुमोदक सभासद
+  seconderAddress  String @default("")
+  seconderMobile   String @default("")
+  seconderLandline String @default("")
 
   // Office use: decision of the कार्यकारणी meeting
   decision      ApplicationDecision @default(APPROVED)
@@ -281,13 +282,13 @@ model MembershipApplication {
 model Payment {
   id            String      @id @default(cuid())
   receiptNo     String      @unique // 2026-27/0001
-  financialYear String      // 2026-27
+  financialYear String // 2026-27
   familyId      String
   family        Family      @relation(fields: [familyId], references: [id], onDelete: Restrict)
-  paidBy        String      // name printed on receipt
+  paidBy        String // name printed on receipt
   date          DateTime
-  items         Json        // [{ purpose: string, amount: number }]
-  total         Int         // rupees
+  items         Json // [{ purpose: string, amount: number }]
+  total         Int // rupees
   mode          PaymentMode
   reference     String      @default("") // UPI ref / cheque no.
   cancelled     Boolean     @default(false)
@@ -297,12 +298,58 @@ model Payment {
   @@index([familyId])
 }
 
+// Yearly family donations (decided 23 Oct 2026): Mahavir Jayanti and Yearly Bhojan, calendar year,
+// one amount per year for every family, tracked from 2026. A year is "open" once an Admin sets its amount.
+// Every active family owes an open year until a payment or an Exempt mark is recorded (no part payments).
+enum DonationKind {
+  MAHAVIR_JAYANTI
+  BHOJAN
+}
+
+enum DonationStatus {
+  PAID
+  EXEMPT
+}
+
+model DonationYear {
+  id          String       @id @default(cuid())
+  kind        DonationKind
+  year        Int
+  amount      Int // rupees, same for every family
+  updatedById String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@unique([kind, year])
+}
+
+model Donation {
+  id          String         @id @default(cuid())
+  familyId    String
+  family      Family         @relation(fields: [familyId], references: [id], onDelete: Restrict)
+  kind        DonationKind
+  year        Int
+  status      DonationStatus
+  amount      Int? // rupees paid (PAID only)
+  paidOn      DateTime?
+  mode        PaymentMode?
+  receiptNo   String         @default("") // number from the Sangh's paper receipt book
+  note        String         @default("")
+  createdById String?
+  updatedById String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([familyId, kind, year])
+  @@index([kind, year])
+}
+
 model AuditLog {
   id        String   @id @default(cuid())
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  action    String   // create / update / delete / verify / export / login
-  entity    String   // Family / Member / Payment / User / Upload
+  action    String // create / update / delete / verify / export / login
+  entity    String // Family / Member / Payment / User / Upload
   entityId  String?
   detail    Json?
   createdAt DateTime @default(now())

@@ -12,10 +12,11 @@ export type Permission =
   | "viewAadhaar"   // see full Aadhaar number and scan
   | "users"         // manage users
   | "settings"      // election date, Sangh details
-  | "restore";      // see and restore soft-deleted users, families, members
+  | "restore"       // see and restore soft-deleted users, families, members
+  | "donationAdmin"; // yearly donation amounts, Exempt marks, removing a donation entry (Admin only, 23 Oct 2026)
 
 const MATRIX: Record<Role, Permission[]> = {
-  ADMIN: ["view", "edit", "delete", "upload", "approve", "export", "receipts", "viewAadhaar", "users", "settings", "restore"],
+  ADMIN: ["view", "edit", "delete", "upload", "approve", "export", "receipts", "viewAadhaar", "users", "settings", "restore", "donationAdmin"],
   OPERATOR: ["view", "edit", "delete", "upload", "approve", "export", "receipts", "viewAadhaar"],
   DATA_ENTRY: ["view", "edit", "upload"],
   VIEWER: ["view"],
