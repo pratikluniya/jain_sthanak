@@ -1,6 +1,7 @@
 "use client";
 import { ageFromDobString } from "@/lib/eligibility";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { guessMatches, mergeDiff, type ExistingMember, type MergeField } from "@/lib/mergeMatch";
 import { useRouter } from "next/navigation";
 import type { Dict } from "@/lib/i18n";
 import type { DuplicateCandidate } from "@/lib/uploads";
@@ -53,6 +54,7 @@ export default function Verifier(props: {
   images: string[];
   initial: { headName: string; headNameEn: string; address: string; addressEn: string; panth: Panth; panthEvidence: string; notes: string; rows: Row[] };
   duplicates: DuplicateCandidate[];
+  dupMembers?: Record<string, ExistingMember[]>;
   kyc: KycInfo[];
   relations: { code: string; label: string }[];
   t: Dict;
@@ -74,6 +76,15 @@ export default function Verifier(props: {
   const [zoom, setZoom] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  // smart merge (23 Oct 2026): which existing member each form row is; the volunteer can change it
+  const existing = useMemo(() => (mode === "merge" && target ? props.dupMembers?.[target] ?? [] : []), [mode, target, props.dupMembers]);
+  const [matchOverride, setMatchOverride] = useState<Record<string, Record<string, string>>>({});
+  const guessed = useMemo(() => guessMatches(rows, existing), [rows, existing]);
+  const matchOf = (key: string) => matchOverride[target]?.[key] ?? guessed[key] ?? "";
+  const setMatch = (key: string, id: string) => setMatchOverride((o) => ({ ...o, [target]: { ...(o[target] ?? {}), [key]: id } }));
+  const fieldLabel: Record<MergeField, string> = {
+    mobile: t.mobile, age: t.age, dob: t.dob, education: t.education, occupation: t.occupation, bloodGroup: t.bloodGroup, englishName: t.nameEnglish,
+  };
   const [kycTo, setKycTo] = useState<Record<number, string>>(() =>
     Object.fromEntries(props.kyc.map((k) => [k.idx, k.defaultKey ?? ""])),
   );
@@ -115,6 +126,7 @@ export default function Verifier(props: {
         panthConfirmed: panth !== "UNKNOWN",
         notes,
         members: rows.map(({ uncertain: _u, low: _l, enTouched: _e, ...r }) => r),
+        matches: mode === "merge" ? Object.fromEntries(rows.map((r) => [r.key, matchOf(r.key)])) : {},
         kycAssign: Object.entries(kycTo)
           .filter(([, key]) => key && rows.some((r) => r.key === key))
           .map(([idx, key]) => ({ idx: Number(idx), key })),
@@ -214,6 +226,28 @@ export default function Verifier(props: {
               <span className="text-xs text-stone-500">#{i + 1} · {t.onForm}: <b>{r.nameRaw || "-"}</b></span>
               <button type="button" className="text-xs text-red-600" onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}>{t.delete}</button>
             </div>
+            {mode === "merge" && existing.length > 0 && (() => {
+              const id = matchOf(r.key);
+              const m = existing.find((e) => e.id === id);
+              const d = m ? mergeDiff(r, m) : null;
+              const kycHere = Object.values(kycTo).includes(r.key);
+              return (
+                <div className={`rounded-lg border p-2 text-sm space-y-1 ${m ? "border-sky-200 bg-sky-50" : "border-green-200 bg-green-50"}`}>
+                  <label className="flex flex-wrap items-center gap-2">
+                    <span className="font-semibold">{t.mergeSamePerson}:</span>
+                    <select className="input w-auto py-1" value={id} onChange={(e) => setMatch(r.key, e.target.value)}>
+                      <option value="">➕ {t.mergeNewMember}</option>
+                      {existing.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                    </select>
+                  </label>
+                  {d && (d.fill.length > 0 ? <p className="text-green-800">✚ {t.mergeWillFill}: {d.fill.map((f) => fieldLabel[f]).join(", ")}</p> : <p className="text-stone-600">{t.mergeNothingNew}</p>)}
+                  {d?.conflicts.map((c) => (
+                    <p key={c.field} className="text-amber-800">⚠ {fieldLabel[c.field]}: {t.mergeSaved} <b>{c.saved}</b> · {t.mergeOnForm} <b>{c.form}</b> ({t.mergeKeptSaved})</p>
+                  ))}
+                  {m && kycHere && (m.hasKyc ? <p className="text-stone-600">🪪 {t.mergeKycSkipped}</p> : <p className="text-green-800">🪪 {t.mergeKycAdded}</p>)}
+                </div>
+              );
+            })()}
             <div className="grid grid-cols-4 gap-2">
               <select className={`input ${warn(r, "name")}`} value={r.title} onChange={(e) => upd(i, "title", e.target.value)}>
                 {["", "श्री", "सौ.", "श्रीमती", "कु.", "चि.", "डॉ.", "कै.", "स्व."].map((x) => <option key={x} value={x}>{x || "-"}</option>)}
@@ -310,6 +344,7 @@ export default function Verifier(props: {
             <div className="flex flex-col gap-1 text-sm pt-1">
               <label className="flex gap-2"><input type="radio" name="mode" checked={mode === "new"} onChange={() => setMode("new")} /> {t.saveAsNew}</label>
               <label className="flex gap-2"><input type="radio" name="mode" checked={mode === "merge"} onChange={() => setMode("merge")} /> {t.addToExisting}</label>
+              {mode === "merge" && <p className="rounded bg-white/70 p-2 text-xs text-stone-700">{t.mergeHelp}</p>}
               <label className="flex gap-2"><input type="radio" name="mode" checked={mode === "linked"} onChange={() => setMode("linked")} /> {t.saveAsNew} + {t.linkedFamily}</label>
             </div>
           </div>

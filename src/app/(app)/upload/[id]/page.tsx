@@ -3,6 +3,9 @@ import { prisma } from "@/lib/db";
 import { getDict, getLang } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
 import { findDuplicates } from "@/lib/uploads";
+import type { ExistingMember } from "@/lib/mergeMatch";
+import { currentAge } from "@/lib/eligibility";
+import { memberFullName } from "@/lib/members";
 import type { ExtractedForm } from "@/lib/extract";
 import { RELATIONS, relationFromRaw } from "@/lib/relations";
 import { normalizeBloodGroup, normalizeMobile, parseAge, splitName } from "@/lib/normalize";
@@ -76,6 +79,24 @@ export default async function VerifyPage({ params, searchParams }: { params: { i
     return { idx, docType: k.docType, holderName: k.holderName, last4: k.last4, dob: k.dob, notes: k.notes, defaultKey: row >= 0 ? `r${row}` : null };
   });
   const dups = x.headName || x.members.length ? await findDuplicates(x) : [];
+  // members of the possible duplicates, for the smart merge preview (23 Oct 2026)
+  const dupMembers: Record<string, ExistingMember[]> = {};
+  if (dups.length) {
+    const ms = await prisma.member.findMany({ where: { familyId: { in: dups.map((d) => d.id) }, deletedAt: null }, orderBy: [{ isHead: "desc" }, { serial: "asc" }] });
+    for (const m of ms) {
+      (dupMembers[m.familyId] ??= []).push({
+        id: m.id,
+        name: memberFullName(m, true, lang === "en"),
+        firstName: m.firstName, middleName: m.middleName, surname: m.surname,
+        firstNameEn: m.firstNameEn, middleNameEn: m.middleNameEn, surnameEn: m.surnameEn,
+        mobile: m.mobile,
+        age: currentAge(m),
+        dob: m.dob ? m.dob.toISOString().slice(0, 10) : null,
+        education: m.education, occupation: m.occupation, bloodGroup: m.bloodGroup,
+        hasKyc: !!m.kycFileKey,
+      });
+    }
+  }
 
   return (
     <div className="space-y-3">
@@ -104,6 +125,7 @@ export default async function VerifyPage({ params, searchParams }: { params: { i
           rows,
         }}
         duplicates={dups}
+        dupMembers={dupMembers}
         kyc={kyc}
         relations={RELATIONS.map((r) => ({ code: r.code, label: r[lang] }))}
         t={t}

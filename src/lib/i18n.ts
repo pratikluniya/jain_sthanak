@@ -423,6 +423,17 @@ const mr = {
   donationHistory: "वार्षिक देणगी",
   donationNoYears: "अजून कोणत्याही वर्षाची रक्कम ठरवलेली नाही.",
   toast_amountInvalid: "रक्कम चुकीची आहे.",
+  // smart merge of duplicate forms (23 Oct 2026)
+  mergeSamePerson: "आधीच असलेला सदस्य",
+  mergeNewMember: "नवीन सदस्य",
+  mergeWillFill: "रिकामी माहिती भरली जाईल",
+  mergeNothingNew: "नवीन माहिती नाही; काहीही बदलणार नाही.",
+  mergeSaved: "जतन केलेले",
+  mergeOnForm: "फॉर्मवर",
+  mergeKeptSaved: "जतन केलेले ठेवले जाईल",
+  mergeKycSkipped: "आधार आधीच जतन आहे; हे कार्ड जोडले जाणार नाही.",
+  mergeKycAdded: "आधार जोडला जाईल.",
+  mergeHelp: "फक्त नवीन सदस्य जोडले जातील. आधीच असलेल्या सदस्यांची फक्त रिकामी माहिती भरली जाईल; जतन केलेली माहिती बदलणार नाही.",
 };
 
 export type Dict = { [K in keyof typeof mr]: string };
@@ -835,6 +846,16 @@ const en: Dict = {
   donationHistory: "Yearly donations",
   donationNoYears: "No year's amount has been set yet.",
   toast_amountInvalid: "The amount is not valid.",
+  mergeSamePerson: "Existing member",
+  mergeNewMember: "New member",
+  mergeWillFill: "Blank details will be filled",
+  mergeNothingNew: "Nothing new; nothing will change.",
+  mergeSaved: "saved",
+  mergeOnForm: "on form",
+  mergeKeptSaved: "saved value kept",
+  mergeKycSkipped: "Aadhaar already saved; this card will not be added.",
+  mergeKycAdded: "Aadhaar will be added.",
+  mergeHelp: "Only new members are added. Existing members only get their blank details filled; saved details are not changed.",
 };
 
 const DICTS: Record<Lang, Dict> = { mr, en };
