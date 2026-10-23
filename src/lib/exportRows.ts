@@ -1,6 +1,7 @@
 // Builds rows for voter list / member list exports (Excel and print).
 // Headings in the chosen language (Marathi by default), digits always English (decided 27 Sep 2026).
 // In English, names and addresses use the saved English spelling (address added 11 Oct 2026); education and occupation stay as entered.
+import { currentAge } from "./eligibility";
 import { exportDictFor, type Dict, type Lang } from "./i18n";
 import { relationLabel } from "./relations";
 import { evaluateAll, memberFullName, surnameFirstName, sortBySurname, type VoterRow } from "./members";
@@ -146,7 +147,7 @@ export async function buildExport(list: ListKind, fields: Field[], lang: Lang = 
   const out = sorted.map((r, i) => {
     const m = r.member;
     const f = r.family;
-    const age = list === "voters" ? (r.result.age.min ?? "") : (m.age ?? "");
+    const age = list === "voters" ? (r.result.age.min ?? "") : (currentAge(m) ?? "");
     const value: Partial<Record<Field, string | number>> = {
       serial: i + 1,
       voterNo: m.voterNo ?? "",

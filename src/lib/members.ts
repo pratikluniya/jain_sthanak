@@ -1,10 +1,9 @@
 import type { Family, Member, Prisma } from "@prisma/client";
-import { fillMarathi, isLatinOnly, wordToMarathi } from "./toMarathi";
 import { LIVE } from "./softDelete";
 import { prisma } from "./db";
 import { fullName, normalizeBloodGroup, normalizeMobile, parseAge, searchKey, splitName } from "./normalize";
 import { genderFromRelation, genderFromTitle, relationFromRaw } from "./relations";
-import { checkVoter, type EligibilityResult } from "./eligibility";
+import { checkVoter, currentAge, type EligibilityResult } from "./eligibility";
 import { titleToEnglish, toEnglishName } from "./translit";
 import { effectiveAgeDate, getSettings } from "./settings";
 
@@ -87,22 +86,8 @@ export interface MemberInput {
   serial?: number;
 }
 
-/**
- * Names typed in English are written in Marathi too (decided 22 Oct 2026): English letters in a Marathi box
- * move to the English box, and an empty Marathi name is written from the English one.
- */
-function marathiBothWays(input: MemberInput): MemberInput {
-  if (input.firstName === undefined) return input;
-  const f = fillMarathi(input.firstName ?? "", input.firstNameEn ?? "");
-  const mid = fillMarathi(input.middleName ?? "", input.middleNameEn ?? "");
-  const s = fillMarathi(input.surname ?? "", input.surnameEn ?? "");
-  const title = isLatinOnly(input.title ?? "") ? wordToMarathi(input.title ?? "") : input.title;
-  return { ...input, title, firstName: f.dev, firstNameEn: f.en, middleName: mid.dev, middleNameEn: mid.en, surname: s.dev, surnameEn: s.en };
-}
-
 /** Turn raw input into clean DB fields (name split, digits, relation, gender, search key). */
 export function prepareMember(input: MemberInput, familyCode: string, ageRecordedOn: Date) {
-  input = marathiBothWays(input);
   const parts =
     input.firstName !== undefined
       ? { title: input.title ?? "", firstName: input.firstName ?? "", middleName: input.middleName ?? "", surname: input.surname ?? "", deceasedHint: false }
@@ -112,7 +97,9 @@ export function prepareMember(input: MemberInput, familyCode: string, ageRecorde
   if (gender === "UNKNOWN") gender = genderFromRelation(relation);
   if (gender === "UNKNOWN") gender = genderFromTitle(parts.title);
   const mobile = normalizeMobile(input.mobile ?? "").value;
-  const age = parseAge(input.age ?? null);
+  // a DOB decides the age, so the two can never disagree (decided 23 Oct 2026)
+  const dob = input.dob ? new Date(input.dob) : null;
+  const age = dob && !isNaN(dob.getTime()) ? currentAge({ dob, age: null, ageRecordedOn: null }, ageRecordedOn) : parseAge(input.age ?? null);
   const status = (input.status as Member["status"]) || (parts.deceasedHint ? "DECEASED" : "ACTIVE");
   const en = englishParts(parts, input);
   return {
@@ -129,7 +116,7 @@ export function prepareMember(input: MemberInput, familyCode: string, ageRecorde
     gender,
     age,
     ageRecordedOn: age !== null ? ageRecordedOn : null,
-    dob: input.dob ? new Date(input.dob) : null,
+    dob: dob && !isNaN(dob.getTime()) ? dob : null,
     education: (input.education ?? "").trim(),
     occupation: (input.occupation ?? "").trim(),
     mobile,

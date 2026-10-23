@@ -14,8 +14,6 @@ import { todayIST } from "@/lib/deceased";
 import type { Panth, PanthStatus, FamilyStatus } from "@prisma/client";
 import { restoreFamily as restoreFamilyRecord, restoreMember as restoreMemberRecord, softDeleteFamily, softDeleteMember } from "@/lib/softDelete";
 import { flashErr, flashOk } from "@/lib/flash";
-import { fillMarathi, fillMarathiAddress } from "@/lib/toMarathi";
-import { loadLearnedNames } from "@/lib/learnedNames";
 
 const PANTHS: Panth[] = ["STHANAKVASI", "MANDIRMARGI", "TERAPANTH", "DIGAMBAR", "UNKNOWN"];
 
@@ -38,15 +36,15 @@ export async function saveFamily(fd: FormData) {
   const old = id ? await prisma.family.findUnique({ where: { id }, select: { headName: true, headNameEn: true, address: true, addressEn: true, deletedAt: true, status: true } }) : null;
   if (old?.deletedAt) throw new Error("Family is deleted");
   const panth = (PANTHS.includes(str(fd, "panth") as Panth) ? str(fd, "panth") : "UNKNOWN") as Panth;
-  // English typed in a Marathi box, or only the English filled: write the Marathi too (decided 22 Oct 2026)
-  await loadLearnedNames();
-  const head = fillMarathi(str(fd, "headName"), str(fd, "headNameEn"));
-  const addr = fillMarathiAddress(str(fd, "address"), str(fd, "addressEn"));
   const data = {
-    headName: head.dev,
-    headNameEn: freshEnglish(head.en, head.dev, old && { en: old.headNameEn, dev: old.headName }) || toEnglishName(head.dev),
-    address: addr.dev,
-    addressEn: freshEnglish(addr.en, addr.dev, old && { en: old.addressEn, dev: old.address }) || addressToEnglish(addr.dev),
+    headName: str(fd, "headName"),
+    headNameEn:
+      freshEnglish(str(fd, "headNameEn"), str(fd, "headName"), old && { en: old.headNameEn, dev: old.headName }) ||
+      toEnglishName(str(fd, "headName")),
+    address: str(fd, "address"),
+    addressEn:
+      freshEnglish(str(fd, "addressEn"), str(fd, "address"), old && { en: old.addressEn, dev: old.address }) ||
+      addressToEnglish(str(fd, "address")),
     area: str(fd, "area"),
     panth,
     // choosing a real panth while editing counts as confirming it (edit is done by trusted roles)
@@ -120,7 +118,6 @@ export async function saveMember(fd: FormData) {
   const existing = memberId ? await prisma.member.findUnique({ where: { id: memberId } }) : null;
   if (existing?.deletedAt) throw new Error("Member is deleted");
 
-  await loadLearnedNames();
   const ageStr = str(fd, "age");
   // keep the original "age recorded on" date if the age was not changed
   const ageChanged = !existing || String(existing.age ?? "") !== ageStr;

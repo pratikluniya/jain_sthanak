@@ -1,3 +1,4 @@
+import { currentAge } from "@/lib/eligibility";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
@@ -181,7 +182,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
                   <div className="text-sm text-stone-600">
                     {relationLabel(m.relation, lang)}
                     {m.gender !== "UNKNOWN" && ` · ${t[m.gender]}`}
-                    {m.age !== null && ` · ${t.age}: ${m.age}`}
+                    {currentAge(m) !== null && ` · ${t.age}: ${currentAge(m)}`}
                     {m.bloodGroup && ` · ${m.bloodGroup}`}
                   </div>
                   <div className="text-sm text-stone-600">

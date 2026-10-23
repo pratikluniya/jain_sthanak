@@ -1,12 +1,10 @@
 import type { Family } from "@prisma/client";
 import type { Dict } from "@/lib/i18n";
 import { saveFamily } from "@/app/(app)/families/actions";
-import LiveBilingual from "@/components/LiveBilingual";
 
 export default function FamilyForm({ t, fam }: { t: Dict; fam?: Family | null }) {
   return (
     <form action={saveFamily} className="card p-4 space-y-3">
-        <LiveBilingual />
       {fam && <input type="hidden" name="id" value={fam.id} />}
       <div>
         <label className="label">{t.headName}</label>

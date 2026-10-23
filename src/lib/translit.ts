@@ -8,7 +8,7 @@
 // The result is a suggestion. A volunteer checks it on the check screen and can change it.
 
 /** Common surnames and words with their usual English spelling. [Unverified]: spellings follow common usage; families may write them differently. */
-export const KNOWN: Record<string, string> = {
+const KNOWN: Record<string, string> = {
   जैन: "Jain",
   लुणिया: "Luniya",
   लुनिया: "Luniya",

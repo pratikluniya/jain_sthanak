@@ -9,10 +9,10 @@ import { toEnglishName } from "@/lib/translit";
 import { formImageUrls } from "@/lib/storage";
 import ApplicationFieldsForm, { Field } from "@/components/ApplicationFieldsForm";
 import ImageInput from "@/components/ImageInput";
+import AgeDobFields from "@/components/AgeDobFields";
 import FamilyChooser from "./FamilyChooser";
 import { saveApplicationAction } from "./applicationActions";
 import { rejectUpload, retryUpload } from "../actions";
-import LiveBilingual from "@/components/LiveBilingual";
 
 const TITLES = ["", "श्री", "सौ.", "श्रीमती", "कु.", "चि.", "डॉ."];
 
@@ -66,7 +66,6 @@ export default async function ApplicationCheck({ up, error }: { up: FormUpload; 
         </div>
 
         <form action={saveApplicationAction} className="card space-y-3 p-4" encType="multipart/form-data">
-        <LiveBilingual />
           <input type="hidden" name="uploadId" value={up.id} />
           <input type="hidden" name="nameRaw" value={x.nameRaw} />
           {x.nameRaw && <p className="text-sm text-stone-500">{t.onForm}: {x.nameRaw}</p>}
@@ -100,8 +99,7 @@ export default async function ApplicationCheck({ up, error }: { up: FormUpload; 
                   <option value="FEMALE">{t.FEMALE}</option>
                 </select>
               </div>
-              <Field name="dob" label={t.dob} value={dob} type="date" hint={x.dob && !dob ? `${t.onForm}: ${x.dob}` : undefined} uncertain={u("dob")} />
-              <Field name="age" label={t.age} value={parseAge(x.age)?.toString() ?? ""} inputMode="numeric" uncertain={u("age")} />
+              <AgeDobFields dobFirst ageLabel={t.age} dobLabel={t.dob} dob={dob} age={parseAge(x.age)?.toString() ?? ""} dobHint={x.dob && !dob ? `${t.onForm}: ${x.dob}` : undefined} dobUncertain={u("dob")} ageUncertain={u("age")} />
               <Field name="mobile" label={t.mobile} value={normalizeMobile(x.mobile).value} inputMode="tel" uncertain={u("mobile") || (!!x.mobile && !normalizeMobile(x.mobile).valid)} />
               <Field name="occupation" label={t.occupation} value={x.occupation} />
               <Field name="education" label={t.education} value="" />

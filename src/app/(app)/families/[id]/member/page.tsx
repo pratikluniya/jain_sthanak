@@ -1,5 +1,7 @@
 import StatusField from "@/components/StatusField";
 import ImageInput from "@/components/ImageInput";
+import AgeDobFields from "@/components/AgeDobFields";
+import { currentAge } from "@/lib/eligibility";
 import { can } from "@/lib/rbac";
 import { todayIST } from "@/lib/deceased";
 import { notFound } from "next/navigation";
@@ -9,7 +11,6 @@ import { requireSession } from "@/lib/session";
 import { RELATIONS } from "@/lib/relations";
 import { saveMember } from "../../actions";
 import { headLabel } from "@/lib/members";
-import LiveBilingual from "@/components/LiveBilingual";
 
 export default async function MemberFormPage({ params, searchParams }: { params: { id: string }; searchParams: { m?: string; e?: string } }) {
   const s = await requireSession("edit");
@@ -34,7 +35,6 @@ export default async function MemberFormPage({ params, searchParams }: { params:
       {searchParams.e === "dod" && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">{t.dateRequiredEdit}</p>}
       {m?.nameRaw && <p className="text-sm text-stone-500">{t.onForm}: {m.nameRaw} {m.relationRaw && `· ${m.relationRaw}`}</p>}
       <form action={saveMember} className="card p-4 space-y-3" encType="multipart/form-data">
-        <LiveBilingual />
         <input type="hidden" name="familyId" value={fam.id} />
         {m && <input type="hidden" name="memberId" value={m.id} />}
         <div className="grid grid-cols-3 gap-3">
@@ -74,8 +74,7 @@ export default async function MemberFormPage({ params, searchParams }: { params:
               <option value="FEMALE">{t.FEMALE}</option>
             </select>
           </div>
-          {field("age", t.age, m?.age?.toString() ?? "", { inputMode: "numeric" })}
-          {field("dob", t.dob, m?.dob ? m.dob.toISOString().slice(0, 10) : "", { type: "date" })}
+          <AgeDobFields ageLabel={t.age} dobLabel={t.dob} age={m ? (currentAge(m)?.toString() ?? "") : ""} dob={m?.dob ? m.dob.toISOString().slice(0, 10) : ""} />
           {field("education", t.education, m?.education ?? "")}
           {field("occupation", t.occupation, m?.occupation ?? "")}
           {field("mobile", t.mobile, m?.mobile ?? "", { inputMode: "tel" })}

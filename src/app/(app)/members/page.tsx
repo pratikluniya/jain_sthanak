@@ -1,3 +1,4 @@
+import { currentAge } from "@/lib/eligibility";
 import { MISSING_DOD_WHERE } from "@/lib/deceased";
 import Link from "next/link";
 import DownloadButton from "@/components/DownloadButton";
@@ -119,7 +120,7 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
             {shown.map((m) => (
               <tr key={m.id}>
                 <td><Link href={`/families/${m.family.id}`} className="text-brand-700">{memberFullName(m, true, en)}</Link></td>
-                <td>{m.age ?? ""}</td>
+                <td>{currentAge(m) ?? ""}</td>
                 <td>{relationLabel(m.relation, lang)}</td>
                 <td>{m.mobile && <a href={`tel:${m.mobile}`}>{m.mobile}</a>}</td>
                 <td>{m.bloodGroup}</td>
