@@ -160,12 +160,29 @@ test("old head's relation after the head changes", async () => {
   assert.equal(oldHeadRelation("BROTHER", "MALE"), "OTHER");
 });
 
-test("public search needs first name and surname", async () => {
+test("public search: one word of 4+ letters, or two words", async () => {
   const { validQuery } = await import("./publicSearch");
-  assert.equal(validQuery("बोथरा"), false, "surname only");
-  assert.equal(validQuery("र बोथरा"), false, "one-letter word does not count");
-  assert.equal(validQuery("रमेश बोथरा"), true);
-  assert.equal(validQuery("Ramesh Bothra"), true);
+  assert.equal(validQuery("Pratik"), true, "first name alone");
+  assert.equal(validQuery("बोथरा"), true, "surname alone (Marathi)");
+  assert.equal(validQuery("जैन"), true, "counted on its English spelling: Jain");
+  assert.equal(validQuery("Ram"), false, "3 letters");
+  assert.equal(validQuery("Both"), true, "4 letters as typed, even if search folds th");
+  assert.equal(validQuery("राम"), false, "3 letters in Marathi");
+  assert.equal(validQuery("र"), false);
+  assert.equal(validQuery("Ram Rao"), true, "two words still work");
+});
+
+test("public search matches the start of name words only, never mobile or code", async () => {
+  const { nameMatches, nameWords, queryWords } = await import("./publicSearch");
+  const m = { firstName: "प्रतिक", middleName: "", surname: "लुणिया", firstNameEn: "Pratik", middleNameEn: "", surnameEn: "Luniya" };
+  const w = nameWords(m);
+  assert.equal(nameMatches(w, queryWords("Pratik")), true);
+  assert.equal(nameMatches(w, queryWords("prat")), true);
+  assert.equal(nameMatches(w, queryWords("प्रतिक")), true);
+  assert.equal(nameMatches(w, queryWords("लुनिया")), true, "ण and न are the same in search");
+  assert.equal(nameMatches(w, queryWords("tik")), false, "not from the middle");
+  assert.equal(nameMatches(w, queryWords("9800000001")), false);
+  assert.equal(nameMatches(w, queryWords("Pratik Bothra")), false, "every word must match");
 });
 
 test("individual application: only approved applicants are voters", async () => {
