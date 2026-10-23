@@ -12,7 +12,6 @@ import ImageInput from "@/components/ImageInput";
 import FamilyChooser from "./FamilyChooser";
 import { saveApplicationAction } from "./applicationActions";
 import { rejectUpload, retryUpload } from "../actions";
-import LiveBilingual from "@/components/LiveBilingual";
 
 const TITLES = ["", "श्री", "सौ.", "श्रीमती", "कु.", "चि.", "डॉ."];
 
@@ -66,7 +65,6 @@ export default async function ApplicationCheck({ up, error }: { up: FormUpload; 
         </div>
 
         <form action={saveApplicationAction} className="card space-y-3 p-4" encType="multipart/form-data">
-        <LiveBilingual />
           <input type="hidden" name="uploadId" value={up.id} />
           <input type="hidden" name="nameRaw" value={x.nameRaw} />
           {x.nameRaw && <p className="text-sm text-stone-500">{t.onForm}: {x.nameRaw}</p>}
