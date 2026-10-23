@@ -12,6 +12,7 @@ import { DEMISE_EVERY_DAYS, MISSING_DOD_WHERE, demiseReminderDue, todayIST } fro
 import { deceasedLabels } from "@/lib/deceasedLabels";
 import { memberFullName } from "@/lib/members";
 import { getLang } from "@/lib/i18n";
+import { DONATION_KINDS, currentYear, rupees, yearSummary } from "@/lib/donations";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,9 @@ export default async function Dashboard() {
       );
     }
   }
+  // this year's donations: collected vs expected and unpaid families (only once the amount is set)
+  const dYear = currentYear();
+  const donationTiles = (await Promise.all(DONATION_KINDS.map(async (kind) => ({ kind, sum: await yearSummary(kind, dYear) })))).filter((d) => d.sum.amount !== null);
   const borderline = rows.filter((r) => r.result.reasons.includes("AGE_BORDERLINE")).length;
 
   const stats: { label: string; value: number; href: string; icon: IconName; warn?: boolean }[] = [
@@ -97,6 +101,19 @@ export default async function Dashboard() {
           </Link>
         ))}
       </div>
+      {donationTiles.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {donationTiles.map(({ kind, sum }) => (
+            <Link key={kind} href={`/donations?kind=${kind}&year=${dYear}`} className={`card p-4 transition hover:shadow-md ${sum.unpaid > 0 ? "border-amber-300" : ""}`}>
+              <div className="text-sm font-semibold text-stone-600">{t[kind]} {dYear}</div>
+              <div className="mt-1 font-heading text-2xl font-bold">{rupees(sum.collected)} <span className="text-base font-normal text-stone-500">/ {rupees(sum.expected)}</span></div>
+              <div className="mt-1 text-sm">
+                {t.PAID}: {sum.paid} · {t.EXEMPT}: {sum.exempt} · <span className={sum.unpaid > 0 ? "font-semibold text-red-700" : ""}>{t.UNPAID}: {sum.unpaid}</span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
       <div className="card grid gap-4 p-4 text-sm sm:grid-cols-2">
         <div>
           <div className="text-xs font-semibold text-stone-500">{t.ageCutoffDate}</div>

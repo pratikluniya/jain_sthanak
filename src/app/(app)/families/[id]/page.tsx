@@ -23,6 +23,8 @@ import ConfirmButton from "@/components/ConfirmButton";
 import { formImageUrls } from "@/lib/storage";
 import ApplicationSummary from "@/components/ApplicationSummary";
 import { aadhaarPendingCount, memberGaps } from "@/lib/gaps";
+import { DONATION_KINDS, openYears } from "@/lib/donations";
+import EntryControls, { EntryDetails, StatusBadge } from "../../donations/EntryControls";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +39,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
       members: { orderBy: [{ isHead: "desc" }, { serial: "asc" }], include: { application: true } },
       uploads: { orderBy: { createdAt: "asc" } },
       payments: { orderBy: { date: "desc" } },
+      donations: true,
       parentFamily: true,
       linkedFamilies: { where: LIVE },
     },
@@ -58,6 +61,10 @@ export default async function FamilyPage({ params }: { params: { id: string } })
   const canEdit = can(s.role, "edit") && !deleted;
   const canDelete = can(s.role, "delete") && !deleted;
   const canMarkDeceased = can(s.role, "approve") && !deleted && !familyMoved;
+  // yearly donations: only families that owe (active, not deleted, someone living)
+  const owesDonations = !deleted && fam.status === "ACTIVE" && fam.members.some((m) => !m.deletedAt && m.status === "ACTIVE");
+  const donationYears = owesDonations ? await openYears() : [];
+  const donationYearList = [...new Set(donationYears.map((y) => y.year))];
   const dLabels = deceasedLabels(t);
   const mLabels = moveLabels(t);
   const today = todayIST();
@@ -161,6 +168,41 @@ export default async function FamilyPage({ params }: { params: { id: string } })
           )}
         </div>
       </section>
+
+      {owesDonations && (
+        <section className="space-y-2">
+          <h2 className="section-title">{t.donationHistory}</h2>
+          {donationYearList.length === 0 ? (
+            <p className="text-sm text-stone-500">{t.donationNoYears}</p>
+          ) : (
+            <div className="card divide-y">
+              {donationYearList.map((year) => (
+                <div key={year} className="space-y-2 p-3">
+                  <div className="font-semibold">{year}</div>
+                  {DONATION_KINDS.map((kind) => {
+                    const dy = donationYears.find((y) => y.kind === kind && y.year === year);
+                    if (!dy) return null;
+                    const entry = fam.donations.find((d) => d.kind === kind && d.year === year) ?? null;
+                    return (
+                      <div key={kind} className="space-y-1 pl-2">
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
+                          <span className="w-36">{t[kind]}</span>
+                          <StatusBadge entry={entry} t={t} />
+                          {entry && <EntryDetails entry={entry} t={t} />}
+                        </div>
+                        <EntryControls
+                          familyId={fam.id} kind={kind} year={year} amount={dy.amount} entry={entry}
+                          canRecord={canEdit} canAdmin={can(s.role, "donationAdmin")} t={t} label={`${fam.code} · ${t[kind]} ${year}`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="space-y-2">
         <h2 className="section-title">{t.members} ({members.length})</h2>
