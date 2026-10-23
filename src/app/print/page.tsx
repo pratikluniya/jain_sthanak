@@ -8,7 +8,8 @@ import PrintButton from "@/components/PrintButton";
 
 export const dynamic = "force-dynamic";
 
-// Print-ready A4 page. The browser renders Devanagari correctly; "Save as PDF" in the print dialog gives the PDF.
+// Print-ready A4 page. The downloaded PDF uses text 4 px larger than the print view (decided 24 Oct 2026).
+// The browser renders Devanagari correctly; "Save as PDF" in the print dialog gives the PDF.
 export default async function PrintPage({ searchParams }: { searchParams: { list?: string; fields?: string; lang?: string; pdf?: string; gap?: string } }) {
   const s = await requireSession("export");
   const list = asListKind(searchParams.list);
@@ -24,7 +25,7 @@ export default async function PrintPage({ searchParams }: { searchParams: { list
   return (
     <div lang={lang} className="bg-white min-h-screen p-4 print:p-0">
       <style>{`@page { size: A4 ${landscape ? "landscape" : "portrait"}; margin: 12mm 10mm; }
-        table { border-collapse: collapse; width: 100%; font-size: 11px; }
+        table { border-collapse: collapse; width: 100%; font-size: ${asPdf ? 15 : 11}px; }
         th, td { border: 1px solid #999; padding: 3px 5px; vertical-align: top; }
         thead { display: table-header-group; }
         tr { page-break-inside: avoid; }
@@ -48,10 +49,10 @@ export default async function PrintPage({ searchParams }: { searchParams: { list
       <div className="flex items-center gap-3 justify-center" style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo.png" alt="" className="h-14 w-auto" />
-        <h1 className="text-lg font-bold text-center">{data.title}</h1>
+        <h1 className={`${asPdf ? "text-[22px]" : "text-lg"} font-bold text-center`}>{data.title}</h1>
       </div>
       <div className="jain-stripe my-2" style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }} />
-      <p className="text-center text-sm mb-3">{data.subtitle}</p>
+      <p className={`text-center ${asPdf ? "text-[18px]" : "text-sm"} mb-3`}>{data.subtitle}</p>
       </div>
       <table>
         <thead>
