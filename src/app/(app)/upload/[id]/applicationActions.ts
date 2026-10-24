@@ -26,6 +26,7 @@ export async function saveApplicationAction(fd: FormData) {
     mode: s(fd, "mode") === "new" ? "new" : "existing",
     familyCode: s(fd, "familyCode"),
     relation: s(fd, "relation") || "OTHER",
+    memberId: s(fd, "memberId") || undefined,
     applicant: {
       title: s(fd, "title"),
       firstName: s(fd, "firstName").trim(),
@@ -52,7 +53,7 @@ export async function saveApplicationAction(fd: FormData) {
     if (r.error === "alreadySaved") redirect("/upload");
     redirect(`/upload/${uploadId}?e=${r.error}`);
   }
-  await audit(session.uid, "verify", "Upload", uploadId, { kind: "INDIVIDUAL", familyId: r.familyId, memberId: r.memberId, mode: s(fd, "mode") });
+  await audit(session.uid, "verify", "Upload", uploadId, { kind: "INDIVIDUAL", familyId: r.familyId, memberId: r.memberId, mode: s(fd, "mode"), samePerson: !!s(fd, "memberId") });
   revalidatePath("/upload");
   flashOk("saved");
   redirect(`/families/${r.familyId}`);

@@ -110,7 +110,7 @@ export default async function ApplicationCheck({ up, error }: { up: FormUpload; 
           <FamilyChooser
             suggestions={suggestions}
             relations={RELATIONS.map((r) => ({ code: r.code, label: r[lang] }))}
-            t={{ chooseFamily: t.chooseFamily, otherFamilyCode: t.otherFamilyCode, newFamilyFromApp: t.newFamilyFromApp, newFamilyHelp: t.newFamilyHelp, relation: t.relation, noSuggestions: t.noSuggestions, husbandMatch: t.husbandMatch }}
+            t={{ chooseFamily: t.chooseFamily, otherFamilyCode: t.otherFamilyCode, newFamilyFromApp: t.newFamilyFromApp, newFamilyHelp: t.newFamilyHelp, relation: t.relation, noSuggestions: t.noSuggestions, husbandMatch: t.husbandMatch, samePerson: t.appSamePerson, newMemberHere: t.appNewMemberHere, samePersonHelp: t.appSamePersonHelp, hasApplication: t.appHasApplication }}
           />
 
           <fieldset className="rounded-lg border p-3 space-y-2">

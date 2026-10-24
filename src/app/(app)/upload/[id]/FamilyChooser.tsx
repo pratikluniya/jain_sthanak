@@ -7,16 +7,21 @@ import type { FamilySuggestion } from "@/lib/applications";
 export default function FamilyChooser(props: {
   suggestions: FamilySuggestion[];
   relations: { code: string; label: string }[];
-  t: Record<"chooseFamily" | "otherFamilyCode" | "newFamilyFromApp" | "newFamilyHelp" | "relation" | "noSuggestions" | "husbandMatch", string>;
+  t: Record<"chooseFamily" | "otherFamilyCode" | "newFamilyFromApp" | "newFamilyHelp" | "relation" | "noSuggestions" | "husbandMatch" | "samePerson" | "newMemberHere" | "samePersonHelp" | "hasApplication", string>;
 }) {
   const first = props.suggestions[0];
   const [choice, setChoice] = useState<string>(first ? first.code : "__other");
   const [relation, setRelation] = useState<string>(first ? first.relation : "WIFE");
+  // the applicant may already be a member of the chosen family (census form): link instead of adding again
+  const firstSame = (s?: FamilySuggestion) => s?.sameMembers.find((m) => !m.hasApplication)?.id ?? "";
+  const [memberId, setMemberId] = useState<string>(firstSame(first));
   const isNew = choice === "__new";
+  const chosen = props.suggestions.find((s) => s.code === choice);
 
   const pick = (code: string, rel?: string) => {
     setChoice(code);
     if (rel) setRelation(rel);
+    setMemberId(firstSame(props.suggestions.find((s) => s.code === code)));
   };
 
   return (
@@ -48,7 +53,23 @@ export default function FamilyChooser(props: {
           <span className="block text-xs text-stone-500">{props.t.newFamilyHelp}</span>
         </span>
       </label>
-      {!isNew && (
+      {chosen && chosen.sameMembers.length > 0 && (
+        <div className="rounded-lg border border-sky-200 bg-sky-50 p-2 text-sm space-y-1">
+          {chosen.sameMembers.map((m) => (
+            <label key={m.id} className={`flex items-center gap-2 ${m.hasApplication ? "text-stone-400" : ""}`}>
+              <input type="radio" name="samePick" checked={memberId === m.id} disabled={m.hasApplication} onChange={() => setMemberId(m.id)} />
+              <span>{props.t.samePerson}: <b>{m.name}</b>{m.hasApplication && ` (${props.t.hasApplication})`}</span>
+            </label>
+          ))}
+          <label className="flex items-center gap-2">
+            <input type="radio" name="samePick" checked={memberId === ""} onChange={() => setMemberId("")} />
+            <span>{props.t.newMemberHere}</span>
+          </label>
+          {memberId && <p className="text-xs text-stone-600">{props.t.samePersonHelp}</p>}
+        </div>
+      )}
+      {memberId && chosen && <input type="hidden" name="memberId" value={memberId} />}
+      {!isNew && !(memberId && chosen) && (
         <div>
           <label className="label" htmlFor="relation">{props.t.relation}</label>
           <select id="relation" name="relation" className="input" value={relation} onChange={(e) => setRelation(e.target.value)}>

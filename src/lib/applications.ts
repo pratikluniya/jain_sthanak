@@ -1,12 +1,14 @@
 // Saving an individual membership application (सभासद अर्ज) after a volunteer checked it (decided 8 Oct 2026):
 // the applicant joins an existing family (e.g. a newly married wife or daughter-in-law) with a relation,
 // or starts a new family whose panth is "to verify". The application details are kept with the member.
+// If the applicant is ALREADY a member (from a census form), the application is linked to that member and
+// only blank details are filled; nothing saved is overwritten (decided 24 Oct 2026).
 import type { Prisma } from "@prisma/client";
 import { addressToEnglish } from "./addressEn";
 import { prisma } from "./db";
 import { LIVE } from "./softDelete";
 import { nextFamilyCode } from "./counters";
-import { inferHeadGender, prepareMember } from "./members";
+import { computeSearchKey, inferHeadGender, prepareMember } from "./members";
 import { fullName, normalizeMobile, searchKey } from "./normalize";
 import { DOC_CODES, parseFormDate, parseRupees } from "./applicationForm";
 import { getFile, putFile } from "./storage";
@@ -22,6 +24,8 @@ export interface FamilySuggestion {
   matchedMember: string;
   relation: string;
   reasons: string[];
+  /** members of this family who look like the applicant himself/herself (already on a census form) */
+  sameMembers: { id: string; name: string; hasApplication: boolean }[];
 }
 
 const words = (s: string) => searchKey(s).split(" ").filter((w) => w.length > 1);
@@ -40,14 +44,15 @@ function relationVia(memberRelation: string, applicantGender: string): string {
  * Families the applicant may belong to, best first. Score: same surname +3, husband's/father's first name
  * found in the family +4, shared mobile +5, matching address words +1 each (max 3). Shown if 3 or more.
  */
-export async function suggestFamilies(a: { surname: string; middleName: string; gender: string; mobile: string; homeAddress: string }): Promise<FamilySuggestion[]> {
+export async function suggestFamilies(a: { firstName?: string; surname: string; middleName: string; gender: string; mobile: string; homeAddress: string }): Promise<FamilySuggestion[]> {
+  const first = words(a.firstName ?? "")[0];
   const sur = words(a.surname)[0];
   const mid = words(a.middleName)[0];
   const mobile = normalizeMobile(a.mobile).value;
   const addr = new Set(words(a.homeAddress).filter((w) => w.length > 2));
   const families = await prisma.family.findMany({
     where: { ...LIVE, status: { not: "MOVED_OUT" } },
-    include: { members: { where: { ...LIVE, status: { notIn: ["MOVED_OUT", "DECEASED"] } } } },
+    include: { members: { where: { ...LIVE, status: { notIn: ["MOVED_OUT", "DECEASED"] } }, include: { application: { select: { id: true } } } } },
   });
   const out: (FamilySuggestion & { score: number })[] = [];
   for (const f of families) {
@@ -66,6 +71,17 @@ export async function suggestFamilies(a: { surname: string; middleName: string; 
       score += 5;
       reasons.push("mobile");
     }
+    // the applicant may already be a member (census form): same first name plus mobile, husband/father or surname
+    const same = first
+      ? f.members.filter((m) => {
+          if (words(m.firstName)[0] !== first) return false;
+          return (mobile.length === 10 && m.mobile === mobile) || (!!mid && words(m.middleName)[0] === mid) || (!!sur && words(m.surname)[0] === sur);
+        })
+      : [];
+    if (same.length) {
+      score += 6;
+      reasons.push("same person");
+    }
     const hits = Math.min(3, words(f.address).filter((w) => addr.has(w)).length);
     if (hits >= 2) reasons.push("address");
     score += hits;
@@ -78,6 +94,7 @@ export async function suggestFamilies(a: { surname: string; middleName: string; 
         matchedMember: husband ? fullName(husband, false) : "",
         relation: husband ? relationVia(husband.relation, a.gender) : "OTHER",
         reasons,
+        sameMembers: same.map((m) => ({ id: m.id, name: fullName(m, false), hasApplication: !!m.application })),
         score,
       });
     }
@@ -176,6 +193,8 @@ export interface SaveApplicationInput {
   mode: "existing" | "new";
   familyCode?: string;
   relation: string;
+  /** "existing" mode: the applicant IS this member already (smart merge, 24 Oct 2026) */
+  memberId?: string;
   applicant: ApplicantInput;
   application: ApplicationFields;
   /** photo picked on the check screen (wins over the one cropped at import) */
@@ -183,20 +202,25 @@ export interface SaveApplicationInput {
   by: { uid: string; name: string };
 }
 
-export type SaveApplicationResult = { ok: true; familyId: string; memberId: string } | { ok: false; error: "alreadySaved" | "familyNotFound" | "nameRequired" | "relationSelf" };
+export type SaveApplicationResult = { ok: true; familyId: string; memberId: string } | { ok: false; error: "alreadySaved" | "familyNotFound" | "nameRequired" | "relationSelf" | "memberNotFound" | "memberHasApplication" };
 
 export async function saveApplication(input: SaveApplicationInput): Promise<SaveApplicationResult> {
   const up = await prisma.formUpload.findUniqueOrThrow({ where: { id: input.uploadId } });
   if (up.status === "VERIFIED") return { ok: false, error: "alreadySaved" };
   const a = input.applicant;
   if (!a.firstName.trim()) return { ok: false, error: "nameRequired" };
-  if (input.mode === "existing" && input.relation === "SELF") return { ok: false, error: "relationSelf" };
+  if (input.mode === "existing" && input.relation === "SELF" && !input.memberId) return { ok: false, error: "relationSelf" };
 
   let existing = null;
   if (input.mode === "existing") {
     existing = await prisma.family.findFirst({ where: { code: (input.familyCode ?? "").trim().toUpperCase(), ...LIVE, status: { not: "MOVED_OUT" } } });
     if (!existing) return { ok: false, error: "familyNotFound" };
   }
+  const same = input.mode === "existing" && input.memberId
+    ? await prisma.member.findFirst({ where: { id: input.memberId, familyId: existing!.id, ...LIVE }, include: { application: { select: { id: true } } } })
+    : null;
+  if (input.memberId && input.mode === "existing" && !same) return { ok: false, error: "memberNotFound" };
+  if (same?.application) return { ok: false, error: "memberHasApplication" };
   const app = applicationData(input.application);
   const recordedOn = app.appDate ?? up.createdAt;
   const dob = parseFormDate(a.dob);
@@ -205,7 +229,7 @@ export async function saveApplication(input: SaveApplicationInput): Promise<Save
   let photoKey: string | null = null;
   const extractedPhoto = (up.extracted as { photoKey?: string } | null)?.photoKey;
   const photoBytes = input.photo ?? (extractedPhoto ? { data: await getFile("forms", extractedPhoto), type: "image/jpeg" } : null);
-  if (photoBytes) {
+  if (photoBytes && !same?.photoKey) {
     const ext = photoBytes.type === "image/png" ? "png" : photoBytes.type === "image/webp" ? "webp" : "jpg";
     photoKey = `application/${up.id}-photo-${Date.now()}.${ext}`;
     await putFile("photos", photoKey, photoBytes.data, photoBytes.type || "image/jpeg");
@@ -227,6 +251,34 @@ export async function saveApplication(input: SaveApplicationInput): Promise<Save
           notes: "सभासद अर्जाद्वारे नवीन कुटुंब",
         },
       });
+    }
+    if (same) {
+      // same person: keep everything saved, fill only what is blank, add the application
+      const d = prepareMember({ ...a, dob: dob || null, relation: same.relation, serial: same.serial }, fam.code, recordedOn);
+      const data: Prisma.MemberUpdateInput = {};
+      if (!same.mobile && d.mobile) data.mobile = d.mobile;
+      if (!same.occupation && d.occupation) data.occupation = d.occupation;
+      if (!same.education && d.education) data.education = d.education;
+      if (!same.bloodGroup && d.bloodGroup) data.bloodGroup = d.bloodGroup;
+      if (!same.dob && d.dob) Object.assign(data, { dob: d.dob, age: d.age, ageRecordedOn: d.ageRecordedOn });
+      else if (!same.dob && same.age === null && d.age !== null) Object.assign(data, { age: d.age, ageRecordedOn: d.ageRecordedOn });
+      if (!same.firstNameEn && d.firstNameEn) Object.assign(data, { firstNameEn: d.firstNameEn, middleNameEn: d.middleNameEn, surnameEn: d.surnameEn });
+      if (same.gender === "UNKNOWN" && d.gender !== "UNKNOWN") data.gender = d.gender;
+      if (!same.photoKey && photoKey) data.photoKey = photoKey;
+      if (Object.keys(data).length) {
+        data.searchKey = computeSearchKey(
+          {
+            firstName: same.firstName, middleName: same.middleName, surname: same.surname,
+            firstNameEn: (data.firstNameEn as string) ?? same.firstNameEn, middleNameEn: (data.middleNameEn as string) ?? same.middleNameEn, surnameEn: (data.surnameEn as string) ?? same.surnameEn,
+            mobile: (data.mobile as string) ?? same.mobile,
+          },
+          fam.code,
+        );
+        await tx.member.update({ where: { id: same.id }, data });
+      }
+      await tx.membershipApplication.create({ data: { ...app, memberId: same.id, uploadId: up.id, createdById: input.by.uid } });
+      await tx.formUpload.update({ where: { id: up.id }, data: { status: "VERIFIED", familyId: fam.id, verifiedBy: input.by.name } });
+      return { familyId: fam.id, memberId: same.id };
     }
     const count = await tx.member.count({ where: { familyId: fam.id } });
     const data = prepareMember(
