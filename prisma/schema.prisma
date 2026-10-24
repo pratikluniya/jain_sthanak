@@ -42,6 +42,15 @@ enum MemberStatus {
   MOVED_OUT
 }
 
+// Per-family voter-list switch (decided 24 Oct 2026): AUTO follows the rules; INCLUDE puts the family on the
+// list even if its panth does not qualify; EXCLUDE keeps it off. Age, deceased, moved out and unapproved
+// applications always apply.
+enum VoterOverride {
+  AUTO
+  INCLUDE
+  EXCLUDE
+}
+
 enum FamilyStatus {
   ACTIVE
   MOVED_OUT
@@ -104,18 +113,21 @@ model Counter {
 }
 
 model Family {
-  id          String       @id @default(cuid())
-  code        String       @unique // NR-0001
-  headName    String // as written on the form
-  headNameEn  String       @default("") // English spelling
-  address     String       @default("")
-  addressEn   String       @default("") // English spelling of the address
-  area        String       @default("")
-  panth       Panth        @default(UNKNOWN)
-  panthStatus PanthStatus  @default(TO_VERIFY)
-  status      FamilyStatus @default(ACTIVE)
-  notes       String       @default("")
-  formDate    DateTime? // date the census form was filled / received
+  id                String        @id @default(cuid())
+  code              String        @unique // NR-0001
+  headName          String // as written on the form
+  headNameEn        String        @default("") // English spelling
+  address           String        @default("")
+  addressEn         String        @default("") // English spelling of the address
+  area              String        @default("")
+  panth             Panth         @default(UNKNOWN)
+  panthStatus       PanthStatus   @default(TO_VERIFY)
+  status            FamilyStatus  @default(ACTIVE)
+  notes             String        @default("")
+  voterOverride     VoterOverride @default(AUTO)
+  voterOverrideById String?
+  voterOverrideAt   DateTime?
+  formDate          DateTime? // date the census form was filled / received
 
   // A separate household that belongs to the same larger family (volunteer decides)
   parentFamilyId String?

@@ -84,6 +84,25 @@ export async function confirmPanth(fd: FormData) {
   revalidatePath("/families");
 }
 
+/** Admin / Operator: the family's voter-list switch (AUTO / INCLUDE / EXCLUDE), decided 24 Oct 2026. */
+export async function setVoterOverride(fd: FormData) {
+  const s = await requireSession("approve");
+  const id = str(fd, "id");
+  const v = str(fd, "voterOverride");
+  if (!["AUTO", "INCLUDE", "EXCLUDE"].includes(v)) {
+    flashErr("checkForm");
+    return;
+  }
+  const before = await prisma.family.findUnique({ where: { id }, select: { voterOverride: true } });
+  await prisma.family.update({
+    where: { id },
+    data: { voterOverride: v as "AUTO" | "INCLUDE" | "EXCLUDE", voterOverrideById: s.uid, voterOverrideAt: new Date() },
+  });
+  await audit(s.uid, "update", "Family", id, { voterOverride: v, before: before?.voterOverride ?? null });
+  flashOk("saved");
+  revalidatePath("/", "layout");
+}
+
 export async function deleteFamily(fd: FormData) {
   const s = await requireSession("delete");
   const id = str(fd, "id");
