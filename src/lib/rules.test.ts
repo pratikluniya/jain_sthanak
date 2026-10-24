@@ -72,12 +72,18 @@ test("age and eligibility", () => {
   assert.equal(checkVoter({ age: 45, ageRecordedOn: recorded, dob: null, status: "ACTIVE" }, fam, opts).eligible, true);
   assert.deepEqual(checkVoter({ age: 17, ageRecordedOn: recorded, dob: null, status: "ACTIVE" }, fam, opts).reasons, ["AGE_BORDERLINE"]);
   assert.deepEqual(checkVoter({ age: 15, ageRecordedOn: recorded, dob: null, status: "ACTIVE" }, fam, opts).reasons, ["UNDER_AGE"]);
-  // every panth votes except Digambar (decided 9 Oct 2026)
+  // only Sthanakvasi and Terapanth vote (decided 24 Oct 2026)
   const adult = { age: 45, ageRecordedOn: recorded, dob: null, status: "ACTIVE" };
-  for (const panth of ["MANDIRMARGI", "TERAPANTH"]) assert.equal(checkVoter(adult, { panth, panthStatus: "CONFIRMED" }, opts).eligible, true);
+  assert.equal(checkVoter(adult, { panth: "TERAPANTH", panthStatus: "CONFIRMED" }, opts).eligible, true);
+  assert.deepEqual(checkVoter(adult, { panth: "MANDIRMARGI", panthStatus: "CONFIRMED" }, opts).reasons, ["PANTH_NOT_ELIGIBLE"]);
+  // per-family switch: INCLUDE skips the panth rule only, EXCLUDE always removes
+  assert.equal(checkVoter(adult, { panth: "MANDIRMARGI", panthStatus: "CONFIRMED", voterOverride: "INCLUDE" }, opts).eligible, true);
+  assert.equal(checkVoter(adult, { panth: "UNKNOWN", panthStatus: "TO_VERIFY", voterOverride: "INCLUDE" }, opts).eligible, true);
+  assert.deepEqual(checkVoter({ ...adult, age: 15 }, { panth: "MANDIRMARGI", panthStatus: "CONFIRMED", voterOverride: "INCLUDE" }, opts).reasons, ["UNDER_AGE"]);
+  assert.deepEqual(checkVoter(adult, { ...fam, voterOverride: "EXCLUDE" }, opts).reasons, ["EXCLUDED_FAMILY"]);
   assert.deepEqual(checkVoter(adult, { panth: "UNKNOWN", panthStatus: "TO_VERIFY" }, opts).reasons, ["PANTH_TO_VERIFY"]);
   assert.deepEqual(checkVoter(adult, { panth: "MANDIRMARGI", panthStatus: "TO_VERIFY" }, opts).reasons, ["PANTH_TO_VERIFY"]);
-  assert.deepEqual(checkVoter(adult, { panth: "DIGAMBAR", panthStatus: "CONFIRMED" }, opts).reasons, ["DIGAMBAR_PANTH"]);
+  assert.deepEqual(checkVoter(adult, { panth: "DIGAMBAR", panthStatus: "CONFIRMED" }, opts).reasons, ["PANTH_NOT_ELIGIBLE"]);
   assert.deepEqual(checkVoter(adult, { panth: "DIGAMBAR", panthStatus: "TO_VERIFY" }, opts).reasons, ["PANTH_TO_VERIFY"]);
   // deceased: never a voter, whatever the status-rules setting (decided 6 Oct 2026)
   assert.deepEqual(checkVoter({ age: 70, ageRecordedOn: recorded, dob: null, status: "DECEASED" }, fam, opts).reasons, ["DECEASED"]);

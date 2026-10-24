@@ -1,7 +1,8 @@
 // Voter eligibility rules (confirmed by the Sangh, 27 Sep 2026):
 //   1. Age 18 or more as on the age cut-off date (Settings; default 01/10/2026)
-//   2. Family panth confirmed, and any panth except Digambar (decided 9 Oct 2026; earlier only
-//      Sthanakvasi). Blank or unconfirmed panth = "to verify".
+//   2. Family panth confirmed as Sthanakvasi or Terapanth (decided 24 Oct 2026; 9-24 Oct any panth except
+//      Digambar; before that only Sthanakvasi). Blank or unconfirmed panth = "to verify".
+//      Per-family switch (24 Oct 2026): INCLUDE skips this panth rule, EXCLUDE takes the family off the list.
 //   3. A member marked deceased, or who moved out of the area (alone or with the family),
 //      is never a voter (decided 6-7 Oct 2026).
 //   4. Someone who joined through an individual application (सभासद अर्ज) counts only when the
@@ -11,6 +12,7 @@
 // `applyStatusRules` setting is on.
 
 export const VOTING_AGE = 18;
+export const VOTING_PANTHS = ["STHANAKVASI", "TERAPANTH"];
 
 export interface AgeInput {
   age: number | null;
@@ -69,7 +71,8 @@ export type Reason =
   | "UNDER_AGE"
   | "AGE_UNKNOWN"
   | "AGE_BORDERLINE" // may or may not be 18 on election day: needs DOB
-  | "DIGAMBAR_PANTH"
+  | "PANTH_NOT_ELIGIBLE" // Mandirmargi or Digambar (only Sthanakvasi and Terapanth vote)
+  | "EXCLUDED_FAMILY" // family switched off the voter list by Admin / Operator
   | "PANTH_TO_VERIFY"
   | "DECEASED"
   | "MOVED_OUT"
@@ -89,7 +92,7 @@ export interface EligibilityOptions {
 
 export function checkVoter(
   member: AgeInput & { status: string; application?: { decision: string } | null },
-  family: { panth: string; panthStatus: string; status?: string },
+  family: { panth: string; panthStatus: string; status?: string; voterOverride?: string },
   opts: EligibilityOptions,
 ): EligibilityResult {
   const reasons: Reason[] = [];
@@ -101,8 +104,11 @@ export function checkVoter(
   } else if (age.max !== null && age.max >= VOTING_AGE) reasons.push("AGE_BORDERLINE");
   else reasons.push("UNDER_AGE");
 
-  if (family.panthStatus !== "CONFIRMED") reasons.push("PANTH_TO_VERIFY");
-  else if (family.panth === "DIGAMBAR") reasons.push("DIGAMBAR_PANTH");
+  if (family.voterOverride === "EXCLUDE") reasons.push("EXCLUDED_FAMILY");
+  else if (family.voterOverride === "INCLUDE") {
+    /* panth rule skipped for this family */
+  } else if (family.panthStatus !== "CONFIRMED") reasons.push("PANTH_TO_VERIFY");
+  else if (!VOTING_PANTHS.includes(family.panth)) reasons.push("PANTH_NOT_ELIGIBLE");
 
   if (member.status === "DECEASED") reasons.push("DECEASED");
   else if (member.status === "MOVED_OUT" || family.status === "MOVED_OUT") reasons.push("MOVED_OUT");

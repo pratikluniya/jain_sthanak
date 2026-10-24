@@ -52,6 +52,7 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="page-title">{t.families} <span className="text-stone-500 text-base">({filtered.length})</span></h1>
         <div className="flex flex-wrap gap-2">
+          {can(s.role, "approve") && !showDeleted && !showMoved && <Link href="/duplicates" className="btn-secondary">{t.dup_link}</Link>}
           {can(s.role, "export") && !showDeleted && !showMoved && <DownloadButton {...downloadProps("families", t, lang)} />}
           {can(s.role, "edit") && <Link href="/families/new" className="btn-primary">+ {t.addFamily}</Link>}
         </div>

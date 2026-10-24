@@ -9,7 +9,7 @@ import { relationLabel } from "@/lib/relations";
 import { checkVoter } from "@/lib/eligibility";
 import { effectiveAgeDate, getSettings } from "@/lib/settings";
 import { memberFullName, headLabel } from "@/lib/members";
-import { confirmPanth, deleteFamily, deleteMember, restoreFamily } from "../actions";
+import { confirmPanth, deleteFamily, deleteMember, restoreFamily, setVoterOverride } from "../actions";
 import { RECEIPTS_ENABLED } from "@/lib/features";
 import { initials } from "@/lib/initials";
 import MarkDeceasedButton from "@/components/MarkDeceasedButton";
@@ -69,6 +69,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
   const mLabels = moveLabels(t);
   const today = todayIST();
   const living = members.filter((x) => x.status !== "DECEASED" && x.status !== "MOVED_OUT");
+  const voterSetBy = fam.voterOverrideById ? await prisma.user.findUnique({ where: { id: fam.voterOverrideById }, select: { name: true } }) : null;
   const movedBy = fam.movedOutMarkedById ? await prisma.user.findUnique({ where: { id: fam.movedOutMarkedById }, select: { name: true } }) : null;
   const settings = await getSettings();
   const ageDate = effectiveAgeDate(settings);
@@ -168,6 +169,37 @@ export default async function FamilyPage({ params }: { params: { id: string } })
           )}
         </div>
       </section>
+
+      {!deleted && !familyMoved && (
+        <section className="card space-y-2 p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="section-title">{t.voterListSetting}</h2>
+            <span className={fam.voterOverride === "INCLUDE" ? "badge-green" : fam.voterOverride === "EXCLUDE" ? "badge-red" : "badge-gray"}>
+              {fam.voterOverride === "INCLUDE" ? t.voterInclude : fam.voterOverride === "EXCLUDE" ? t.voterExclude : t.voterAuto}
+            </span>
+            {fam.voterOverrideAt && fam.voterOverride !== "AUTO" && (
+              <span className="text-xs text-stone-500">{t.voterSetBy}: {voterSetBy?.name ?? "-"} · {fam.voterOverrideAt.toLocaleDateString("en-IN")}</span>
+            )}
+          </div>
+          {can(s.role, "approve") ? (
+            <form action={setVoterOverride} className="space-y-1 text-sm">
+              <input type="hidden" name="id" value={fam.id} />
+              {(["AUTO", "INCLUDE", "EXCLUDE"] as const).map((v) => (
+                <label key={v} className="flex items-start gap-2">
+                  <input type="radio" name="voterOverride" value={v} defaultChecked={fam.voterOverride === v} className="mt-1" />
+                  <span>
+                    <b>{v === "AUTO" ? t.voterAuto : v === "INCLUDE" ? t.voterInclude : t.voterExclude}</b>
+                    <span className="block text-xs text-stone-500">{v === "AUTO" ? t.voterAutoHelp : v === "INCLUDE" ? t.voterIncludeHelp : t.voterExcludeHelp}</span>
+                  </span>
+                </label>
+              ))}
+              <button className="btn-secondary btn-sm mt-1">{t.save}</button>
+            </form>
+          ) : (
+            <p className="text-xs text-stone-500">{fam.voterOverride === "INCLUDE" ? t.voterIncludeHelp : fam.voterOverride === "EXCLUDE" ? t.voterExcludeHelp : t.voterAutoHelp}</p>
+          )}
+        </section>
+      )}
 
       {owesDonations && (
         <section className="space-y-2">

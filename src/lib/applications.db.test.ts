@@ -58,3 +58,39 @@ test("application joins an existing family as daughter-in-law, or starts a new f
     await prisma.formUpload.deleteMany({ where: { uploadedBy: "test", kind: "INDIVIDUAL" } });
   }
 });
+
+test("application of someone already on a census form is linked to that member, blanks filled only", { skip: !run }, async () => {
+  const { prisma } = await import("./db");
+  const { saveApplication, suggestFamilies, applicationData } = await import("./applications");
+  after(() => prisma.$disconnect());
+  const stamp = Date.now();
+  const fam = await prisma.family.create({ data: { code: `AS-${stamp}`, headName: "सुरेश ताराचंद झांबड", address: "जेल रोड", panth: "STHANAKVASI", panthStatus: "CONFIRMED" } });
+  await prisma.member.create({ data: { familyId: fam.id, firstName: "सुरेश", middleName: "ताराचंद", surname: "झांबड", isHead: true, relation: "SELF", gender: "MALE" } });
+  const wife = await prisma.member.create({ data: { familyId: fam.id, firstName: "सुनीता", middleName: "सुरेश", surname: "झांबड", relation: "WIFE", gender: "FEMALE", age: 50, ageRecordedOn: new Date(), mobile: "9800000011" } });
+  const up = await prisma.formUpload.create({ data: { kind: "INDIVIDUAL", imageKeys: [], status: "EXTRACTED", extracted: {}, uploadedBy: "test" } });
+  const empty = applicationData({ appNo: "", appDate: "", homeAddress: "", businessAddress: "", email: "", landline: "", feeEntry: "", feeAnnual: "", feeLifetime: "", feeTotal: "", receiptNo: "", receiptDate: "", proposerName: "", proposerAddress: "", proposerMobile: "", proposerLandline: "", seconderName: "", seconderAddress: "", seconderMobile: "", seconderLandline: "", decision: "", meetingDate: "", rejectReasons: "", docs: [], notes: "" });
+  const appFields = { ...Object.fromEntries(Object.keys(empty).map((k) => [k, ""])), docs: [], appNo: "7", decision: "APPROVED" } as never;
+  const applicant = { title: "सौ.", firstName: "सुनिता", middleName: "सुरेश", surname: "झांबड", firstNameEn: "Sunita", middleNameEn: "Suresh", surnameEn: "Jhambad", nameRaw: "", gender: "FEMALE", dob: "", age: "52", mobile: "9800000099", occupation: "गृहिणी", education: "", bloodGroup: "B+" };
+  try {
+    const s = await suggestFamilies({ firstName: "सुनिता", surname: "झांबड", middleName: "सुरेश", gender: "FEMALE", mobile: "", homeAddress: "" });
+    const mine = s.find((x) => x.id === fam.id);
+    assert.deepEqual(mine?.sameMembers.map((m) => m.id), [wife.id], "spelling folds: सुनिता = सुनीता");
+    const r = await saveApplication({ uploadId: up.id, mode: "existing", familyCode: fam.code, relation: "WIFE", memberId: wife.id, applicant, application: appFields, by: { uid: "t", name: "t" } });
+    assert.ok(r.ok && r.memberId === wife.id);
+    const after1 = await prisma.member.findUniqueOrThrow({ where: { id: wife.id }, include: { application: true } });
+    assert.equal(await prisma.member.count({ where: { familyId: fam.id } }), 2, "no second member");
+    assert.equal(after1.mobile, "9800000011", "saved mobile kept");
+    assert.equal(after1.age, 50, "saved age kept");
+    assert.equal(after1.bloodGroup, "B+", "blank filled");
+    assert.equal(after1.firstNameEn, "Sunita", "blank English name filled");
+    assert.equal(after1.application?.appNo, "7");
+    const up2 = await prisma.formUpload.create({ data: { kind: "INDIVIDUAL", imageKeys: [], status: "EXTRACTED", extracted: {}, uploadedBy: "test" } });
+    assert.deepEqual(await saveApplication({ uploadId: up2.id, mode: "existing", familyCode: fam.code, relation: "WIFE", memberId: wife.id, applicant, application: appFields, by: { uid: "t", name: "t" } }), { ok: false, error: "memberHasApplication" });
+    await prisma.formUpload.delete({ where: { id: up2.id } });
+  } finally {
+    await prisma.membershipApplication.deleteMany({ where: { member: { familyId: fam.id } } });
+    await prisma.member.deleteMany({ where: { familyId: fam.id } });
+    await prisma.formUpload.delete({ where: { id: up.id } });
+    await prisma.family.delete({ where: { id: fam.id } });
+  }
+});
