@@ -19,7 +19,7 @@ export interface RawKyc {
 }
 
 export interface BatchItem {
-  /** "family" (census form, default) or "individual" (सभासद अर्ज: A1.jpg + A1_2.jpg, photo A1_photo.jpg) */
+  /** "family" (census form, default) or "individual" (सभासद अर्ज: front S1.jpg (back optional), photo S1_photo.jpg, Aadhaar in kyc) */
   kind?: "family" | "individual";
   images: string[];
   /** individual only: applicant photo cropped from the form */
@@ -50,17 +50,6 @@ export async function importItem(
     await putFile("forms", key, await readFile(img), "image/jpeg");
     keys.push(key);
   }
-  if (item.kind === "individual") {
-    let photoKey: string | undefined;
-    if (item.photo) {
-      photoKey = `import/${batch}/${item.photo}`;
-      await putFile("forms", photoKey, await readFile(item.photo), "image/jpeg");
-    }
-    const app = ExtractedApplication.parse({ ...(item.form as object), photoKey });
-    await prisma.formUpload.create({ data: { kind: "INDIVIDUAL", imageKeys: keys, status: "EXTRACTED", extracted: app as object, uploadedBy: `import:${tag}` } });
-    const name = [app.title, app.firstName, app.middleName, app.surname].filter(Boolean).join(" ") || app.nameRaw;
-    return { status: "imported", headName: name, members: 1, kyc: 0, warnings: [] };
-  }
   const warnings: string[] = [];
   const kyc: ImportedKyc[] = [];
   for (const k of item.kyc ?? []) {
@@ -78,6 +67,17 @@ export async function importItem(
       dob: k.dob ?? null,
       notes: k.notes ?? "",
     });
+  }
+  if (item.kind === "individual") {
+    let photoKey: string | undefined;
+    if (item.photo) {
+      photoKey = `import/${batch}/${item.photo}`;
+      await putFile("forms", photoKey, await readFile(item.photo), "image/jpeg");
+    }
+    const app = ExtractedApplication.parse({ ...(item.form as object), photoKey, kyc });
+    await prisma.formUpload.create({ data: { kind: "INDIVIDUAL", imageKeys: keys, status: "EXTRACTED", extracted: app as object, uploadedBy: `import:${tag}` } });
+    const name = [app.title, app.firstName, app.middleName, app.surname].filter(Boolean).join(" ") || app.nameRaw;
+    return { status: "imported", headName: name, members: 1, kyc: kyc.length, warnings };
   }
   const form = ExtractedForm.parse({ ...(item.form as object), kyc });
   await prisma.formUpload.create({ data: { imageKeys: keys, status: "EXTRACTED", extracted: form as object, uploadedBy: `import:${tag}` } });

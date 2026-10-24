@@ -67,7 +67,7 @@ test("application of someone already on a census form is linked to that member, 
   const fam = await prisma.family.create({ data: { code: `AS-${stamp}`, headName: "सुरेश ताराचंद झांबड", address: "जेल रोड", panth: "STHANAKVASI", panthStatus: "CONFIRMED" } });
   await prisma.member.create({ data: { familyId: fam.id, firstName: "सुरेश", middleName: "ताराचंद", surname: "झांबड", isHead: true, relation: "SELF", gender: "MALE" } });
   const wife = await prisma.member.create({ data: { familyId: fam.id, firstName: "सुनीता", middleName: "सुरेश", surname: "झांबड", relation: "WIFE", gender: "FEMALE", age: 50, ageRecordedOn: new Date(), mobile: "9800000011" } });
-  const up = await prisma.formUpload.create({ data: { kind: "INDIVIDUAL", imageKeys: [], status: "EXTRACTED", extracted: {}, uploadedBy: "test" } });
+  const up = await prisma.formUpload.create({ data: { kind: "INDIVIDUAL", imageKeys: [], status: "EXTRACTED", extracted: { kyc: [{ fileKey: "import/t/S1_1.jpg", docType: "AADHAAR", holderName: "Sunita", memberSerial: null, enc: null, last4: "1234", dob: "1975-02-03", notes: "" }] }, uploadedBy: "test" } });
   const empty = applicationData({ appNo: "", appDate: "", homeAddress: "", businessAddress: "", email: "", landline: "", feeEntry: "", feeAnnual: "", feeLifetime: "", feeTotal: "", receiptNo: "", receiptDate: "", proposerName: "", proposerAddress: "", proposerMobile: "", proposerLandline: "", seconderName: "", seconderAddress: "", seconderMobile: "", seconderLandline: "", decision: "", meetingDate: "", rejectReasons: "", docs: [], notes: "" });
   const appFields = { ...Object.fromEntries(Object.keys(empty).map((k) => [k, ""])), docs: [], appNo: "7", decision: "APPROVED" } as never;
   const applicant = { title: "सौ.", firstName: "सुनिता", middleName: "सुरेश", surname: "झांबड", firstNameEn: "Sunita", middleNameEn: "Suresh", surnameEn: "Jhambad", nameRaw: "", gender: "FEMALE", dob: "", age: "52", mobile: "9800000099", occupation: "गृहिणी", education: "", bloodGroup: "B+" };
@@ -84,6 +84,9 @@ test("application of someone already on a census form is linked to that member, 
     assert.equal(after1.bloodGroup, "B+", "blank filled");
     assert.equal(after1.firstNameEn, "Sunita", "blank English name filled");
     assert.equal(after1.application?.appNo, "7");
+    assert.equal(after1.kycFileKey, "import/t/S1_1.jpg", "Aadhaar attached (member had none)");
+    assert.equal(after1.aadhaarLast4, "1234");
+    assert.equal(after1.dob?.toISOString().slice(0, 10), "1975-02-03", "DOB from the Aadhaar (member had none)");
     const up2 = await prisma.formUpload.create({ data: { kind: "INDIVIDUAL", imageKeys: [], status: "EXTRACTED", extracted: {}, uploadedBy: "test" } });
     assert.deepEqual(await saveApplication({ uploadId: up2.id, mode: "existing", familyCode: fam.code, relation: "WIFE", memberId: wife.id, applicant, application: appFields, by: { uid: "t", name: "t" } }), { ok: false, error: "memberHasApplication" });
     await prisma.formUpload.delete({ where: { id: up2.id } });

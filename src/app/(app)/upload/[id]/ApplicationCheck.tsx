@@ -113,6 +113,20 @@ export default async function ApplicationCheck({ up, error }: { up: FormUpload; 
             t={{ chooseFamily: t.chooseFamily, otherFamilyCode: t.otherFamilyCode, newFamilyFromApp: t.newFamilyFromApp, newFamilyHelp: t.newFamilyHelp, relation: t.relation, noSuggestions: t.noSuggestions, husbandMatch: t.husbandMatch, samePerson: t.appSamePerson, newMemberHere: t.appNewMemberHere, samePersonHelp: t.appSamePersonHelp, hasApplication: t.appHasApplication }}
           />
 
+          {x.kyc.length > 0 && (
+            <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm space-y-1">
+              {x.kyc.map((k, i) => (
+                <div key={i}>
+                  🪪 <b>{k.docType === "AADHAAR" ? t.aadhaar : k.docType}</b>
+                  {k.last4 && <> · XXXX XXXX {k.last4}</>} · {k.holderName}
+                  {k.dob && <> · {t.dob}: {k.dob}</>}
+                  {k.notes && <span className="block text-amber-800">⚠ {k.notes}</span>}
+                </div>
+              ))}
+              <p className="text-xs text-stone-600">{t.appKycHelp}</p>
+            </div>
+          )}
+
           <fieldset className="rounded-lg border p-3 space-y-2">
             <legend className="px-1 text-sm font-semibold">{t.passportPhoto}</legend>
             {photoUrl && (
