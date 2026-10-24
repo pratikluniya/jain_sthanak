@@ -252,6 +252,19 @@ export async function saveApplication(input: SaveApplicationInput): Promise<Save
         },
       });
     }
+    // the applicant's Aadhaar from the batch import: attached only if the member has none (decided 24 Oct 2026)
+    const kyc = ((up.extracted as { kyc?: { fileKey: string; docType: string; enc: string | null; last4: string | null; dob: string | null }[] } | null)?.kyc ?? [])[0];
+    const kycData = (has: boolean, hasDob: boolean) =>
+      kyc && !has
+        ? {
+            kycFileKey: kyc.fileKey,
+            kycDocType: kyc.docType as "AADHAAR" | "PAN" | "VOTER_ID" | "OTHER",
+            aadhaarEnc: kyc.enc ?? undefined,
+            aadhaarLast4: kyc.last4 ?? undefined,
+            kycVerified: false,
+            ...(kyc.dob && !hasDob && !dob ? { dob: new Date(kyc.dob) } : {}),
+          }
+        : {};
     if (same) {
       // same person: keep everything saved, fill only what is blank, add the application
       const d = prepareMember({ ...a, dob: dob || null, relation: same.relation, serial: same.serial }, fam.code, recordedOn);
@@ -265,6 +278,7 @@ export async function saveApplication(input: SaveApplicationInput): Promise<Save
       if (!same.firstNameEn && d.firstNameEn) Object.assign(data, { firstNameEn: d.firstNameEn, middleNameEn: d.middleNameEn, surnameEn: d.surnameEn });
       if (same.gender === "UNKNOWN" && d.gender !== "UNKNOWN") data.gender = d.gender;
       if (!same.photoKey && photoKey) data.photoKey = photoKey;
+      Object.assign(data, kycData(!!same.kycFileKey, !!same.dob || !!data.dob));
       if (Object.keys(data).length) {
         data.searchKey = computeSearchKey(
           {
@@ -293,7 +307,7 @@ export async function saveApplication(input: SaveApplicationInput): Promise<Save
       recordedOn,
     );
     data.nameRaw = a.nameRaw.trim() || data.nameRaw;
-    const member = await tx.member.create({ data: { ...data, familyId: fam.id, photoKey } });
+    const member = await tx.member.create({ data: { ...data, familyId: fam.id, photoKey, ...kycData(false, !!data.dob) } });
     await tx.membershipApplication.create({ data: { ...app, memberId: member.id, uploadId: up.id, createdById: input.by.uid } });
     await inferHeadGender(fam.id, tx);
     await tx.formUpload.update({ where: { id: up.id }, data: { status: "VERIFIED", familyId: fam.id, verifiedBy: input.by.name } });

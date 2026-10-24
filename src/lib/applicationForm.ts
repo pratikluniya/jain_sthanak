@@ -2,6 +2,7 @@
 // Read by Claude in the app (if an AI key is set) or in a Cowork batch; ALWAYS checked by a volunteer before saving.
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
+import { ImportedKyc } from "./extract";
 
 const MODEL = process.env.CLAUDE_MODEL || "claude-sonnet-4-5";
 
@@ -50,6 +51,8 @@ export const ExtractedApplication = z.object({
   uncertainFields: z.array(z.string()).default([]),
   // set by the batch import: the applicant's photo cropped from the form (bucket "forms")
   photoKey: z.string().optional(),
+  // set by the batch import: Aadhaar (or other ID) of the applicant, number encrypted (decided 24 Oct 2026)
+  kyc: z.array(ImportedKyc).default([]),
 });
 export type ExtractedApplication = z.infer<typeof ExtractedApplication>;
 
