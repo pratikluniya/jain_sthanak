@@ -423,6 +423,8 @@ const mr = {
   fb_confirmDanger: "नक्की करायचे का? हे परत बदलण्यासाठी Admin लागेल.",
   fb_yes: "हो, करा",
   fb_cancel: "रद्द करा",
+  loader_wait: "कृपया थांबा...",
+  loader_label: "लोड होत आहे",
   goToUploads: "अपलोड यादीवर जा",
   // yearly donations (23 Oct 2026)
   donations: "वार्षिक देणगी",
@@ -879,6 +881,8 @@ const en: Dict = {
   fb_confirmDanger: "Are you sure? Only an Admin can undo this.",
   fb_yes: "Yes, go ahead",
   fb_cancel: "Cancel",
+  loader_wait: "Please wait...",
+  loader_label: "Loading",
   goToUploads: "Go to uploads",
   // yearly donations (23 Oct 2026)
   donations: "Yearly donations",

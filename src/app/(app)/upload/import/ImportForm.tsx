@@ -1,4 +1,5 @@
 "use client";
+import { startTask } from "@/lib/loader";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { askConfirm, flashNext, showToast } from "@/lib/uiBus";
@@ -36,6 +37,7 @@ export default function ImportForm({ t }: { t: { importAsk: string; importFailed
   async function run() {
     if (!(await askConfirm({ message: t.importAsk.replace("{n}", String(items.length)) }))) return;
     setBusy(true);
+    const loader = startTask(); // logo loader shows the real progress: items done / items
     const out: string[] = [];
     let ok = 0;
     let failed = 0;
@@ -64,7 +66,9 @@ export default function ImportForm({ t }: { t: { importAsk: string; importFailed
         out.push(`✖ ${label}: ${e instanceof Error ? e.message : e}`);
       }
       setLog([...out]);
+      loader.progress((i + 1) / items.length);
     }
+    loader.end();
     setBusy(false);
     // all good: go to the Upload page, where the imported forms wait for checking (decided 11 Oct 2026);
     // if any form failed, stay here so the operator can read the log

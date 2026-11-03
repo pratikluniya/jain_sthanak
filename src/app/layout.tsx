@@ -3,6 +3,8 @@ import type { Metadata, Viewport } from "next";
 import { Mukta, Noto_Sans_Devanagari } from "next/font/google";
 import { getDict, getLang } from "@/lib/i18n";
 import Feedback from "@/components/Feedback";
+import PageLoader from "@/components/PageLoader";
+import LoaderMark from "@/components/LoaderMark";
 
 // Downloaded at build time and served from our own domain: no request to Google on page load.
 const devanagari = Noto_Sans_Devanagari({
@@ -42,11 +44,21 @@ function feedbackLabels() {
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const t = getDict();
   return (
     <html lang={getLang()} className={`${devanagari.variable} ${heading.variable}`}>
       <body className="min-h-screen">
+        {/* First-load logo loader: pure CSS (shows after 0.5 s), removed by <PageLoader> once the page is ready */}
+        <div id="boot-loader" className="loader-ov loader-boot no-print" aria-hidden="true">
+          <LoaderMark />
+          <p className="mt-3 text-[13px] text-stone-600">{t.loader_wait}</p>
+        </div>
+        <noscript>
+          <style>{"#boot-loader{display:none}"}</style>
+        </noscript>
         {children}
         <Feedback t={feedbackLabels()} />
+        <PageLoader t={{ wait: t.loader_wait, label: t.loader_label }} />
       </body>
     </html>
   );

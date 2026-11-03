@@ -101,7 +101,7 @@ export default function DownloadButton(props: {
             {none && <p className="mb-3 text-sm text-red-600">{props.t.pickOneColumn}</p>}
 
             <div className="flex flex-wrap gap-2">
-              <a className={`btn-primary ${off}`} href={`/api/export?${qs}`} aria-disabled={none}>
+              <a className={`btn-primary ${off}`} href={`/api/export?${qs}`} aria-disabled={none} data-download>
                 <Icon name="download" className="h-4 w-4" /> {props.t.downloadExcel}
               </a>
               <a className={`btn-secondary ${off}`} href={`/print?${qs}`} target="_blank" rel="noopener" aria-disabled={none}>
