@@ -5,6 +5,14 @@
 :root { color-scheme: light; }
 body { @apply bg-[#f6f4f1] text-stone-900 antialiased; }
 
+/* Phones: never scroll sideways (4 Nov 2026). Wide tables keep their own scroll inside "overflow-x-auto" cards.
+   html hides sideways overflow of the page; body uses clip, which (unlike hidden) keeps the sticky header working. */
+html { overflow-x: hidden; }
+body { overflow-x: clip; overflow-wrap: break-word; }
+/* Grid and flex children may shrink below their content (otherwise one long "truncate" line widens the page) */
+.grid > *, .flex > .truncate, fieldset { min-width: 0; }
+input, select, textarea { max-width: 100%; }
+
 @layer components {
   /* Jain flag band (5 colours, as on the Sangh letterhead): red, yellow, white, green, blue */
   .jain-stripe { height: 10px; background: linear-gradient(to bottom, #d7262b 0 20%, #f5c518 20% 40%, #ffffff 40% 60%, #1f9d4c 60% 80%, #2b3990 80% 100%); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -34,7 +42,7 @@ body { @apply bg-[#f6f4f1] text-stone-900 antialiased; }
   body { background: white; }
 }
 
-/* Logo loader (components/PageLoader.tsx, components/LoaderMark.tsx; decided 3 Nov 2026) */
+/* Logo loader (components/PageLoader.tsx, components/LoaderMark.tsx; decided 3 Nov 2026, loop 4 Nov) */
 .loader-ov {
   position: fixed; inset: 0; z-index: 65;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -42,18 +50,22 @@ body { @apply bg-[#f6f4f1] text-stone-900 antialiased; }
   -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
   animation: loader-in 0.2s ease-out;
 }
-.loader-leaving { opacity: 0; transition: opacity 0.3s ease 0.1s; }
+.loader-leaving { opacity: 0; transition: opacity 0.25s ease; }
 .loader-logo { position: relative; width: 110px; height: 158px; }
 .loader-logo img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .loader-ghost { filter: grayscale(1); opacity: 0.22; }
-.loader-fill { clip-path: inset(0 0 var(--cut, 100%) 0); transition: clip-path 0.2s linear; }
+/* fills top to bottom, holds a moment, fades, and starts again */
+.loader-fill { clip-path: inset(0 0 100% 0); animation: loader-loop 1.6s ease-in-out infinite; }
+@keyframes loader-loop {
+  0% { clip-path: inset(0 0 100% 0); opacity: 1; }
+  70% { clip-path: inset(0 0 0 0); opacity: 1; }
+  85% { clip-path: inset(0 0 0 0); opacity: 1; }
+  100% { clip-path: inset(0 0 0 0); opacity: 0; }
+}
 @keyframes loader-in { from { opacity: 0; } to { opacity: 1; } }
-/* first load: invisible for 0.5 s, then fills top to bottom towards 90%; gives up after 30 s in case scripts never run */
+/* first load: invisible for 0.5 s; gives up after 30 s in case scripts never run */
 .loader-boot { opacity: 0; pointer-events: none; animation: loader-in 0.2s ease-out 0.5s forwards, loader-out 0.3s ease-in 30s forwards; }
-.loader-boot .loader-fill { animation: loader-boot-fill 12s cubic-bezier(0.1, 0.6, 0.3, 1) 0.5s forwards; }
-@keyframes loader-boot-fill { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 10% 0); } }
 @keyframes loader-out { to { opacity: 0; visibility: hidden; } }
 @media (prefers-reduced-motion: reduce) {
-  .loader-fill { transition: none; }
-  .loader-boot .loader-fill { animation: none; clip-path: inset(0 0 50% 0); }
+  .loader-fill { animation-duration: 3s; }
 }

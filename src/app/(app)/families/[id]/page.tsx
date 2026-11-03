@@ -114,7 +114,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
 
       <section className="card p-4 space-y-2">
         <div className="flex items-start justify-between gap-2">
-          <div>
+          <div className="min-w-0">
             <h1 className="page-title">{headLabel(fam, en)}</h1>
             <p className="text-stone-600 text-sm">{fam.address}</p>
             {fam.addressEn && fam.addressEn !== fam.address && <p className="text-stone-500 text-sm">{fam.addressEn}</p>}

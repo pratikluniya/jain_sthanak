@@ -1,22 +1,20 @@
 "use client";
 // Logo loader over the whole screen while a page loads, a form saves, or a file uploads/downloads
-// (decided 3 Nov 2026: Option A, filling top to bottom, with % and "please wait", after 0.5 s, every screen).
+// (decided 3 Nov 2026: after 0.5 s, every screen; 4 Nov: the logo fills top to bottom in a loop, with
+// "please wait" only, instead of a progress percentage).
 //  - Busy state: src/lib/loader.ts (every fetch except link prefetching, plus explicit tasks).
 //  - Link clicks, GET forms (e.g. public search) and back/forward start a navigation task that ends
 //    when the address changes, or when its requests finish without a change, or after NAV_CAP_MS.
 //  - Links marked data-download are fetched here so the loader covers the download, then saved.
-//  - The % is an estimate unless a task reports real progress (batch import, PDF pages).
 import { useEffect, useRef, useState } from "react";
 import LoaderMark from "./LoaderMark";
 import {
   SHOW_AFTER_MS,
-  estimatePercent,
   fetchCount,
   fileNameFrom,
   inflightCount,
   installFetchTracking,
   isBusy,
-  knownProgress,
   resetBusy,
   startTask,
   subscribe,
@@ -39,10 +37,8 @@ const here = () => location.pathname + location.search;
 export default function PageLoader({ t }: { t: { wait: string; label: string } }) {
   const [shown, setShown] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const [pct, setPct] = useState(0);
   const busySince = useRef<number | null>(null);
   const idleSince = useRef<number | null>(null);
-  const pctRef = useRef(0);
   const shownRef = useRef(false);
   const nav = useRef<Nav | null>(null);
 
@@ -130,15 +126,8 @@ export default function PageLoader({ t }: { t: { wait: string; label: string } }
         if (busySince.current == null) busySince.current = now;
         if (!shownRef.current && now - busySince.current >= SHOW_AFTER_MS) {
           shownRef.current = true;
-          pctRef.current = 0;
           setLeaving(false);
           setShown(true);
-        }
-        if (shownRef.current) {
-          const known = knownProgress();
-          const next = known != null ? known * 100 : estimatePercent(now - busySince.current);
-          pctRef.current = Math.min(99, Math.max(pctRef.current, next));
-          setPct(pctRef.current);
         }
         return;
       }
@@ -150,8 +139,6 @@ export default function PageLoader({ t }: { t: { wait: string; label: string } }
       idleSince.current = null;
       if (shownRef.current) {
         shownRef.current = false;
-        pctRef.current = 100;
-        setPct(100);
         setLeaving(true);
         setTimeout(() => {
           if (!shownRef.current) setShown(false);
@@ -177,12 +164,10 @@ export default function PageLoader({ t }: { t: { wait: string; label: string } }
   }, []);
 
   if (!shown) return null;
-  const p = Math.round(pct);
   return (
     <div className={`loader-ov no-print ${leaving ? "loader-leaving" : ""}`} role="status" aria-live="polite" aria-label={t.label}>
-      <LoaderMark cut={100 - pct} />
-      <p className="mt-3 text-sm font-semibold text-brand-700">{p}%</p>
-      <p className="text-[13px] text-stone-600">{t.wait}</p>
+      <LoaderMark />
+      <p className="mt-3 text-[13px] text-stone-600">{t.wait}</p>
     </div>
   );
 }
