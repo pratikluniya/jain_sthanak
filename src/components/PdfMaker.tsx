@@ -2,6 +2,7 @@
 // Turns the print view into a PDF file in the browser (no server work, Marathi letters stay correct).
 // Each A4 page is captured separately as a picture, cutting only between table rows,
 // so long lists never hit the browser's canvas size limit. The text in the PDF is a picture (not searchable).
+import { startTask } from "@/lib/loader";
 import { useEffect, useRef, useState } from "react";
 
 
@@ -18,6 +19,7 @@ export default function PdfMaker(props: {
   useEffect(() => {
     if (started.current) return; // React dev mode runs effects twice
     started.current = true;
+    const busy = startTask(); // logo loader with the real page progress
     (async () => {
       const root = document.getElementById(props.rootId);
       if (!root) throw new Error("no print root");
@@ -57,6 +59,7 @@ export default function PdfMaker(props: {
 
       for (let i = 0; i < pages.length; i++) {
         setProgress(`${i + 1} / ${pages.length}`);
+        busy.progress(i / pages.length);
         if (head) head.style.display = i === 0 ? "" : "none";
         const keep = new Set(pages[i]);
         rows.forEach((r) => (r.style.display = keep.has(r) ? "" : "none"));
@@ -83,7 +86,9 @@ export default function PdfMaker(props: {
       rows.forEach((r) => (r.style.display = ""));
       pdf.save(props.fileName);
       setState("ready");
-    })().catch(() => setState("failed"));
+    })()
+      .catch(() => setState("failed"))
+      .finally(() => busy.end());
   }, [props]);
 
   return (

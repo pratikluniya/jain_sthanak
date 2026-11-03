@@ -24,7 +24,7 @@ export default async function ArrearsPage({ searchParams }: { searchParams: { mi
         <h1 className="page-title">{t.arrears} <span className="text-base text-stone-500">({rows.length})</span></h1>
         <div className="flex gap-2">
           {can(s.role, "export") && (
-            <a className="btn-secondary" href={`/api/donations/export${qs({ lang })}`}>{t.downloadExcel}</a>
+            <a className="btn-secondary" href={`/api/donations/export${qs({ lang })}`} data-download>{t.downloadExcel}</a>
           )}
           <Link href="/donations" className="btn-secondary">← {t.donations}</Link>
         </div>
