@@ -1,5 +1,7 @@
 // Yearly donations screen (23 Oct 2026): pick a donation and year, see who paid, who is exempt and who
 // has not paid, the totals, and record payments. Admin sets the year's amount here.
+import LoadMore from "@/components/LoadMore";
+import { moreHref, shownCount, STEP } from "@/lib/listPaging";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getDict, getLang } from "@/lib/i18n";
@@ -16,9 +18,8 @@ export const dynamic = "force-dynamic";
 
 const SHOWS = ["UNPAID", "PAID", "EXEMPT", "ALL"] as const;
 type Show = (typeof SHOWS)[number];
-const PAGE = 100;
 
-export default async function DonationsPage({ searchParams }: { searchParams: { kind?: string; year?: string; show?: string; q?: string; page?: string } }) {
+export default async function DonationsPage({ searchParams }: { searchParams: { kind?: string; year?: string; show?: string; q?: string; n?: string } }) {
   const s = await requireSession("view");
   const t = getDict();
   const en = getLang() === "en";
@@ -31,7 +32,6 @@ export default async function DonationsPage({ searchParams }: { searchParams: { 
   const year = yearReq >= FIRST_DONATION_YEAR && yearReq <= lastYear + 1 ? yearReq : thisYear;
   const show: Show = (SHOWS as readonly string[]).includes(searchParams.show ?? "") ? (searchParams.show as Show) : "UNPAID";
   const q = (searchParams.q ?? "").trim();
-  const page = Math.max(1, parseInt(searchParams.page ?? "1", 10) || 1);
 
   const [sum, families] = await Promise.all([
     yearSummary(kind, year),
@@ -55,7 +55,8 @@ export default async function DonationsPage({ searchParams }: { searchParams: { 
       return matchesSearch(key, q) || f.code.toLowerCase().includes(q.toLowerCase());
     })
     .sort((a, b) => collator.compare(a.f.code, b.f.code));
-  const shown = rows.slice((page - 1) * PAGE, page * PAGE);
+  const shownN = shownCount(searchParams.n, rows.length);
+  const shown = rows.slice(0, shownN);
 
   const userIds = [...new Set(shown.map((r) => r.entry?.updatedById ?? r.entry?.createdById).filter((x): x is string => !!x))];
   const names = new Map((await prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, name: true } })).map((u) => [u.id, u.name]));
@@ -75,11 +76,11 @@ export default async function DonationsPage({ searchParams }: { searchParams: { 
 
       <div className="flex flex-wrap items-center gap-2">
         {DONATION_KINDS.map((k) => (
-          <Link key={k} href={qs({ kind: k, page: 1 })} className={k === kind ? "btn-primary btn-sm" : "btn-secondary btn-sm"}>{t[k]}</Link>
+          <Link key={k} href={qs({ kind: k })} className={k === kind ? "btn-primary btn-sm" : "btn-secondary btn-sm"}>{t[k]}</Link>
         ))}
         <span className="mx-1 text-stone-300">|</span>
         {years.map((y) => (
-          <Link key={y} href={qs({ year: y, page: 1 })} className={y === year ? "btn-primary btn-sm" : "btn-secondary btn-sm"}>{y}</Link>
+          <Link key={y} href={qs({ year: y })} className={y === year ? "btn-primary btn-sm" : "btn-secondary btn-sm"}>{y}</Link>
         ))}
       </div>
 
@@ -119,7 +120,7 @@ export default async function DonationsPage({ searchParams }: { searchParams: { 
         <>
           <div className="flex flex-wrap gap-2 text-sm">
             {SHOWS.map((sh) => (
-              <Link key={sh} href={qs({ show: sh, page: 1 })} className={sh === show ? "btn-primary btn-sm" : "btn-secondary btn-sm"}>
+              <Link key={sh} href={qs({ show: sh })} className={sh === show ? "btn-primary btn-sm" : "btn-secondary btn-sm"}>
                 {t[sh]} ({count[sh]})
               </Link>
             ))}
@@ -153,13 +154,7 @@ export default async function DonationsPage({ searchParams }: { searchParams: { 
               );
             })}
           </ul>
-          {rows.length > PAGE && (
-            <div className="flex gap-2">
-              {page > 1 && <Link className="btn-secondary btn-sm" href={qs({ page: page - 1 })}>←</Link>}
-              <span className="self-center text-sm">{page} / {Math.ceil(rows.length / PAGE)}</span>
-              {page * PAGE < rows.length && <Link className="btn-secondary btn-sm" href={qs({ page: page + 1 })}>→</Link>}
-            </div>
-          )}
+          <LoadMore shown={shownN} total={rows.length} nextHref={moreHref({ kind, year: String(year), show, q }, shownN + STEP)} t={{ more: t.loadMore, loading: t.loadingMore, shownOf: t.shownOf }} />
         </>
       )}
     </div>

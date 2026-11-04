@@ -1,4 +1,6 @@
 // Families that have not paid for N years in a row (N = 1, 2, 3, 4+), per donation or either one.
+import LoadMore from "@/components/LoadMore";
+import { moreHref, shownCount, STEP } from "@/lib/listPaging";
 import Link from "next/link";
 import { getDict, getLang } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
@@ -8,7 +10,7 @@ import { DONATION_KINDS, arrearsFor, asKindOrAll, asMinYears, rupees } from "@/l
 
 export const dynamic = "force-dynamic";
 
-export default async function ArrearsPage({ searchParams }: { searchParams: { min?: string; kind?: string } }) {
+export default async function ArrearsPage({ searchParams }: { searchParams: { min?: string; kind?: string; n?: string } }) {
   const s = await requireSession("view");
   const t = getDict();
   const lang = getLang();
@@ -16,6 +18,7 @@ export default async function ArrearsPage({ searchParams }: { searchParams: { mi
   const min = asMinYears(searchParams.min);
   const kind = asKindOrAll(searchParams.kind);
   const rows = (await arrearsFor(min, kind)).sort((a, b) => collator.compare(a.family.code, b.family.code));
+  const n = shownCount(searchParams.n, rows.length);
   const qs = (over: Record<string, string | number>) => `?${new URLSearchParams({ min: String(min), kind, ...Object.fromEntries(Object.entries(over).map(([k, v]) => [k, String(v)])) })}`;
 
   return (
@@ -55,7 +58,7 @@ export default async function ArrearsPage({ searchParams }: { searchParams: { mi
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {rows.slice(0, n).map((r) => (
                 <tr key={r.family.id}>
                   <td>{r.family.code}</td>
                   <td><Link className="text-brand-700" href={`/families/${r.family.id}`}>{headLabel(r.family, en)}</Link></td>
@@ -70,6 +73,7 @@ export default async function ArrearsPage({ searchParams }: { searchParams: { mi
           </table>
         </div>
       )}
+      <LoadMore shown={n} total={rows.length} nextHref={moreHref({ min: String(min), kind }, n + STEP)} t={{ more: t.loadMore, loading: t.loadingMore, shownOf: t.shownOf }} />
     </div>
   );
 }

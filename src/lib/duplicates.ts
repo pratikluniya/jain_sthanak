@@ -69,22 +69,26 @@ export function findDuplicates(families: DupFamily[]): DupPair[] {
     out.push(p);
   };
 
-  // people by first name + surname
-  const byPerson = new Map<string, { f: DupFamily; m: DupMember }[]>();
-  for (const f of families) for (const m of f.members) for (const key of personKeys(m)) {
-    const list = byPerson.get(key) ?? [];
-    list.push({ f, m });
-    byPerson.set(key, list);
+  // people by first name + surname; the folded middle name and mobile are worked out once per member
+  type P = { f: DupFamily; m: DupMember; mid: string; mob: string };
+  const byPerson = new Map<string, P[]>();
+  for (const f of families) for (const m of f.members) {
+    const p: P = { f, m, mid: k(m.middleName), mob: mob(m.mobile) };
+    for (const key of personKeys(m)) {
+      const list = byPerson.get(key) ?? [];
+      list.push(p);
+      byPerson.set(key, list);
+    }
   }
   const personPairs = new Set<string>();
   for (const list of byPerson.values()) {
     for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
       const x = list[i], y = list[j];
       if (x.m.id === y.m.id) continue;
-      const sameMobile = !!mob(x.m.mobile) && mob(x.m.mobile) === mob(y.m.mobile);
-      const sameMiddle = !!k(x.m.middleName) && k(x.m.middleName) === k(y.m.middleName);
+      const sameMobile = !!x.mob && x.mob === y.mob;
+      const sameMiddle = !!x.mid && x.mid === y.mid;
       if (x.f.id === y.f.id) {
-        if (sameMiddle || !k(x.m.middleName) || !k(y.m.middleName) || sameMobile) {
+        if (sameMiddle || !x.mid || !y.mid || sameMobile) {
           add({ kind: "SAME_PERSON_IN_FAMILY", a: side(x.f, x.m), b: side(y.f, y.m), why: [sameMobile ? `mobile ${x.m.mobile}` : "", sameMiddle ? "father/husband" : ""].filter(Boolean) });
         }
       } else if (sameMobile || sameMiddle) {
@@ -94,15 +98,22 @@ export function findDuplicates(families: DupFamily[]): DupPair[] {
     }
   }
 
-  // families twice
+  // families twice. Head words, mobiles and address words are worked out once per family (4 Nov 2026:
+  // doing it inside the pair loop made the page take half a minute with ~400 families).
+  const pre = families.map((f) => ({
+    head: words(f.headName),
+    mobiles: new Set(f.members.map((m) => mob(m.mobile)).filter(Boolean)),
+    mobileList: f.members.map((m) => mob(m.mobile)),
+    addrWords: words(f.address),
+    addrSet: new Set(words(f.address).filter((w) => w.length > 2 && !/^\d+$/.test(w))),
+  }));
   for (let i = 0; i < families.length; i++) for (let j = i + 1; j < families.length; j++) {
     const a = families[i], b = families[j];
-    const ha = words(a.headName), hb = words(b.headName);
+    const ha = pre[i].head, hb = pre[j].head;
     const sameHead = ha.length >= 2 && hb.length >= 2 && ha[0] === hb[0] && (ha.includes(hb[hb.length - 1]) || hb.includes(ha[ha.length - 1]));
-    const mobA = new Set(a.members.map((m) => mob(m.mobile)).filter(Boolean));
-    const shared = b.members.map((m) => mob(m.mobile)).find((x) => x && mobA.has(x));
-    const addrA = new Set(words(a.address).filter((w) => w.length > 2 && !/^\d+$/.test(w)));
-    const addrHits = words(b.address).filter((w) => addrA.has(w)).length;
+    const shared = pre[j].mobileList.find((x) => x && pre[i].mobiles.has(x));
+    const addrHits = pre[j].addrWords.filter((w) => pre[i].addrSet.has(w)).length;
+    if (!sameHead && !shared) continue; // neither rule below can match
     const why: string[] = [];
     if (sameHead) why.push("head");
     if (shared) why.push(`mobile ${shared}`);

@@ -428,6 +428,9 @@ const mr = {
   fb_yes: "हो, करा",
   fb_cancel: "रद्द करा",
   loader_wait: "कृपया थांबा...",
+  loadMore: "आणखी दाखवा",
+  loadingMore: "लोड होत आहे...",
+  shownOf: "{total} पैकी {n} दाखवले",
   loader_label: "लोड होत आहे",
   goToUploads: "अपलोड यादीवर जा",
   // yearly donations (23 Oct 2026)
@@ -890,6 +893,9 @@ const en: Dict = {
   fb_yes: "Yes, go ahead",
   fb_cancel: "Cancel",
   loader_wait: "Please wait...",
+  loadMore: "Load more",
+  loadingMore: "Loading...",
+  shownOf: "Showing {n} of {total}",
   loader_label: "Loading",
   goToUploads: "Go to uploads",
   // yearly donations (23 Oct 2026)

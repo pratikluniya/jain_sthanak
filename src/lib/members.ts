@@ -6,6 +6,7 @@ import { genderFromRelation, genderFromTitle, relationFromRaw } from "./relation
 import { checkVoter, currentAge, type EligibilityResult } from "./eligibility";
 import { titleToEnglish, toEnglishName } from "./translit";
 import { effectiveAgeDate, getSettings } from "./settings";
+import { cachedVoters } from "./voterCache";
 
 export const collator = new Intl.Collator("mr", { sensitivity: "base", numeric: true });
 
@@ -128,20 +129,45 @@ export function prepareMember(input: MemberInput, familyCode: string, ageRecorde
 
 export type FamilyWithMembers = Family & { members: Member[] };
 
+/**
+ * Only the columns the voter rules, voter lists, downloads and public search use (4 Nov 2026). Reading all
+ * ~45 member columns made the database layer about 4x slower; Aadhaar data and audit fields are not needed here.
+ */
+export const VOTER_MEMBER_SELECT = {
+  id: true, familyId: true, serial: true, title: true, firstName: true, middleName: true, surname: true,
+  firstNameEn: true, middleNameEn: true, surnameEn: true, searchKey: true, isHead: true, relation: true, relationRaw: true,
+  gender: true, age: true, ageRecordedOn: true, dob: true, education: true, occupation: true, mobile: true, bloodGroup: true,
+  status: true, dateOfDeath: true, voterNo: true, kycFileKey: true, kycDocType: true, aadhaarBackKey: true, photoKey: true,
+  application: { select: { decision: true } },
+} satisfies Prisma.MemberSelect;
+export const VOTER_FAMILY_SELECT = {
+  id: true, code: true, headName: true, headNameEn: true, address: true, addressEn: true, area: true,
+  panth: true, panthStatus: true, status: true, voterOverride: true,
+} satisfies Prisma.FamilySelect;
+export type VoterMember = Prisma.MemberGetPayload<{ select: typeof VOTER_MEMBER_SELECT }>;
+export type VoterFamily = Prisma.FamilyGetPayload<{ select: typeof VOTER_FAMILY_SELECT }>;
+
 export interface VoterRow {
-  member: Member;
-  family: Family;
+  member: VoterMember;
+  family: VoterFamily;
   result: EligibilityResult;
 }
 
 /** Evaluate every member against the voter rules. */
-export async function evaluateAll(): Promise<{ rows: VoterRow[]; ageDate: Date; electionDate: Date | null; applyStatusRules: boolean }> {
+type Evaluated = { rows: VoterRow[]; ageDate: Date; electionDate: Date | null; applyStatusRules: boolean };
+
+/** Voter rules over every living member. Reused for a few seconds (voterCache.ts); fresh: always recalculate. */
+export function evaluateAll(opts: { fresh?: boolean } = {}): Promise<Evaluated> {
+  return opts.fresh ? evaluateNow() : cachedVoters(evaluateNow);
+}
+
+async function evaluateNow(): Promise<Evaluated> {
   const settings = await getSettings();
   const ageDate = effectiveAgeDate(settings);
   // deleted and moved-out families / members are not part of any list (decided 7 Oct 2026)
   const families = await prisma.family.findMany({
     where: { ...LIVE, status: { not: "MOVED_OUT" } },
-    include: { members: { where: { ...LIVE, status: { not: "MOVED_OUT" } }, include: { application: { select: { decision: true } } } } },
+    select: { ...VOTER_FAMILY_SELECT, members: { where: { ...LIVE, status: { not: "MOVED_OUT" } }, select: VOTER_MEMBER_SELECT } },
   });
   const rows: VoterRow[] = [];
   for (const f of families) {
@@ -153,7 +179,7 @@ export async function evaluateAll(): Promise<{ rows: VoterRow[]; ageDate: Date; 
 }
 
 /** Voter list order: surname, then first name, then middle name (Marathi alphabetical). */
-export function sortBySurname<T extends { member: Member }>(rows: T[]): T[] {
+export function sortBySurname<T extends { member: Pick<Member, "surname" | "firstName" | "middleName"> }>(rows: T[]): T[] {
   return [...rows].sort(
     (a, b) =>
       collator.compare(a.member.surname, b.member.surname) ||

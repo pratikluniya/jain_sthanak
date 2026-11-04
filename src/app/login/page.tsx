@@ -11,7 +11,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm my-auto py-6">
         <div className="text-center mb-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="" className="mx-auto mb-3 h-28 w-auto" />
+          <img src="/logo-sm.webp" alt="" className="mx-auto mb-3 h-28 w-auto" />
           <p className="text-xs text-brand-700">॥ श्री महावीराय नमः ॥</p>
           <h1 className="font-heading text-xl font-bold leading-snug text-brand-900">{t.sangh}</h1>
           <p className="text-stone-600">{t.appName}</p>

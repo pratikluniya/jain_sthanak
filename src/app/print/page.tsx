@@ -48,7 +48,7 @@ export default async function PrintPage({ searchParams }: { searchParams: { list
       <div data-pdf-head>
       <div className="flex items-center gap-3 justify-center" style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="" className="h-14 w-auto" />
+        <img src="/logo-sm.webp" alt="" className="h-14 w-auto" />
         <h1 className={`${asPdf ? "text-[22px]" : "text-lg"} font-bold text-center`}>{data.title}</h1>
       </div>
       <div className="jain-stripe my-2" style={{ WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" }} />

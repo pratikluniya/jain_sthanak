@@ -45,7 +45,7 @@ export default async function PublicSearchPage({ searchParams }: { searchParams:
       <header className="bg-brand-700 text-white">
         <div className="mx-auto flex max-w-xl items-center gap-3 px-4 py-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="" className="h-14 w-auto shrink-0 rounded-md bg-white object-contain p-0.5" />
+          <img src="/logo-sm.webp" alt="" className="h-14 w-auto shrink-0 rounded-md bg-white object-contain p-0.5" />
           <div className="min-w-0 flex-1">
             <p className="font-heading text-lg font-bold leading-snug">{t.sangh}</p>
           </div>

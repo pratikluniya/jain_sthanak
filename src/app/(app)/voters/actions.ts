@@ -9,7 +9,7 @@ import { flashOk } from "@/lib/flash";
 /** Give a permanent voter number to every eligible member who does not have one yet (surname order). */
 export async function assignVoterNumbers() {
   const s = await requireSession("approve");
-  const { rows } = await evaluateAll();
+  const { rows } = await evaluateAll({ fresh: true }); // numbers are permanent: never from the short memory
   const todo = sortBySurname(rows.filter((r) => r.result.eligible && r.member.voterNo === null));
   const max = await prisma.member.aggregate({ _max: { voterNo: true } });
   let n = max._max.voterNo ?? 0;
