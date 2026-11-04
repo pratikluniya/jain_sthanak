@@ -2,6 +2,7 @@
 // Plain inputs (no client state): the surrounding <form> posts them; names match applicationFromForm().
 import type { Dict } from "@/lib/i18n";
 import { DOC_CODES } from "@/lib/applicationForm";
+import AddressPairFields from "./AddressPairFields";
 
 export interface ApplicationDefaults {
   appNo: string;
@@ -46,7 +47,8 @@ export function Field(p: { name: string; label: string; value: string; type?: st
   );
 }
 
-export default function ApplicationFieldsForm({ d, t, raw = {}, uncertain = [] }: { d: ApplicationDefaults; t: Dict; raw?: RawHints; uncertain?: string[] }) {
+/** homeAddressEn: given only on the check screen, where the English home address can be checked (4 Nov 2026) */
+export default function ApplicationFieldsForm({ d, t, raw = {}, uncertain = [], homeAddressEn }: { d: ApplicationDefaults; t: Dict; raw?: RawHints; uncertain?: string[]; homeAddressEn?: string }) {
   const u = (k: string) => uncertain.includes(k);
   const written = (k: keyof RawHints, value: string) => (raw[k] && !value ? `${t.onForm}: ${raw[k]}` : undefined);
   const person = (who: "proposer" | "seconder", legend: string) => (
@@ -69,7 +71,16 @@ export default function ApplicationFieldsForm({ d, t, raw = {}, uncertain = [] }
           <Field name="appNo" label={t.appNo} value={d.appNo} uncertain={u("appNo")} />
           <Field name="appDate" label={t.appDate} value={d.appDate} type="date" hint={written("appDate", d.appDate)} uncertain={u("appDate")} />
         </div>
-        <Field name="homeAddress" label={t.homeAddress} value={d.homeAddress} uncertain={u("homeAddress")} />
+        {homeAddressEn === undefined ? (
+          <Field name="homeAddress" label={t.homeAddress} value={d.homeAddress} uncertain={u("homeAddress")} />
+        ) : (
+          <AddressPairFields
+            address={d.homeAddress}
+            addressEn={homeAddressEn}
+            uncertain={u("homeAddress")}
+            t={{ homeAddress: t.homeAddress, homeAddressEn: t.homeAddressEn, homeAddressEnHelp: t.homeAddressEnHelp }}
+          />
+        )}
         <Field name="businessAddress" label={t.businessAddress} value={d.businessAddress} uncertain={u("businessAddress")} />
         <div className="grid grid-cols-2 gap-2">
           <Field name="landline" label={t.landline} value={d.landline} inputMode="tel" />

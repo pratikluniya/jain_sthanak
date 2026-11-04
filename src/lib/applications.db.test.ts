@@ -41,11 +41,13 @@ test("application joins an existing family as daughter-in-law, or starts a new f
     assert.deepEqual((await evaluateAll()).rows.find((r) => r.member.id === m1.id)?.result.reasons, ["NOT_APPROVED"]);
 
     const u2 = await mkUpload();
-    const r2 = await saveApplication({ uploadId: u2.id, mode: "new", relation: "OTHER", applicant: { ...applicant, firstName: "राहुल", title: "श्री", gender: "MALE" }, application: appFields, by: { uid: "t", name: "t" } });
+    const r2 = await saveApplication({ uploadId: u2.id, mode: "new", relation: "OTHER", applicant: { ...applicant, firstName: "राहुल", title: "श्री", gender: "MALE" }, application: appFields, homeAddressEn: "Jail Road, Nashik Road", by: { uid: "t", name: "t" } });
     assert.ok(r2.ok);
     if (r2.ok) created.push(r2.familyId);
     const nf = await prisma.family.findUniqueOrThrow({ where: { id: r2.ok ? r2.familyId : "" }, include: { members: true } });
     assert.equal(nf.panthStatus, "TO_VERIFY");
+    assert.equal(nf.address, "जेल रोड");
+    assert.equal(nf.addressEn, "Jail Road, Nashik Road", "English address checked on the screen is used");
     assert.equal(nf.members[0].isHead, true);
     assert.equal(nf.members[0].relation, "SELF");
     assert.deepEqual((await evaluateAll()).rows.find((r) => r.member.familyId === nf.id)?.result.reasons, ["PANTH_TO_VERIFY"]);

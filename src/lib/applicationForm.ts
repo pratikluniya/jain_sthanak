@@ -28,6 +28,7 @@ export const ExtractedApplication = z.object({
   surnameEn: z.string().default(""),
   gender: z.enum(["MALE", "FEMALE", "UNKNOWN"]).default("UNKNOWN"),
   homeAddress: z.string().default(""),
+  homeAddressEn: z.string().default(""), // English spelling (batch files may give it; else made automatically)
   businessAddress: z.string().default(""),
   mobile: z.string().default(""),
   landline: z.string().default(""),

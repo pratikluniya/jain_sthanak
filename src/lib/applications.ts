@@ -197,6 +197,8 @@ export interface SaveApplicationInput {
   memberId?: string;
   applicant: ApplicantInput;
   application: ApplicationFields;
+  /** English spelling of the home address, checked on the screen (4 Nov 2026); used when a new family is made */
+  homeAddressEn?: string;
   /** photo picked on the check screen (wins over the one cropped at import) */
   photo?: { data: Buffer; type: string } | null;
   by: { uid: string; name: string };
@@ -244,7 +246,7 @@ export async function saveApplication(input: SaveApplicationInput): Promise<Save
           headName: fullName(a, false),
           headNameEn: [a.firstNameEn, a.middleNameEn, a.surnameEn].filter(Boolean).join(" "),
           address: app.homeAddress,
-          addressEn: addressToEnglish(app.homeAddress),
+          addressEn: input.homeAddressEn?.trim() || addressToEnglish(app.homeAddress),
           panth: "UNKNOWN",
           panthStatus: "TO_VERIFY", // the form has no panth (decided 8 Oct 2026)
           formDate: recordedOn,

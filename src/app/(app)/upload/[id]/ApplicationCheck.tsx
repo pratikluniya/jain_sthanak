@@ -143,6 +143,7 @@ export default async function ApplicationCheck({ up, error }: { up: FormUpload; 
             t={t}
             uncertain={x.uncertainFields}
             raw={{ appDate: x.appDate, receiptDate: x.receiptDate, meetingDate: x.meetingDate }}
+            homeAddressEn={x.homeAddressEn ?? ""}
             d={{
               appNo: x.appNo,
               appDate: parseFormDate(x.appDate),

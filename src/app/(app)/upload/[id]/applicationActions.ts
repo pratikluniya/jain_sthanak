@@ -45,6 +45,7 @@ export async function saveApplicationAction(fd: FormData) {
       bloodGroup: s(fd, "bloodGroup"),
     },
     application: applicationFromForm(fd),
+    homeAddressEn: s(fd, "homeAddressEn"),
     photo: await photoFrom(fd),
     by: { uid: session.uid, name: session.name },
   });
