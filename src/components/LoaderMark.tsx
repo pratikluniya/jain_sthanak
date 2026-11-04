@@ -1,8 +1,8 @@
-// The Sangh logo used as a loader: a faint grey copy with the coloured logo filling it from the top down.
-// `cut` = how much of the coloured logo is still hidden at the bottom (100 = empty, 0 = full).
+// The Sangh logo used as a loader: a faint grey copy, and the coloured logo filling it from the top down
+// again and again (CSS animation "loader-loop" in globals.css) until the work is done.
 // Plain component (no hooks) so the server-rendered first-load overlay and the client overlay share it.
 
-export default function LoaderMark({ cut }: { cut?: number }) {
+export default function LoaderMark() {
   return (
     <div className="loader-logo" aria-hidden="true">
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -14,7 +14,6 @@ export default function LoaderMark({ cut }: { cut?: number }) {
         alt=""
         width={110}
         height={158}
-        style={cut == null ? undefined : ({ "--cut": `${cut}%` } as React.CSSProperties)}
       />
     </div>
   );
