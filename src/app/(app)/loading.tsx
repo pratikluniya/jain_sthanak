@@ -1,7 +1,7 @@
-// Shown instantly while a page's data loads.
+// Shown instantly while a page's data loads. data-page-loading keeps the logo loader on (src/lib/loader.ts).
 export default function Loading() {
   return (
-    <div className="space-y-3 animate-pulse" aria-busy="true">
+    <div className="space-y-3 animate-pulse" aria-busy="true" data-page-loading>
       <div className="h-7 w-40 rounded bg-stone-200" />
       <div className="h-11 rounded-lg bg-stone-200" />
       <div className="grid gap-2 sm:grid-cols-2">
