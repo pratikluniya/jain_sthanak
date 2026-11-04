@@ -6,12 +6,14 @@ import { getDict } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
 import { LIVE } from "@/lib/softDelete";
 import { findDuplicates, type DupKind, type DupSide } from "@/lib/duplicates";
+import LoadMore from "@/components/LoadMore";
+import { moreHref, shownCount, STEP } from "@/lib/listPaging";
 
 export const dynamic = "force-dynamic";
 
 const KINDS: DupKind[] = ["SAME_FAMILY_TWICE", "SAME_PERSON_2_FAMILIES", "SAME_PERSON_IN_FAMILY", "SHARED_MOBILE"];
 
-export default async function DuplicatesPage({ searchParams }: { searchParams: { kind?: string } }) {
+export default async function DuplicatesPage({ searchParams }: { searchParams: { kind?: string; n?: string } }) {
   await requireSession("approve");
   const t = getDict();
   const families = await prisma.family.findMany({
@@ -24,7 +26,9 @@ export default async function DuplicatesPage({ searchParams }: { searchParams: {
   });
   const pairs = findDuplicates(families);
   const kind = (KINDS as string[]).includes(searchParams.kind ?? "") ? (searchParams.kind as DupKind) : KINDS.find((x) => pairs.some((p) => p.kind === x)) ?? KINDS[0];
-  const shown = pairs.filter((p) => p.kind === kind);
+  const ofKind = pairs.filter((p) => p.kind === kind);
+  const n = shownCount(searchParams.n, ofKind.length);
+  const shown = ofKind.slice(0, n);
   const count = (x: DupKind) => pairs.filter((p) => p.kind === x).length;
   const Side = ({ s }: { s: DupSide }) => (
     <Link href={`/families/${s.familyId}`} className="block min-w-0 flex-1 rounded-lg border border-stone-200 p-2 hover:border-brand-300">
@@ -60,6 +64,7 @@ export default async function DuplicatesPage({ searchParams }: { searchParams: {
           ))}
         </ul>
       )}
+      <LoadMore shown={n} total={ofKind.length} nextHref={moreHref({ kind }, n + STEP)} t={{ more: t.loadMore, loading: t.loadingMore, shownOf: t.shownOf }} />
     </div>
   );
 }

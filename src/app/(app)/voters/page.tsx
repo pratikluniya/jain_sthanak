@@ -8,11 +8,13 @@ import { evaluateAll, memberFullName, sortBySurname } from "@/lib/members";
 import { matchesSearch } from "@/lib/normalize";
 import type { Reason } from "@/lib/eligibility";
 import SearchBox from "@/components/SearchBox";
+import LoadMore from "@/components/LoadMore";
+import { moreHref, shownCount, STEP } from "@/lib/listPaging";
 import { assignVoterNumbers } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function VotersPage({ searchParams }: { searchParams: { q?: string; tab?: string } }) {
+export default async function VotersPage({ searchParams }: { searchParams: { q?: string; tab?: string; n?: string } }) {
   const s = await requireSession("view");
   const t = getDict();
   const lang = getLang();
@@ -28,6 +30,7 @@ export default async function VotersPage({ searchParams }: { searchParams: { q?:
   const withoutNo = eligible.filter((r) => r.member.voterNo === null).length;
 
   const list = sortBySurname((tab === "eligible" ? eligible : pending).filter((r) => !q || matchesSearch(r.member.searchKey, q)));
+  const count = shownCount(searchParams.n, list.length);
 
   return (
     <div className="space-y-3">
@@ -68,7 +71,7 @@ export default async function VotersPage({ searchParams }: { searchParams: { q?:
             </tr>
           </thead>
           <tbody>
-            {list.map((r, i) => (
+            {list.slice(0, count).map((r, i) => (
               <tr key={r.member.id}>
                 <td>{i + 1}</td>
                 <td>{r.member.voterNo ?? ""}</td>
@@ -83,6 +86,7 @@ export default async function VotersPage({ searchParams }: { searchParams: { q?:
           </tbody>
         </table>
       </div>
+      <LoadMore shown={count} total={list.length} nextHref={moreHref({ q, tab: tab === "pending" ? "pending" : undefined }, count + STEP)} t={{ more: t.loadMore, loading: t.loadingMore, shownOf: t.shownOf }} />
     </div>
   );
 }

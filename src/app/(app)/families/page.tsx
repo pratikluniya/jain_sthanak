@@ -1,3 +1,5 @@
+import LoadMore from "@/components/LoadMore";
+import { moreHref, shownCount, STEP } from "@/lib/listPaging";
 import { aadhaarPendingCount } from "@/lib/gaps";
 import Link from "next/link";
 import DownloadButton from "@/components/DownloadButton";
@@ -13,7 +15,7 @@ import { familyAddress } from "@/lib/addressEn";
 
 export const dynamic = "force-dynamic";
 
-export default async function FamiliesPage({ searchParams }: { searchParams: { q?: string; panth?: string; deleted?: string; moved?: string } }) {
+export default async function FamiliesPage({ searchParams }: { searchParams: { q?: string; panth?: string; deleted?: string; moved?: string; n?: string } }) {
   const s = await requireSession("view");
   const t = getDict();
   const lang = getLang();
@@ -46,6 +48,8 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
       return matchesSearch(key, q) || f.code.toLowerCase().includes(q.toLowerCase());
     })
     .sort((a, b) => collator.compare(a.code, b.code));
+  const count = shownCount(searchParams.n, filtered.length);
+  const params = { q, panth: onlyToVerify ? "TO_VERIFY" : undefined, deleted: showDeleted ? "1" : undefined, moved: showMoved ? "1" : undefined };
 
   return (
     <div className="space-y-3">
@@ -74,7 +78,7 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
       </div>
       {filtered.length === 0 && <p className="text-stone-500">{t.noResults}</p>}
       <ul className="grid gap-2 sm:grid-cols-2">
-        {filtered.map((f) => (
+        {filtered.slice(0, count).map((f) => (
           <li key={f.id}>
             <Link href={`/families/${f.id}`} className="card p-3 block hover:border-brand-500">
               <div className="flex items-start justify-between gap-2">
@@ -103,6 +107,7 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
           </li>
         ))}
       </ul>
+      <LoadMore shown={count} total={filtered.length} nextHref={moreHref(params, count + STEP)} t={{ more: t.loadMore, loading: t.loadingMore, shownOf: t.shownOf }} />
     </div>
   );
 }

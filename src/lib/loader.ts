@@ -28,7 +28,22 @@ export function subscribe(l: Listener): () => void {
 }
 
 export function isBusy(): boolean {
+  if (quiet > 0) return false; // a "load more" shows its own small spinner instead
   return inflight > 0 || tasks.size > 0 || pagePlaceholderVisible();
+}
+
+let quiet = 0;
+/** Keep the full-screen loader off until the returned function is called (used by "load more" lists). */
+export function quietLoader(): () => void {
+  quiet++;
+  emit();
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    quiet = Math.max(0, quiet - 1);
+    emit();
+  };
 }
 
 /** Real progress of the slowest task that reports one (0..1), or null when nobody knows it. */

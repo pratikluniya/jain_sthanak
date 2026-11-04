@@ -7,10 +7,12 @@ import type { ExtractedForm } from "@/lib/extract";
 import { formImageUrls } from "@/lib/storage";
 import { uploadMatches, uploadSearchText } from "@/lib/uploadSearch";
 import SearchBox from "@/components/SearchBox";
+import LoadMore from "@/components/LoadMore";
+import { moreHref, shownCount, STEP } from "@/lib/listPaging";
 
 export const dynamic = "force-dynamic";
 
-export default async function UploadList({ searchParams }: { searchParams: { q?: string } }) {
+export default async function UploadList({ searchParams }: { searchParams: { q?: string; n?: string } }) {
   const session = await requireSession("upload");
   const t = getDict();
   const q = (searchParams.q ?? "").trim();
@@ -20,8 +22,11 @@ export default async function UploadList({ searchParams }: { searchParams: { q?:
   });
   // search by full name, address or mobile (4 Nov 2026)
   const pending = q ? waiting.filter((u) => uploadMatches(uploadSearchText(u.kind, u.extracted), q)) : waiting;
-  const thumbs = await formImageUrls(pending.map((u) => u.imageKeys[0]).filter(Boolean));
-  const thumbOf = new Map(pending.filter((u) => u.imageKeys[0]).map((u, i) => [u.id, thumbs[i]]));
+  // 10 at a time, "load more" for the next (4 Nov 2026): every card shows a form photo, heavy on phones
+  const count = shownCount(searchParams.n, pending.length);
+  const shown = pending.slice(0, count);
+  const thumbs = await formImageUrls(shown.map((u) => u.imageKeys[0]).filter(Boolean));
+  const thumbOf = new Map(shown.filter((u) => u.imageKeys[0]).map((u, i) => [u.id, thumbs[i]]));
   const done = await prisma.formUpload.count({ where: { status: "VERIFIED" } });
 
   return (
@@ -42,7 +47,7 @@ export default async function UploadList({ searchParams }: { searchParams: { q?:
       {waiting.length > 0 && <SearchBox q={q} placeholder={t.uploadSearchPlaceholder} label={t.search} />}
       {q && pending.length === 0 && <p className="text-sm text-stone-500">{t.uploadSearchNone}</p>}
       <ul className="grid gap-2 sm:grid-cols-2">
-        {pending.map((u) => {
+        {shown.map((u) => {
           const x = u.extracted as unknown as ExtractedForm | null;
           const ap = u.kind === "INDIVIDUAL" ? (u.extracted as { title?: string; firstName?: string; middleName?: string; surname?: string; nameRaw?: string } | null) : null;
           const apName = ap ? [ap.title, ap.firstName, ap.middleName, ap.surname].filter(Boolean).join(" ") || ap.nameRaw : "";
@@ -65,6 +70,7 @@ export default async function UploadList({ searchParams }: { searchParams: { q?:
           );
         })}
       </ul>
+      <LoadMore shown={count} total={pending.length} nextHref={moreHref({ q }, count + STEP)} t={{ more: t.loadMore, loading: t.loadingMore, shownOf: t.shownOf }} />
     </div>
   );
 }
