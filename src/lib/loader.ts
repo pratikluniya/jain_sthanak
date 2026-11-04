@@ -28,7 +28,7 @@ export function subscribe(l: Listener): () => void {
 }
 
 export function isBusy(): boolean {
-  return inflight > 0 || tasks.size > 0;
+  return inflight > 0 || tasks.size > 0 || pagePlaceholderVisible();
 }
 
 /** Real progress of the slowest task that reports one (0..1), or null when nobody knows it. */
@@ -114,21 +114,70 @@ export function installFetchTracking() {
     inflight++;
     fetchSeen++;
     emit();
+    let finished = false;
     const done = () => {
+      if (finished) return;
+      finished = true;
       inflight = Math.max(0, inflight - 1);
       emit();
     };
     return original(input, init).then(
-      (r) => {
-        done();
-        return r;
-      },
+      (r) => trackBody(r, done),
       (e) => {
         done();
         throw e;
       },
     );
   };
+}
+
+/** Longest time one response body may keep the loader on (a body nobody reads must not block it). */
+const BODY_CAP_MS = 30000;
+
+/**
+ * fetch() resolves as soon as the server starts answering, but Next.js pages and saves keep streaming
+ * their content after that. Count the request as finished only when its body has been read to the end.
+ */
+function trackBody(r: Response, done: () => void): Response {
+  if (!r.body || [101, 204, 205, 304].includes(r.status)) {
+    done();
+    return r;
+  }
+  const cap = setTimeout(done, BODY_CAP_MS);
+  const finish = () => {
+    clearTimeout(cap);
+    done();
+  };
+  const reader = r.body.getReader();
+  const body = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done: end, value } = await reader.read();
+        if (end) {
+          controller.close();
+          finish();
+        } else controller.enqueue(value);
+      } catch (e) {
+        controller.error(e);
+        finish();
+      }
+    },
+    cancel(reason) {
+      finish();
+      return reader.cancel(reason);
+    },
+  });
+  const copy = new Response(body, { status: r.status, statusText: r.statusText, headers: r.headers });
+  // keep what Next.js reads from the original response (final address after redirects)
+  Object.defineProperty(copy, "url", { value: r.url });
+  Object.defineProperty(copy, "redirected", { value: r.redirected });
+  Object.defineProperty(copy, "type", { value: r.type });
+  return copy;
+}
+
+/** A page still showing its loading placeholder (app/(app)/loading.tsx) counts as busy. */
+export function pagePlaceholderVisible(): boolean {
+  return typeof document !== "undefined" && document.querySelector("[data-page-loading]") != null;
 }
 
 /**

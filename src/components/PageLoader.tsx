@@ -2,7 +2,8 @@
 // Logo loader over the whole screen while a page loads, a form saves, or a file uploads/downloads
 // (decided 3 Nov 2026: after 0.5 s, every screen; 4 Nov: the logo fills top to bottom in a loop, with
 // "please wait" only, instead of a progress percentage).
-//  - Busy state: src/lib/loader.ts (every fetch except link prefetching, plus explicit tasks).
+//  - Busy state: src/lib/loader.ts (every fetch except link prefetching, counted until its body has
+//    fully arrived; explicit tasks; and the page's loading placeholder while it is on screen).
 //  - Link clicks, GET forms (e.g. public search) and back/forward start a navigation task that ends
 //    when the address changes, or when its requests finish without a change, or after NAV_CAP_MS.
 //  - Links marked data-download are fetched here so the loader covers the download, then saved.
@@ -45,7 +46,13 @@ export default function PageLoader({ t }: { t: { wait: string; label: string } }
   useEffect(() => {
     installFetchTracking();
     // first-load overlay from the root layout: hide it (not remove: React still owns that element)
+    // If the page is still loading its content, take over at once so the logo does not blink off.
     const boot = document.getElementById("boot-loader");
+    if (isBusy()) {
+      busySince.current = Date.now() - SHOW_AFTER_MS;
+      shownRef.current = true;
+      setShown(true);
+    }
     if (boot) boot.style.display = "none";
 
     const endNav = () => {
