@@ -5,16 +5,21 @@ import { requireSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
 import type { ExtractedForm } from "@/lib/extract";
 import { formImageUrls } from "@/lib/storage";
+import { uploadMatches, uploadSearchText } from "@/lib/uploadSearch";
+import SearchBox from "@/components/SearchBox";
 
 export const dynamic = "force-dynamic";
 
-export default async function UploadList() {
+export default async function UploadList({ searchParams }: { searchParams: { q?: string } }) {
   const session = await requireSession("upload");
   const t = getDict();
-  const pending = await prisma.formUpload.findMany({
+  const q = (searchParams.q ?? "").trim();
+  const waiting = await prisma.formUpload.findMany({
     where: { status: { in: ["EXTRACTED", "FAILED", "UPLOADED"] } },
     orderBy: { createdAt: "asc" },
   });
+  // search by full name, address or mobile (4 Nov 2026)
+  const pending = q ? waiting.filter((u) => uploadMatches(uploadSearchText(u.kind, u.extracted), q)) : waiting;
   const thumbs = await formImageUrls(pending.map((u) => u.imageKeys[0]).filter(Boolean));
   const thumbOf = new Map(pending.filter((u) => u.imageKeys[0]).map((u, i) => [u.id, thumbs[i]]));
   const done = await prisma.formUpload.count({ where: { status: "VERIFIED" } });
@@ -31,7 +36,11 @@ export default async function UploadList() {
       <p className="text-sm text-stone-500">
         ✔ {t.savedForms}: {done}
       </p>
-      <h2 className="section-title">{t.pendingUploads} ({pending.length})</h2>
+      <h2 className="section-title">
+        {t.pendingUploads} ({q ? `${pending.length} / ${waiting.length}` : waiting.length})
+      </h2>
+      {waiting.length > 0 && <SearchBox q={q} placeholder={t.uploadSearchPlaceholder} label={t.search} />}
+      {q && pending.length === 0 && <p className="text-sm text-stone-500">{t.uploadSearchNone}</p>}
       <ul className="grid gap-2 sm:grid-cols-2">
         {pending.map((u) => {
           const x = u.extracted as unknown as ExtractedForm | null;
