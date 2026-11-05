@@ -1,5 +1,13 @@
 # Caddy = the front door. It gets a free HTTPS certificate for the domain automatically
 # and passes every request to the app container.
+# HTTP/3 off (6 Nov 2026): it runs over UDP 443, which the firewall and docker-compose do not open, so
+# browsers that tried it waited before falling back; pages sometimes needed 2-3 clicks. HTTP/1.1 and HTTP/2 only.
+{
+	servers {
+		protocols h1 h2
+	}
+}
+
 {$APP_DOMAIN} {
 	encode zstd gzip
 	request_body {
