@@ -25,7 +25,7 @@ export default async function UploadList({ searchParams }: { searchParams: { q?:
   // 10 at a time, "load more" for the next (4 Nov 2026): every card shows a form photo, heavy on phones
   const count = shownCount(searchParams.n, pending.length);
   const shown = pending.slice(0, count);
-  const thumbs = await formImageUrls(shown.map((u) => u.imageKeys[0]).filter(Boolean));
+  const thumbs = await formImageUrls(shown.map((u) => u.imageKeys[0]).filter(Boolean), { thumb: 160 });
   const thumbOf = new Map(shown.filter((u) => u.imageKeys[0]).map((u, i) => [u.id, thumbs[i]]));
   const done = await prisma.formUpload.count({ where: { status: "VERIFIED" } });
 

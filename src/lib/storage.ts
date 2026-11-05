@@ -74,10 +74,10 @@ export async function getFile(bucket: Bucket, key: string): Promise<Buffer> {
  * Local: through our own logged-in route /api/files/forms/...
  * KYC scans never use this: they always go through /api/files/kyc so every view is permission-checked and logged.
  */
-export async function formImageUrls(keys: string[]): Promise<string[]> {
+export async function formImageUrls(keys: string[], opts: { thumb?: 160 | 320 } = {}): Promise<string[]> {
   if (keys.length === 0) return [];
-  const fallback = (k: string) => `/api/files/forms/${k}`;
-  if (!s3Enabled()) return keys.map(fallback);
+  const fallback = (k: string) => `/api/files/forms/${k}${opts.thumb ? `?w=${opts.thumb}` : ""}`;
+  if (!s3Enabled() || opts.thumb) return keys.map(fallback); // previews are always made by our own route
   try {
     const { GetObjectCommand } = await import("@aws-sdk/client-s3");
     const { getSignedUrl } = await import("@aws-sdk/s3-request-presigner");
