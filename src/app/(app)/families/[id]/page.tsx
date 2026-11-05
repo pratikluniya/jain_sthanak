@@ -245,7 +245,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
               <div className="flex items-start justify-between gap-2">
                 {m.photoKey ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={`/api/files/photos/${m.photoKey}`} alt="" loading="lazy" className="h-14 w-12 shrink-0 rounded-lg border border-stone-200 object-cover" />
+                  <img src={`/api/files/photos/${m.photoKey}?w=160`} alt="" loading="lazy" className="h-14 w-12 shrink-0 rounded-lg border border-stone-200 object-cover" />
                 ) : (
                   <span className="flex h-14 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-50 font-heading text-sm font-bold text-brand-700">{initials(memberFullName(m, false, en))}</span>
                 )}
