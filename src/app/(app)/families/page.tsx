@@ -1,15 +1,14 @@
+import { filterFamilies, loadFamilies } from "@/lib/lists";
 import LoadMore from "@/components/LoadMore";
 import { moreHref, shownCount, STEP } from "@/lib/listPaging";
 import { aadhaarPendingCount } from "@/lib/gaps";
 import Link from "next/link";
 import DownloadButton from "@/components/DownloadButton";
 import { downloadProps } from "@/lib/downloadProps";
-import { prisma } from "@/lib/db";
 import { getDict, getLang } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
-import { matchesSearch, searchKey } from "@/lib/normalize";
-import { collator, headLabel } from "@/lib/members";
+import { headLabel } from "@/lib/members";
 import SearchBox from "@/components/SearchBox";
 import { familyAddress } from "@/lib/addressEn";
 
@@ -27,27 +26,8 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
   // Admin and Operator: list families that moved out of the area (hidden everywhere else)
   const showMoved = searchParams.moved === "1" && can(s.role, "approve") && !showDeleted;
 
-  const families = await prisma.family.findMany({
-    where: {
-      deletedAt: showDeleted ? { not: null } : null,
-      ...(showDeleted ? {} : { status: showMoved ? ("MOVED_OUT" as const) : { not: "MOVED_OUT" as const } }),
-      ...(onlyToVerify ? { panthStatus: "TO_VERIFY" as const } : {}),
-    },
-    include: {
-      members: {
-        where: showDeleted ? { deletedAt: { not: null } } : showMoved ? { deletedAt: null } : { deletedAt: null, status: { not: "MOVED_OUT" } },
-        select: { searchKey: true, mobile: true, status: true, kycFileKey: true, kycDocType: true, aadhaarBackKey: true, photoKey: true, age: true, dob: true, ageRecordedOn: true },
-      },
-    },
-  });
-
-  const filtered = families
-    .filter((f) => {
-      if (!q) return true;
-      const key = [searchKey(f.headName), searchKey(f.headNameEn), searchKey(f.address), f.code.toLowerCase(), ...f.members.map((m) => m.searchKey)].join(" | ");
-      return matchesSearch(key, q) || f.code.toLowerCase().includes(q.toLowerCase());
-    })
-    .sort((a, b) => collator.compare(a.code, b.code));
+  const families = await loadFamilies({ deleted: showDeleted, moved: showMoved, toVerify: onlyToVerify });
+  const filtered = filterFamilies(families, q);
   const count = shownCount(searchParams.n, filtered.length);
   const params = { q, panth: onlyToVerify ? "TO_VERIFY" : undefined, deleted: showDeleted ? "1" : undefined, moved: showMoved ? "1" : undefined };
 
@@ -57,11 +37,11 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
         <h1 className="page-title">{t.families} <span className="text-stone-500 text-base">({filtered.length})</span></h1>
         <div className="flex flex-wrap gap-2">
           {can(s.role, "approve") && !showDeleted && !showMoved && <Link href="/duplicates" className="btn-secondary">{t.dup_link}</Link>}
-          {can(s.role, "export") && !showDeleted && !showMoved && <DownloadButton {...downloadProps("families", t, lang)} />}
+          {can(s.role, "export") && !showDeleted && <DownloadButton {...downloadProps("families", t, lang, { q, moved: showMoved, toVerify: onlyToVerify })} />}
           {can(s.role, "edit") && <Link href="/families/new" className="btn-primary">+ {t.addFamily}</Link>}
         </div>
       </div>
-      <SearchBox q={q} placeholder={t.searchPlaceholder} label={t.search} />
+      <SearchBox q={q} placeholder={t.searchPlaceholder} label={t.search} keep={{ panth: onlyToVerify ? "TO_VERIFY" : undefined, moved: showMoved ? "1" : undefined, deleted: showDeleted ? "1" : undefined }} />
       <div className="flex gap-2 text-sm">
         <Link href="/families" className={!onlyToVerify ? "badge-gray font-semibold" : "badge-gray opacity-60"}>{t.total}</Link>
         <Link href="/families?panth=TO_VERIFY" className={onlyToVerify ? "badge-amber font-semibold" : "badge-amber opacity-60"}>{t.toVerify}</Link>

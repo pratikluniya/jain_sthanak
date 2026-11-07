@@ -1,17 +1,17 @@
 // Everything the Download popup needs for one list, in the screen language.
+// filters: the tab and search on screen (7 Nov 2026), so Excel / Print / PDF give exactly the rows on screen.
 import { LANGS, LANG_NAMES, type Dict, type Lang } from "./i18n";
-import { DEFAULT_FIELDS, fieldLabels, fieldsFor, type ListKind } from "./exportRows";
-import type { Gap } from "./gaps";
+import { EMPTY_FILTERS, defaultFieldsFor, describe, fieldLabels, fieldsFor, filterQuery, type ExportFilters, type ListKind } from "./exportRows";
 
-/** gap: download only the members missing Aadhaar / photo / age & DOB (members list only) */
-export function downloadProps(list: ListKind, t: Dict, lang: Lang, gap: Gap | null = null) {
+export function downloadProps(list: ListKind, t: Dict, lang: Lang, filters: Partial<ExportFilters> = {}) {
   const labels = fieldLabels(t);
+  const f = { ...EMPTY_FILTERS, ...filters };
   return {
     list,
-    title: list === "voters" ? t.voterList : list === "families" ? t.headList : gap ? t[`list_${gap}`] : t.allMembers,
-    extraQuery: list === "members" && gap ? `&gap=${gap}` : "",
-    fields: fieldsFor(list).map((f) => ({ key: f, label: labels[f] })),
-    defaults: [...DEFAULT_FIELDS[list]],
+    title: describe(list, f, t),
+    extraQuery: filterQuery(list, filters),
+    fields: fieldsFor(list).map((k) => ({ key: k, label: labels[k] })),
+    defaults: [...defaultFieldsFor(list, filters)],
     langs: LANGS.map((l) => ({ code: l, label: LANG_NAMES[l] })),
     initialLang: lang,
     t: {

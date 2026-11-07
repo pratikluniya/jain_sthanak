@@ -18,13 +18,13 @@ export interface DownloadLabels {
 }
 
 export default function DownloadButton(props: {
-  list: "voters" | "members" | "families";
+  list: string;
   title: string;
   fields: { key: string; label: string }[];
   defaults: string[];
   langs: { code: string; label: string }[];
   initialLang: string;
-  /** extra filter passed to the Excel / print links, e.g. "&gap=nophoto" */
+  /** the tab and search on screen, passed to the Excel / print links, e.g. "&gap=nomobile&q=jain" */
   extraQuery?: string;
   t: DownloadLabels;
 }) {

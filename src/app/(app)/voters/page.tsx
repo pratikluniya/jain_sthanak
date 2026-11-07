@@ -4,10 +4,10 @@ import { downloadProps } from "@/lib/downloadProps";
 import { getDict, getLang } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
-import { evaluateAll, memberFullName, sortBySurname } from "@/lib/members";
-import { matchesSearch } from "@/lib/normalize";
+import { evaluateAll, memberFullName } from "@/lib/members";
 import type { Reason } from "@/lib/eligibility";
 import SearchBox from "@/components/SearchBox";
+import { isPendingVoter, voterTab } from "@/lib/lists";
 import LoadMore from "@/components/LoadMore";
 import { moreHref, shownCount, STEP } from "@/lib/listPaging";
 import { assignVoterNumbers } from "./actions";
@@ -24,12 +24,12 @@ export default async function VotersPage({ searchParams }: { searchParams: { q?:
   const { rows, ageDate, electionDate } = await evaluateAll();
 
   const eligible = rows.filter((r) => r.result.eligible);
-  const pending = rows.filter((r) => !r.result.eligible && r.result.reasons.some((x) => x === "AGE_BORDERLINE" || x === "PANTH_TO_VERIFY" || x === "AGE_UNKNOWN"));
+  const pending = rows.filter(isPendingVoter);
   const reasonCounts = new Map<Reason, number>();
   for (const r of rows) for (const x of r.result.reasons) reasonCounts.set(x, (reasonCounts.get(x) ?? 0) + 1);
   const withoutNo = eligible.filter((r) => r.member.voterNo === null).length;
 
-  const list = sortBySurname((tab === "eligible" ? eligible : pending).filter((r) => !q || matchesSearch(r.member.searchKey, q)));
+  const list = voterTab(rows, tab, q);
   const count = shownCount(searchParams.n, list.length);
 
   return (
@@ -51,13 +51,13 @@ export default async function VotersPage({ searchParams }: { searchParams: { q?:
             <button className="btn-secondary">{t.assignVoterNos} ({withoutNo})</button>
           </form>
         )}
-        {can(s.role, "export") && <DownloadButton {...downloadProps("voters", t, lang)} />}
+        {can(s.role, "export") && <DownloadButton {...downloadProps("voters", t, lang, { q, tab })} />}
       </div>
       <div className="flex gap-2 text-sm">
         <Link href="/voters" className={tab === "eligible" ? "badge-green font-semibold" : "badge-gray"}>{t.eligible} ({eligible.length})</Link>
         <Link href="/voters?tab=pending" className={tab === "pending" ? "badge-amber font-semibold" : "badge-gray"}>{t.pendingCount} ({pending.length})</Link>
       </div>
-      <SearchBox q={q} placeholder={t.searchPlaceholder} label={t.search} />
+      <SearchBox q={q} placeholder={t.searchPlaceholder} label={t.search} keep={{ tab: tab === "pending" ? "pending" : undefined }} />
       <div className="card overflow-x-auto">
         <table className="table">
           <thead>
