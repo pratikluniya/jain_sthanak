@@ -1,5 +1,8 @@
 // Yearly donations screen (23 Oct 2026): pick a donation and year, see who paid, who is exempt and who
 // has not paid, the totals, and record payments. Admin sets the year's amount here.
+import DownloadButton from "@/components/DownloadButton";
+import { downloadProps } from "@/lib/downloadProps";
+import { asShow, DONATION_SHOWS, loadDonationRows } from "@/lib/lists";
 import LoadMore from "@/components/LoadMore";
 import { moreHref, shownCount, STEP } from "@/lib/listPaging";
 import Link from "next/link";
@@ -7,17 +10,15 @@ import { prisma } from "@/lib/db";
 import { getDict, getLang } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
 import { can } from "@/lib/rbac";
-import { matchesSearch, searchKey } from "@/lib/normalize";
-import { collator, headLabel } from "@/lib/members";
+import { headLabel } from "@/lib/members";
 import SearchBox from "@/components/SearchBox";
-import { DONATION_KINDS, DUE_FAMILY, FIRST_DONATION_YEAR, asKind, currentYear, rupees, yearSummary } from "@/lib/donations";
+import { DONATION_KINDS, FIRST_DONATION_YEAR, asKind, currentYear, rupees, yearSummary } from "@/lib/donations";
 import EntryControls, { EntryDetails, StatusBadge } from "./EntryControls";
 import { setYearAmountAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-const SHOWS = ["UNPAID", "PAID", "EXEMPT", "ALL"] as const;
-type Show = (typeof SHOWS)[number];
+const SHOWS = DONATION_SHOWS;
 
 export default async function DonationsPage({ searchParams }: { searchParams: { kind?: string; year?: string; show?: string; q?: string; n?: string } }) {
   const s = await requireSession("view");
@@ -30,31 +31,11 @@ export default async function DonationsPage({ searchParams }: { searchParams: { 
   const lastYear = Math.max(thisYear, (await prisma.donationYear.aggregate({ _max: { year: true } }))._max.year ?? thisYear);
   const yearReq = parseInt(searchParams.year ?? "", 10);
   const year = yearReq >= FIRST_DONATION_YEAR && yearReq <= lastYear + 1 ? yearReq : thisYear;
-  const show: Show = (SHOWS as readonly string[]).includes(searchParams.show ?? "") ? (searchParams.show as Show) : "UNPAID";
+  const show = asShow(searchParams.show);
   const q = (searchParams.q ?? "").trim();
 
-  const [sum, families] = await Promise.all([
-    yearSummary(kind, year),
-    prisma.family.findMany({
-      where: DUE_FAMILY,
-      select: {
-        id: true, code: true, headName: true, headNameEn: true,
-        members: { where: { deletedAt: null, status: "ACTIVE" }, select: { mobile: true, searchKey: true, isHead: true }, orderBy: [{ isHead: "desc" }, { serial: "asc" }] },
-        donations: { where: { kind, year } },
-      },
-    }),
-  ]);
+  const [sum, rows] = await Promise.all([yearSummary(kind, year), loadDonationRows(kind, year, show, q)]);
   const open = sum.amount !== null && year <= thisYear;
-
-  const rows = families
-    .map((f) => ({ f, entry: f.donations[0] ?? null }))
-    .filter(({ entry }) => show === "ALL" || (show === "UNPAID" ? !entry : entry?.status === show))
-    .filter(({ f }) => {
-      if (!q) return true;
-      const key = [searchKey(f.headName), searchKey(f.headNameEn), f.code.toLowerCase(), ...f.members.map((m) => m.searchKey)].join(" | ");
-      return matchesSearch(key, q) || f.code.toLowerCase().includes(q.toLowerCase());
-    })
-    .sort((a, b) => collator.compare(a.f.code, b.f.code));
   const shownN = shownCount(searchParams.n, rows.length);
   const shown = rows.slice(0, shownN);
 
@@ -71,7 +52,10 @@ export default async function DonationsPage({ searchParams }: { searchParams: { 
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="page-title">{t.donations}</h1>
-        <Link href="/donations/arrears" className="btn-secondary">{t.arrears} →</Link>
+        <div className="flex flex-wrap gap-2">
+          {can(s.role, "export") && <DownloadButton {...downloadProps("donations", t, getLang(), { kind, year, show, q })} />}
+          <Link href="/donations/arrears" className="btn-secondary">{t.arrears} →</Link>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

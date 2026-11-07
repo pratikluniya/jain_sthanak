@@ -1,6 +1,7 @@
 import { requireSession } from "@/lib/session";
-import { asListKind, buildExport, fileBase, parseFields } from "@/lib/exportRows";
-import { asGap } from "@/lib/gaps";
+import { asListKind, buildExport, fileBase, fileTag, filtersFrom, parseFields } from "@/lib/exportRows";
+import { can } from "@/lib/rbac";
+import { notFound } from "next/navigation";
 import { audit } from "@/lib/audit";
 import { asLang, getDict } from "@/lib/i18n";
 import PdfMaker from "@/components/PdfMaker";
@@ -10,16 +11,18 @@ export const dynamic = "force-dynamic";
 
 // Print-ready A4 page. The downloaded PDF uses text 4 px larger than the print view (decided 24 Oct 2026).
 // The browser renders Devanagari correctly; "Save as PDF" in the print dialog gives the PDF.
-export default async function PrintPage({ searchParams }: { searchParams: { list?: string; fields?: string; lang?: string; pdf?: string; gap?: string } }) {
+export default async function PrintPage({ searchParams }: { searchParams: Record<string, string | undefined> }) {
   const s = await requireSession("export");
   const list = asListKind(searchParams.list);
   const asPdf = searchParams.pdf === "1";
   const ui = getDict();
   const fields = parseFields(searchParams.fields, list);
   const lang = asLang(searchParams.lang);
-  const gap = list === "members" ? asGap(searchParams.gap) : null;
-  const data = await buildExport(list, fields, lang, gap);
-  await audit(s.uid, "export", list, null, { format: asPdf ? "pdf" : "print", lang, fields, gap, rows: data.rows.length });
+  // the tab and search of the screen the download came from (7 Nov 2026)
+  const filters = filtersFrom((k) => searchParams[k]);
+  if ((filters.moved || filters.memberMode === "moved" || list === "duplicates") && !can(s.role, "approve")) notFound();
+  const data = await buildExport(list, fields, lang, filters);
+  await audit(s.uid, "export", list, null, { format: asPdf ? "pdf" : "print", lang, fields, filters: { ...filters, q: filters.q ? "(search)" : "" }, rows: data.rows.length });
   const landscape = fields.length > 7;
 
   return (
@@ -34,7 +37,7 @@ export default async function PrintPage({ searchParams }: { searchParams: { list
       {asPdf ? (
         <PdfMaker
           rootId="print-root"
-          fileName={`${fileBase(list)}${gap ? `-${gap}` : ""}-${new Date().toISOString().slice(0, 10)}.pdf`}
+          fileName={`${fileBase(list)}${fileTag(list, filters)}-${new Date().toISOString().slice(0, 10)}.pdf`}
           landscape={landscape}
           t={{ making: ui.makingPdf, ready: ui.pdfReady, failed: ui.pdfFailed }}
         />

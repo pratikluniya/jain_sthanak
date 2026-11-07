@@ -1,10 +1,12 @@
 // Duplicate report (24 Oct 2026): likely duplicates in the live data, for Admin and Operator to check.
 // Nothing is changed here; each pair links to both family pages.
+import { can } from "@/lib/rbac";
+import DownloadButton from "@/components/DownloadButton";
+import { downloadProps } from "@/lib/downloadProps";
+import { loadDupFamilies } from "@/lib/lists";
 import Link from "next/link";
-import { prisma } from "@/lib/db";
-import { getDict } from "@/lib/i18n";
+import { getDict, getLang } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
-import { LIVE } from "@/lib/softDelete";
 import { findDuplicates, type DupKind, type DupSide } from "@/lib/duplicates";
 import LoadMore from "@/components/LoadMore";
 import { moreHref, shownCount, STEP } from "@/lib/listPaging";
@@ -14,16 +16,9 @@ export const dynamic = "force-dynamic";
 const KINDS: DupKind[] = ["SAME_FAMILY_TWICE", "SAME_PERSON_2_FAMILIES", "SAME_PERSON_IN_FAMILY", "SHARED_MOBILE"];
 
 export default async function DuplicatesPage({ searchParams }: { searchParams: { kind?: string; n?: string } }) {
-  await requireSession("approve");
+  const session = await requireSession("approve");
   const t = getDict();
-  const families = await prisma.family.findMany({
-    where: { ...LIVE, status: { not: "MOVED_OUT" } },
-    select: {
-      id: true, code: true, headName: true, address: true,
-      members: { where: { ...LIVE, status: { not: "MOVED_OUT" } }, select: { id: true, firstName: true, middleName: true, surname: true, firstNameEn: true, surnameEn: true, mobile: true } },
-    },
-    orderBy: { code: "asc" },
-  });
+  const families = await loadDupFamilies();
   const pairs = findDuplicates(families);
   const kind = (KINDS as string[]).includes(searchParams.kind ?? "") ? (searchParams.kind as DupKind) : KINDS.find((x) => pairs.some((p) => p.kind === x)) ?? KINDS[0];
   const ofKind = pairs.filter((p) => p.kind === kind);
@@ -39,7 +34,10 @@ export default async function DuplicatesPage({ searchParams }: { searchParams: {
 
   return (
     <div className="space-y-3">
-      <h1 className="page-title">{t.dup_title}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="page-title">{t.dup_title}</h1>
+        {can(session.role, "export") && <DownloadButton {...downloadProps("duplicates", t, getLang(), { dupKind: kind })} />}
+      </div>
       <p className="text-sm text-stone-600">{t.dup_intro}</p>
       <div className="flex flex-wrap gap-2">
         {KINDS.map((x) => (

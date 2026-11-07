@@ -1,17 +1,15 @@
 import LoadMore from "@/components/LoadMore";
 import { moreHref, shownCount, STEP } from "@/lib/listPaging";
 import { currentAge } from "@/lib/eligibility";
-import { MISSING_DOD_WHERE } from "@/lib/deceased";
+import { filterMembers, loadMembers } from "@/lib/lists";
 import Link from "next/link";
 import DownloadButton from "@/components/DownloadButton";
 import { downloadProps } from "@/lib/downloadProps";
 import { GAPS, asGap, hasGap, type Gap } from "@/lib/gaps";
-import { prisma } from "@/lib/db";
 import { getDict, getLang } from "@/lib/i18n";
 import { requireSession } from "@/lib/session";
-import { matchesSearch } from "@/lib/normalize";
 import { relationLabel } from "@/lib/relations";
-import { memberFullName, sortBySurname, VOTER_MEMBER_SELECT } from "@/lib/members";
+import { memberFullName } from "@/lib/members";
 import SearchBox from "@/components/SearchBox";
 import { can } from "@/lib/rbac";
 import { restoreMember } from "../families/actions";
@@ -32,26 +30,12 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
   const onlyNoDod = searchParams.nodod === "1" && !showDeleted;
   // Admin and Operator: members who moved out (on their own or with the family); hidden everywhere else
   const showMoved = searchParams.moved === "1" && can(s.role, "approve") && !showDeleted && !onlyNoDod;
-  const all = await prisma.member.findMany({
-    where: onlyNoDod
-      ? MISSING_DOD_WHERE
-      : showDeleted
-        ? { deletedAt: { not: null } }
-        : showMoved
-          ? { deletedAt: null, family: { deletedAt: null }, OR: [{ status: "MOVED_OUT" }, { family: { status: "MOVED_OUT" } }] }
-          : { deletedAt: null, status: { not: "MOVED_OUT" }, family: { deletedAt: null, status: { not: "MOVED_OUT" } } },
-    // only the columns this list uses (4 Nov 2026: about 4x faster than reading every column)
-    select: { ...VOTER_MEMBER_SELECT, deletedAt: true, family: { select: { id: true, code: true, deletedAt: true } } },
-  });
+  const all = await loadMembers(showDeleted ? "deleted" : onlyNoDod ? "nodod" : showMoved ? "moved" : "normal");
   // missing-data lists (Aadhaar, photo, age & DOB): only on the normal list of living members
   const normalList = !showDeleted && !showMoved && !onlyNoDod;
   const gap = normalList ? asGap(searchParams.gap) : null;
   const gapCounts = normalList ? Object.fromEntries(GAPS.map((g) => [g, all.filter((m) => hasGap(m, g)).length])) as Record<Gap, number> : null;
-  const filtered = sortBySurname(
-    all
-      .filter((m) => (!q || matchesSearch(m.searchKey, q)) && (!blood || m.bloodGroup === blood) && (!gap || hasGap(m, gap)))
-      .map((m) => ({ member: m })),
-  ).map((r) => r.member);
+  const filtered = filterMembers(all, { q, blood, gap });
   const count = shownCount(searchParams.n, filtered.length);
   const shown = filtered.slice(0, count);
   const params = { q, blood, deleted: showDeleted ? "1" : undefined, nodod: onlyNoDod ? "1" : undefined, moved: showMoved ? "1" : undefined, gap: gap ?? undefined };
@@ -60,9 +44,12 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="page-title">{gap ? t[`list_${gap}`] : t.members} <span className="text-stone-500 text-base">({filtered.length})</span></h1>
-        {can(s.role, "export") && normalList && <DownloadButton {...downloadProps("members", t, lang, gap)} />}
+        {can(s.role, "export") && !showDeleted && (
+          <DownloadButton {...downloadProps("members", t, lang, { q, blood, gap, memberMode: onlyNoDod ? "nodod" : showMoved ? "moved" : "normal" })} />
+        )}
       </div>
       <SearchBox
+        keep={{ gap, nodod: onlyNoDod ? "1" : undefined, moved: showMoved ? "1" : undefined, deleted: showDeleted ? "1" : undefined }}
         q={q}
         placeholder={t.searchPlaceholder}
         label={t.search}
