@@ -1,6 +1,7 @@
 // Marking a member as deceased (and undoing it). Used by the family page and by the 15-day reminder popup.
 import { prisma } from "./db";
 import { memberFullName } from "./members";
+import { relationToNewHead } from "./headChange";
 
 export type MarkResult = { ok: true } | { ok: false; error: "notFound" | "mustChooseHead" | "dateInFuture" | "dateRequired" };
 
@@ -36,7 +37,7 @@ export async function markDeceased(input: { memberId: string; dateOfDeath: strin
         deceasedMarkedById: input.by,
       },
     });
-    if (newHead) await changeHead(tx, m, newHead, m.family, `निधन ${date.split("-").reverse().join("/")}`);
+    if (newHead) await changeHead(tx, m, newHead, m.family, m.family.members, `निधन ${date.split("-").reverse().join("/")}`);
   });
   return { ok: true };
 }
@@ -50,11 +51,29 @@ export function headCandidates<T extends { id: string; status: string; deletedAt
 }
 
 /**
- * Hands the head of family over: the new head gets isHead + relation "self", the old head's relation is rewritten
- * as seen from the new head, the family's head name changes and the notes record the old head and why.
+ * Hands the head of family over: the new head gets isHead + relation "self", the family's head name changes and
+ * the notes record the old head and why. Every other member's relation (the old head's too) is rewritten as seen
+ * from the new head (19 Nov 2026, src/lib/headChange.ts).
  */
-export async function changeHead(tx: Tx, oldHead: HeadMember, newHead: HeadMember, family: { id: string; headName: string; notes: string }, why: string) {
-  await tx.member.update({ where: { id: oldHead.id }, data: { isHead: false, relation: oldHeadRelation(newHead.relation, oldHead.gender) } });
+export async function changeHead(
+  tx: Tx,
+  oldHead: HeadMember,
+  newHead: HeadMember,
+  family: { id: string; headName: string; notes: string },
+  members: (HeadMember & { firstName: string; middleName: string; deletedAt?: Date | null })[],
+  why: string,
+) {
+  const asPerson = (x: { relation: string; gender: string; firstName: string; middleName: string }, self = false) => ({
+    relation: self ? "SELF" : x.relation, gender: x.gender, firstName: x.firstName, middleName: x.middleName,
+  });
+  const nh = members.find((x) => x.id === newHead.id) ?? (newHead as (typeof members)[number]);
+  const h = asPerson(nh);
+  for (const x of members) {
+    if (x.id === newHead.id || x.deletedAt) continue;
+    const relation = relationToNewHead(h, asPerson(x, x.id === oldHead.id));
+    await tx.member.update({ where: { id: x.id }, data: x.id === oldHead.id ? { isHead: false, relation } : { relation } });
+  }
+  if (!members.some((x) => x.id === oldHead.id)) await tx.member.update({ where: { id: oldHead.id }, data: { isHead: false } });
   await tx.member.update({ where: { id: newHead.id }, data: { isHead: true, relation: "SELF" } });
   const note = `पूर्वीचे कुटुंब प्रमुख: ${family.headName} (${why})`;
   await tx.family.update({
@@ -65,17 +84,6 @@ export async function changeHead(tx: Tx, oldHead: HeadMember, newHead: HeadMembe
       notes: family.notes ? `${family.notes}\n${note}` : note,
     },
   });
-}
-
-/**
- * The old head's relation to the new head. Only the clear cases are mapped; everything else becomes "other".
- * Other members keep their relation to the old head: a volunteer should correct them on the edit page.
- */
-export function oldHeadRelation(newHeadWas: string, oldHeadGender: string): string {
-  if (newHeadWas === "WIFE") return "HUSBAND";
-  if (newHeadWas === "HUSBAND") return "WIFE";
-  if (newHeadWas === "SON" || newHeadWas === "DAUGHTER") return oldHeadGender === "FEMALE" ? "MOTHER" : oldHeadGender === "MALE" ? "FATHER" : "OTHER";
-  return "OTHER";
 }
 
 /** Undo a deceased mark made by mistake. The head of the family is not changed back automatically. */
