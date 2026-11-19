@@ -25,6 +25,8 @@ import ApplicationSummary from "@/components/ApplicationSummary";
 import { aadhaarPendingCount, memberGaps } from "@/lib/gaps";
 import { DONATION_KINDS, openYears } from "@/lib/donations";
 import EntryControls, { EntryDetails, StatusBadge } from "../../donations/EntryControls";
+import PanthBadge from "@/components/PanthBadge";
+import { PANTH_SOLID } from "@/lib/panth";
 
 export const dynamic = "force-dynamic";
 
@@ -129,11 +131,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
         </div>
         <div className="flex flex-wrap gap-2 items-center text-sm">
           <b>{t.panth}:</b>
-          {fam.panthStatus === "CONFIRMED" ? (
-            <span className={fam.panth === "DIGAMBAR" ? "badge-gray" : "badge-green"}>{t[fam.panth]}</span>
-          ) : (
-            <span className="badge-amber">{fam.panth !== "UNKNOWN" ? `${t[fam.panth]} · ` : ""}{t.toVerify}</span>
-          )}
+          <PanthBadge panth={fam.panth} status={fam.panthStatus} t={t} />
           {fam.status !== "ACTIVE" && <span className="badge-red">{t[fam.status]}</span>}
         </div>
         {fam.panthStatus === "TO_VERIFY" && can(s.role, "approve") && !deleted && (
@@ -142,7 +140,7 @@ export default async function FamilyPage({ params }: { params: { id: string } })
             <form action={confirmPanth} className="flex flex-wrap gap-2">
               <input type="hidden" name="id" value={fam.id} />
               {(["STHANAKVASI", "MANDIRMARGI", "TERAPANTH", "DIGAMBAR"] as const).map((p) => (
-                <button key={p} name="panth" value={p} className={p === "STHANAKVASI" ? "btn-primary btn-sm" : "btn-secondary btn-sm"}>{t[p]}</button>
+                <button key={p} name="panth" value={p} className={`btn-sm rounded-lg border ${PANTH_SOLID[p]}`}>{t[p]}</button>
               ))}
             </form>
           </div>

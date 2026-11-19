@@ -8,6 +8,7 @@ import type { DuplicateCandidate } from "@/lib/uploads";
 import { saveVerified } from "../actions";
 import { toEnglishName } from "@/lib/translit";
 import { addressToEnglish } from "@/lib/addressEn";
+import { PANTH_SOLID } from "@/lib/panth";
 
 export interface Row {
   key: string; // stable id so KYC links survive row deletes
@@ -206,7 +207,7 @@ export default function Verifier(props: {
                   key={p}
                   type="button"
                   onClick={() => setPanth(p)}
-                  className={`btn-sm rounded-lg border ${panth === p ? (p === "UNKNOWN" ? "bg-amber-500 text-white border-amber-500" : "bg-brand-600 text-white border-brand-600") : "bg-white"}`}
+                  className={`btn-sm rounded-lg border ${panth === p ? (p === "UNKNOWN" ? "bg-amber-500 text-white border-amber-500" : PANTH_SOLID[p]) : "bg-white"}`}
                 >
                   {p === "UNKNOWN" ? t.toVerify : t[p]}
                 </button>

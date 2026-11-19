@@ -11,6 +11,9 @@ import { can } from "@/lib/rbac";
 import { headLabel } from "@/lib/members";
 import SearchBox from "@/components/SearchBox";
 import { familyAddress } from "@/lib/addressEn";
+import PanthBadge from "@/components/PanthBadge";
+import PanthChips from "@/components/PanthChips";
+import { asPanth, panthCounts } from "@/lib/panth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,15 +24,19 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
   const en = lang === "en";
   const q = (searchParams.q ?? "").trim();
   const onlyToVerify = searchParams.panth === "TO_VERIFY";
+  const panth = asPanth(searchParams.panth); // one panth (19 Nov 2026); "to verify" families count under the panth on their form
   // Admin only: list soft-deleted families instead of active ones
   const showDeleted = searchParams.deleted === "1" && can(s.role, "restore");
   // Admin and Operator: list families that moved out of the area (hidden everywhere else)
   const showMoved = searchParams.moved === "1" && can(s.role, "approve") && !showDeleted;
 
   const families = await loadFamilies({ deleted: showDeleted, moved: showMoved, toVerify: onlyToVerify });
-  const filtered = filterFamilies(families, q);
+  const searched = filterFamilies(families, q);
+  const counts = panthCounts(searched, (f) => f.panth);
+  const filtered = filterFamilies(searched, "", panth);
   const count = shownCount(searchParams.n, filtered.length);
-  const params = { q, panth: onlyToVerify ? "TO_VERIFY" : undefined, deleted: showDeleted ? "1" : undefined, moved: showMoved ? "1" : undefined };
+  const panthParam = onlyToVerify ? "TO_VERIFY" : panth ?? undefined;
+  const params = { q, panth: panthParam, deleted: showDeleted ? "1" : undefined, moved: showMoved ? "1" : undefined };
 
   return (
     <div className="space-y-3">
@@ -37,13 +44,13 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
         <h1 className="page-title">{t.families} <span className="text-stone-500 text-base">({filtered.length})</span></h1>
         <div className="flex flex-wrap gap-2">
           {can(s.role, "approve") && !showDeleted && !showMoved && <Link href="/duplicates" className="btn-secondary">{t.dup_link}</Link>}
-          {can(s.role, "export") && !showDeleted && <DownloadButton {...downloadProps("families", t, lang, { q, moved: showMoved, toVerify: onlyToVerify })} />}
+          {can(s.role, "export") && !showDeleted && <DownloadButton {...downloadProps("families", t, lang, { q, moved: showMoved, toVerify: onlyToVerify, panth })} />}
           {can(s.role, "edit") && <Link href="/families/new" className="btn-primary">+ {t.addFamily}</Link>}
         </div>
       </div>
-      <SearchBox q={q} placeholder={t.searchPlaceholder} label={t.search} keep={{ panth: onlyToVerify ? "TO_VERIFY" : undefined, moved: showMoved ? "1" : undefined, deleted: showDeleted ? "1" : undefined }} />
-      <div className="flex gap-2 text-sm">
-        <Link href="/families" className={!onlyToVerify ? "badge-gray font-semibold" : "badge-gray opacity-60"}>{t.total}</Link>
+      <SearchBox q={q} placeholder={t.searchPlaceholder} label={t.search} keep={{ panth: panthParam, moved: showMoved ? "1" : undefined, deleted: showDeleted ? "1" : undefined }} />
+      <div className="flex flex-wrap gap-2 text-sm">
+        <Link href="/families" className={!onlyToVerify && !panth ? "badge-gray font-semibold" : "badge-gray opacity-60"}>{t.total}</Link>
         <Link href="/families?panth=TO_VERIFY" className={onlyToVerify ? "badge-amber font-semibold" : "badge-amber opacity-60"}>{t.toVerify}</Link>
         {can(s.role, "approve") && (
           <Link href={showMoved ? "/families" : "/families?moved=1"} className={showMoved ? "badge-amber font-semibold" : "badge-amber opacity-60"}>
@@ -56,6 +63,9 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
           </Link>
         )}
       </div>
+      {!onlyToVerify && (
+        <PanthChips path="/families" params={{ q, moved: showMoved ? "1" : undefined, deleted: showDeleted ? "1" : undefined }} current={panth} counts={counts} t={t} />
+      )}
       {filtered.length === 0 && <p className="text-stone-500">{t.noResults}</p>}
       <ul className="grid gap-2 sm:grid-cols-2">
         {filtered.slice(0, count).map((f) => (
@@ -70,11 +80,7 @@ export default async function FamiliesPage({ searchParams }: { searchParams: { q
               </div>
               <div className="mt-2 flex flex-wrap gap-1 text-xs">
                 <span className="badge-gray">{t.members}: {f.members.length}</span>
-                {f.panthStatus === "CONFIRMED" ? (
-                  <span className={f.panth === "DIGAMBAR" ? "badge-gray" : "badge-green"}>{t[f.panth]}</span>
-                ) : (
-                  <span className="badge-amber">{t.panth}: {t.toVerify}</span>
-                )}
+                <PanthBadge panth={f.panth} status={f.panthStatus} t={t} />
                 {!showDeleted && f.status === "ACTIVE" && (aadhaarPendingCount(f.members) === 0 ? (
                   <span className="badge-green">✔ {t.aadhaarUploaded}</span>
                 ) : (
