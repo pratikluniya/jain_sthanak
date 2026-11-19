@@ -31,6 +31,12 @@ export const RELATIONS: RelationDef[] = [
   { code: "SISTER_IN_LAW", mr: "वहिनी", hi: "भाभी", en: "Sister-in-law", gender: "FEMALE", aliases: ["वहिनी", "भाभी", "भावजय", "sister in law"] },
   { code: "NEPHEW", mr: "पुतण्या", hi: "भतीजा", en: "Nephew", gender: "MALE", aliases: ["पुतण्या", "भतीजा", "भाचा", "भांजा", "nephew"] },
   { code: "NIECE", mr: "पुतणी", hi: "भतीजी", en: "Niece", gender: "FEMALE", aliases: ["पुतणी", "भतीजी", "भाची", "भांजी", "niece"] },
+  // added 19 Nov 2026 for head changes (the old head's parents, the new head's in-laws)
+  { code: "GRANDFATHER", mr: "आजोबा", hi: "दादा", en: "Grandfather", gender: "MALE", aliases: ["आजोबा", "आजोबां", "grandfather", "grand father"] },
+  { code: "GRANDMOTHER", mr: "आजी", hi: "दादी", en: "Grandmother", gender: "FEMALE", aliases: ["आजी", "दादी", "grandmother", "grand mother"] },
+  { code: "FATHER_IN_LAW", mr: "सासरे", hi: "ससुर", en: "Father-in-law", gender: "MALE", aliases: ["सासरे", "सासरा", "ससुर", "father in law"] },
+  { code: "MOTHER_IN_LAW", mr: "सासू", hi: "सास", en: "Mother-in-law", gender: "FEMALE", aliases: ["सासू", "सासु", "सास", "mother in law"] },
+  { code: "BROTHER_IN_LAW", mr: "मेहुणा / दीर", hi: "देवर / साला", en: "Brother-in-law", gender: "MALE", aliases: ["मेहुणा", "मेव्हणा", "दीर", "दिर", "दाजी", "देवर", "साला", "जीजा", "brother in law"] },
   { code: "OTHER", mr: "इतर", hi: "अन्य", en: "Other", gender: "UNKNOWN", aliases: ["इतर", "अन्य", "other"] },
 ];
 

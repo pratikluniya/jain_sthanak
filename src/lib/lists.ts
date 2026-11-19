@@ -1,6 +1,6 @@
 // The lists shown on screen, built in one place so the Download of a tab gives exactly the rows on screen
 // (decided 7 Nov 2026: "download what I see" on Members, Voters, Families, Donations and Duplicates).
-import type { DonationKind, Prisma } from "@prisma/client";
+import type { DonationKind, Panth, Prisma } from "@prisma/client";
 import { prisma } from "./db";
 import { LIVE } from "./softDelete";
 import { MISSING_DOD_WHERE } from "./deceased";
@@ -35,13 +35,14 @@ export interface MemberFilters {
   q?: string;
   blood?: string;
   gap?: Gap | null;
+  panth?: Panth | null; // the family's panth (19 Nov 2026)
 }
 
-/** Search, blood group and missing-data tab, in surname order (as on the Members screen). */
+/** Search, blood group, panth and missing-data tab, in surname order (as on the Members screen). */
 export function filterMembers<T extends ListMember>(all: T[], f: MemberFilters): T[] {
   const q = (f.q ?? "").trim();
   return sortBySurname(
-    all.filter((m) => (!q || matchesSearch(m.searchKey, q)) && (!f.blood || m.bloodGroup === f.blood) && (!f.gap || hasGap(m, f.gap))).map((m) => ({ member: m })),
+    all.filter((m) => (!q || matchesSearch(m.searchKey, q)) && (!f.blood || m.bloodGroup === f.blood) && (!f.gap || hasGap(m, f.gap)) && (!f.panth || m.family.panth === f.panth)).map((m) => ({ member: m })),
   ).map((r) => r.member);
 }
 
@@ -74,10 +75,11 @@ export function loadFamilies(mode: FamilyMode) {
 }
 export type ListFamily = Awaited<ReturnType<typeof loadFamilies>>[number];
 
-/** Search over head name, English name, address, family code and every member's name and mobile; family-code order. */
-export function filterFamilies<T extends ListFamily>(families: T[], q: string): T[] {
+/** Search over head name, English name, address, family code and every member's name and mobile, and the panth; family-code order. */
+export function filterFamilies<T extends ListFamily>(families: T[], q: string, panth: Panth | null = null): T[] {
   const query = q.trim();
   return families
+    .filter((f) => !panth || f.panth === panth)
     .filter((f) => {
       if (!query) return true;
       const key = [searchKey(f.headName), searchKey(f.headNameEn), searchKey(f.address), f.code.toLowerCase(), ...f.members.map((m) => m.searchKey)].join(" | ");
@@ -93,9 +95,11 @@ export const isPendingVoter = (r: VoterRow) =>
   !r.result.eligible && r.result.reasons.some((x) => x === "AGE_BORDERLINE" || x === "PANTH_TO_VERIFY" || x === "AGE_UNKNOWN");
 
 /** The rows of a Voters tab (eligible, or still to check), searched, in surname order. */
-export function voterTab(rows: VoterRow[], tab: VoterTab, q: string): VoterRow[] {
+export function voterTab(rows: VoterRow[], tab: VoterTab, q: string, panth: Panth | null = null): VoterRow[] {
   const query = q.trim();
-  return sortBySurname(rows.filter((r) => (tab === "eligible" ? r.result.eligible : isPendingVoter(r)) && (!query || matchesSearch(r.member.searchKey, query))));
+  return sortBySurname(
+    rows.filter((r) => (tab === "eligible" ? r.result.eligible : isPendingVoter(r)) && (!panth || r.family.panth === panth) && (!query || matchesSearch(r.member.searchKey, query))),
+  );
 }
 
 // ---------- Donations ----------

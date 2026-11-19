@@ -158,12 +158,47 @@ test("demise reminder timing", async () => {
   assert.equal(todayIST(new Date("2026-10-20T20:00:00Z")), "2026-10-21", "after midnight IST it is already the next day");
 });
 
-test("old head's relation after the head changes", async () => {
-  const { oldHeadRelation } = await import("./deceased");
-  assert.equal(oldHeadRelation("SON", "MALE"), "FATHER");
-  assert.equal(oldHeadRelation("DAUGHTER", "FEMALE"), "MOTHER");
-  assert.equal(oldHeadRelation("WIFE", "MALE"), "HUSBAND");
-  assert.equal(oldHeadRelation("BROTHER", "MALE"), "OTHER");
+test("relations are rewritten for the new head (death or moving out)", async () => {
+  const { relationToNewHead: r } = await import("./headChange");
+  const P = (relation: string, gender: string, firstName: string, middleName: string) => ({ relation, gender, firstName, middleName });
+  // old head श्री सुरेश रमेश जैन died; his son महेश becomes head
+  const mahesh = P("SON", "MALE", "महेश", "सुरेश");
+  assert.equal(r(mahesh, P("SELF", "MALE", "सुरेश", "रमेश")), "FATHER", "old head");
+  assert.equal(r(mahesh, P("WIFE", "FEMALE", "सुनिता", "सुरेश")), "MOTHER");
+  assert.equal(r(mahesh, P("SON", "MALE", "दिनेश", "सुरेश")), "BROTHER");
+  assert.equal(r(mahesh, P("DAUGHTER", "FEMALE", "रेखा", "सुरेश")), "SISTER");
+  assert.equal(r(mahesh, P("DAUGHTER_IN_LAW", "FEMALE", "प्रिया", "महेश")), "WIFE", "middle name = new head");
+  assert.equal(r(mahesh, P("DAUGHTER_IN_LAW", "FEMALE", "नेहा", "दिनेश")), "SISTER_IN_LAW", "brother's wife");
+  assert.equal(r(mahesh, P("GRANDSON", "MALE", "यश", "महेशजी")), "SON", "'जी' ending");
+  assert.equal(r(mahesh, P("GRANDDAUGHTER", "FEMALE", "ओवी", "दिनेश")), "NIECE");
+  assert.equal(r(mahesh, P("MOTHER", "FEMALE", "कमला", "रमेश")), "GRANDMOTHER");
+  assert.equal(r(mahesh, P("SON_IN_LAW", "MALE", "अमित", "राजेंद्र")), "BROTHER_IN_LAW");
+  assert.equal(r(mahesh, P("BROTHER", "MALE", "प्रकाश", "रमेश")), "OTHER", "uncle: no option");
+  // the wife becomes head
+  const sunita = P("WIFE", "FEMALE", "सुनिता", "सुरेश");
+  assert.equal(r(sunita, P("SELF", "MALE", "सुरेश", "रमेश")), "HUSBAND");
+  assert.equal(r(sunita, P("SON", "MALE", "महेश", "सुरेश")), "SON");
+  assert.equal(r(sunita, P("FATHER", "MALE", "रमेश", "x")), "FATHER_IN_LAW");
+  assert.equal(r(sunita, P("BROTHER", "MALE", "प्रकाश", "रमेश")), "BROTHER_IN_LAW");
+  // the brother becomes head
+  const prakash = P("BROTHER", "MALE", "प्रकाश", "रमेश");
+  assert.equal(r(prakash, P("SELF", "MALE", "सुरेश", "रमेश")), "BROTHER");
+  assert.equal(r(prakash, P("SON", "MALE", "महेश", "सुरेश")), "NEPHEW");
+  assert.equal(r(prakash, P("SISTER_IN_LAW", "FEMALE", "आशा", "प्रकाश")), "WIFE");
+  assert.equal(r(prakash, P("NEPHEW", "MALE", "राहुल", "प्रकाश")), "SON");
+  // a daughter becomes head; her husband lives in the family
+  const rekha = P("DAUGHTER", "FEMALE", "रेखा", "अमित");
+  assert.equal(r(rekha, P("SON_IN_LAW", "MALE", "अमित", "राजेंद्र")), "HUSBAND");
+  assert.equal(r(rekha, P("GRANDSON", "MALE", "आरव", "अमित")), "SON");
+  assert.equal(r(rekha, P("DAUGHTER_IN_LAW", "FEMALE", "प्रिया", "महेश")), "SISTER_IN_LAW");
+});
+
+test("same first name: 'जी' and 'कुमार' endings", async () => {
+  const { sameName } = await import("./headChange");
+  assert.equal(sameName("चेतनजी", "चेतन"), true);
+  assert.equal(sameName("सुनिलकुमार", "सुनिल"), true);
+  assert.equal(sameName("सुनिल", "सुनिता"), false);
+  assert.equal(sameName("", "सुनिल"), false);
 });
 
 test("public search: one word of 4+ letters, or two words", async () => {

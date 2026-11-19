@@ -38,7 +38,7 @@ export async function markMemberMovedOut(input: MoveInput & { memberId: string; 
       where: { id: m.id },
       data: { status: "MOVED_OUT", movedOutOn: new Date(date), movedOutCity: clean(input.city), movedOutRemark: clean(input.remark), movedOutMarkedById: input.by, movedWithFamily: false },
     });
-    if (newHead) await changeHead(tx, m, newHead, m.family, `स्थलांतर ${date.split("-").reverse().join("/")}`);
+    if (newHead) await changeHead(tx, m, newHead, m.family, m.family.members, `स्थलांतर ${date.split("-").reverse().join("/")}`);
   });
   return { ok: true };
 }

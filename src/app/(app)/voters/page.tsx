@@ -11,16 +11,20 @@ import { isPendingVoter, voterTab } from "@/lib/lists";
 import LoadMore from "@/components/LoadMore";
 import { moreHref, shownCount, STEP } from "@/lib/listPaging";
 import { assignVoterNumbers } from "./actions";
+import PanthBadge from "@/components/PanthBadge";
+import PanthChips from "@/components/PanthChips";
+import { asPanth, panthCounts } from "@/lib/panth";
 
 export const dynamic = "force-dynamic";
 
-export default async function VotersPage({ searchParams }: { searchParams: { q?: string; tab?: string; n?: string } }) {
+export default async function VotersPage({ searchParams }: { searchParams: { q?: string; tab?: string; n?: string; panth?: string } }) {
   const s = await requireSession("view");
   const t = getDict();
   const lang = getLang();
   const en = lang === "en";
   const tab = searchParams.tab === "pending" ? "pending" : "eligible";
   const q = (searchParams.q ?? "").trim();
+  const panth = asPanth(searchParams.panth); // the family's panth (19 Nov 2026)
   const { rows, ageDate, electionDate } = await evaluateAll();
 
   const eligible = rows.filter((r) => r.result.eligible);
@@ -29,7 +33,10 @@ export default async function VotersPage({ searchParams }: { searchParams: { q?:
   for (const r of rows) for (const x of r.result.reasons) reasonCounts.set(x, (reasonCounts.get(x) ?? 0) + 1);
   const withoutNo = eligible.filter((r) => r.member.voterNo === null).length;
 
-  const list = voterTab(rows, tab, q);
+  const tabRows = voterTab(rows, tab, q);
+  const counts = panthCounts(tabRows, (r) => r.family.panth);
+  const list = panth ? tabRows.filter((r) => r.family.panth === panth) : tabRows;
+  const tabParam = tab === "pending" ? "pending" : undefined;
   const count = shownCount(searchParams.n, list.length);
 
   return (
@@ -51,13 +58,14 @@ export default async function VotersPage({ searchParams }: { searchParams: { q?:
             <button className="btn-secondary">{t.assignVoterNos} ({withoutNo})</button>
           </form>
         )}
-        {can(s.role, "export") && <DownloadButton {...downloadProps("voters", t, lang, { q, tab })} />}
+        {can(s.role, "export") && <DownloadButton {...downloadProps("voters", t, lang, { q, tab, panth })} />}
       </div>
       <div className="flex gap-2 text-sm">
         <Link href="/voters" className={tab === "eligible" ? "badge-green font-semibold" : "badge-gray"}>{t.eligible} ({eligible.length})</Link>
         <Link href="/voters?tab=pending" className={tab === "pending" ? "badge-amber font-semibold" : "badge-gray"}>{t.pendingCount} ({pending.length})</Link>
       </div>
-      <SearchBox q={q} placeholder={t.searchPlaceholder} label={t.search} keep={{ tab: tab === "pending" ? "pending" : undefined }} />
+      <SearchBox q={q} placeholder={t.searchPlaceholder} label={t.search} keep={{ tab: tabParam, panth }} />
+      <PanthChips path="/voters" params={{ q, tab: tabParam }} current={panth} counts={counts} t={t} />
       <div className="card overflow-x-auto">
         <table className="table">
           <thead>
@@ -67,6 +75,7 @@ export default async function VotersPage({ searchParams }: { searchParams: { q?:
               <th>{t.fullName}</th>
               <th>{t.age}</th>
               <th>{t.familyCode}</th>
+              <th>{t.panth}</th>
               {tab === "pending" && <th>{t.status}</th>}
             </tr>
           </thead>
@@ -78,6 +87,7 @@ export default async function VotersPage({ searchParams }: { searchParams: { q?:
                 <td><Link className="text-brand-700" href={`/families/${r.family.id}`}>{memberFullName(r.member, true, en)}</Link></td>
                 <td>{r.result.reasons.includes("AGE_BORDERLINE") ? `${r.result.age.min}-${r.result.age.max}` : r.result.age.min}</td>
                 <td>{r.family.code}</td>
+                <td><PanthBadge panth={r.family.panth} status={r.family.panthStatus} t={t} /></td>
                 {tab === "pending" && (
                   <td className="space-x-1">{r.result.reasons.map((x) => <span key={x} className="badge-amber">{t[x]}</span>)}</td>
                 )}
@@ -86,7 +96,7 @@ export default async function VotersPage({ searchParams }: { searchParams: { q?:
           </tbody>
         </table>
       </div>
-      <LoadMore shown={count} total={list.length} nextHref={moreHref({ q, tab: tab === "pending" ? "pending" : undefined }, count + STEP)} t={{ more: t.loadMore, loading: t.loadingMore, shownOf: t.shownOf }} />
+      <LoadMore shown={count} total={list.length} nextHref={moreHref({ q, tab: tabParam, panth: panth ?? undefined }, count + STEP)} t={{ more: t.loadMore, loading: t.loadingMore, shownOf: t.shownOf }} />
     </div>
   );
 }

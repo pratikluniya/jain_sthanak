@@ -13,16 +13,20 @@ import { memberFullName } from "@/lib/members";
 import SearchBox from "@/components/SearchBox";
 import { can } from "@/lib/rbac";
 import { restoreMember } from "../families/actions";
+import PanthBadge from "@/components/PanthBadge";
+import PanthChips from "@/components/PanthChips";
+import { asPanth, panthCounts } from "@/lib/panth";
 
 export const dynamic = "force-dynamic";
 
-export default async function MembersPage({ searchParams }: { searchParams: { q?: string; blood?: string; n?: string; deleted?: string; nodod?: string; moved?: string; gap?: string } }) {
+export default async function MembersPage({ searchParams }: { searchParams: { q?: string; blood?: string; n?: string; deleted?: string; nodod?: string; moved?: string; gap?: string; panth?: string } }) {
   const s = await requireSession("view");
   const t = getDict();
   const lang = getLang();
   const en = lang === "en";
   const q = (searchParams.q ?? "").trim();
   const blood = searchParams.blood ?? "";
+  const panth = asPanth(searchParams.panth); // the family's panth (19 Nov 2026)
 
   // Admin only: list soft-deleted members instead of active ones
   const showDeleted = searchParams.deleted === "1" && can(s.role, "restore");
@@ -35,21 +39,23 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
   const normalList = !showDeleted && !showMoved && !onlyNoDod;
   const gap = normalList ? asGap(searchParams.gap) : null;
   const gapCounts = normalList ? Object.fromEntries(GAPS.map((g) => [g, all.filter((m) => hasGap(m, g)).length])) as Record<Gap, number> : null;
-  const filtered = filterMembers(all, { q, blood, gap });
+  const beforePanth = filterMembers(all, { q, blood, gap });
+  const counts = panthCounts(beforePanth, (m) => m.family.panth);
+  const filtered = panth ? beforePanth.filter((m) => m.family.panth === panth) : beforePanth;
   const count = shownCount(searchParams.n, filtered.length);
   const shown = filtered.slice(0, count);
-  const params = { q, blood, deleted: showDeleted ? "1" : undefined, nodod: onlyNoDod ? "1" : undefined, moved: showMoved ? "1" : undefined, gap: gap ?? undefined };
+  const params = { q, blood, panth: panth ?? undefined, deleted: showDeleted ? "1" : undefined, nodod: onlyNoDod ? "1" : undefined, moved: showMoved ? "1" : undefined, gap: gap ?? undefined };
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="page-title">{gap ? t[`list_${gap}`] : t.members} <span className="text-stone-500 text-base">({filtered.length})</span></h1>
         {can(s.role, "export") && !showDeleted && (
-          <DownloadButton {...downloadProps("members", t, lang, { q, blood, gap, memberMode: onlyNoDod ? "nodod" : showMoved ? "moved" : "normal" })} />
+          <DownloadButton {...downloadProps("members", t, lang, { q, blood, gap, panth, memberMode: onlyNoDod ? "nodod" : showMoved ? "moved" : "normal" })} />
         )}
       </div>
       <SearchBox
-        keep={{ gap, nodod: onlyNoDod ? "1" : undefined, moved: showMoved ? "1" : undefined, deleted: showDeleted ? "1" : undefined }}
+        keep={{ gap, panth, nodod: onlyNoDod ? "1" : undefined, moved: showMoved ? "1" : undefined, deleted: showDeleted ? "1" : undefined }}
         q={q}
         placeholder={t.searchPlaceholder}
         label={t.search}
@@ -70,6 +76,13 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
           {gap && <span className="text-xs text-stone-500">{t.gapHelp} <Link href="/members" className="underline">{t.showActive}</Link></span>}
         </div>
       )}
+      <PanthChips
+        path="/members"
+        params={{ q, blood, gap, nodod: onlyNoDod ? "1" : undefined, moved: showMoved ? "1" : undefined, deleted: showDeleted ? "1" : undefined }}
+        current={panth}
+        counts={counts}
+        t={t}
+      />
       {(can(s.role, "restore") || can(s.role, "approve")) && (
         <div className="flex gap-2 text-sm">
           {can(s.role, "approve") && (
@@ -101,6 +114,7 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
               <th>{t.mobile}</th>
               <th>{t.bloodGroup}</th>
               <th>{t.familyCode}</th>
+              <th>{t.panth}</th>
               {showDeleted && <th>{t.deletedOn}</th>}
               {showDeleted && <th />}
             </tr>
@@ -114,6 +128,7 @@ export default async function MembersPage({ searchParams }: { searchParams: { q?
                 <td>{m.mobile && <a href={`tel:${m.mobile}`}>{m.mobile}</a>}</td>
                 <td>{m.bloodGroup}</td>
                 <td className="whitespace-nowrap">{m.family.code}</td>
+                <td><PanthBadge panth={m.family.panth} status={m.family.panthStatus} t={t} /></td>
                 {showDeleted && <td className="whitespace-nowrap">{m.deletedAt?.toLocaleDateString("en-IN")}</td>}
                 {showDeleted && (
                   <td>

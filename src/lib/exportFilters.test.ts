@@ -34,3 +34,14 @@ test("file names say which tab was downloaded", () => {
   assert.equal(fileTag("donations", from({ kind: "MAHAVIR_JAYANTI", year: "2026", show: "UNPAID" })), "-mahavir-jayanti-2026-unpaid");
   assert.deepEqual(defaultFieldsFor("voters", { tab: "pending" }).includes("reasons"), true);
 });
+
+test("panth filter goes into the download link, file name and back (19 Nov 2026)", () => {
+  assert.equal(filterQuery("members", { panth: "TERAPANTH" }), "&panth=TERAPANTH");
+  assert.equal(filterQuery("voters", { panth: "STHANAKVASI", tab: "pending" }), "&panth=STHANAKVASI&tab=pending");
+  assert.equal(filterQuery("families", { panth: "DIGAMBAR" }), "&panth=DIGAMBAR");
+  assert.equal(filterQuery("donations", { panth: "DIGAMBAR", kind: "BHOJAN" }), "&kind=BHOJAN");
+  assert.equal(from({ panth: "MANDIRMARGI" }).panth, "MANDIRMARGI");
+  assert.equal(from({ panth: "TO_VERIFY" }).panth, null, "to verify is its own tab, not a panth");
+  assert.equal(from({ panth: "xyz" }).panth, null);
+  assert.equal(fileTag("members", from({ panth: "TERAPANTH" })), "-terapanth");
+});

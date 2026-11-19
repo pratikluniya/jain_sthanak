@@ -10,7 +10,8 @@ import { prisma } from "./db";
 import { collator } from "./members";
 import { asGap, hasAadhaarImage, hasGap, type Gap } from "./gaps";
 import { familyAddress } from "./addressEn";
-import type { DonationKind } from "@prisma/client";
+import type { DonationKind, Panth } from "@prisma/client";
+import { asPanth } from "./panth";
 import { asKind, rupees } from "./donations";
 import { findDuplicates, type DupKind } from "./duplicates";
 import {
@@ -119,6 +120,7 @@ export interface ExportFilters {
   memberMode: MemberMode; // members: normal / deceased without date / moved out
   moved: boolean; // families: moved-out list
   toVerify: boolean; // families: panth to verify
+  panth: Panth | null; // families, members, voters: one panth (19 Nov 2026)
   tab: VoterTab; // voters: eligible / still to check
   kind: DonationKind; // donations
   year: number | null;
@@ -138,6 +140,7 @@ export function filtersFrom(get: (k: string) => string | null | undefined): Expo
     memberMode: get("nodod") === "1" ? "nodod" : get("moved") === "1" ? "moved" : "normal",
     moved: get("moved") === "1",
     toVerify: get("panth") === "TO_VERIFY",
+    panth: asPanth(get("panth")),
     tab: get("tab") === "pending" ? "pending" : "eligible",
     kind: asKind(get("kind")),
     year: Number.isFinite(year) ? year : null,
@@ -160,6 +163,7 @@ export function filterQuery(list: ListKind, f: Partial<ExportFilters>): string {
     if (f.moved) p.moved = "1";
     if (f.toVerify) p.panth = "TO_VERIFY";
   }
+  if ((list === "families" || list === "members" || list === "voters") && f.panth) p.panth = f.panth;
   if (list === "voters" && f.tab === "pending") p.tab = "pending";
   if (list === "donations") {
     if (f.kind) p.kind = f.kind;
@@ -178,6 +182,7 @@ export function fileTag(list: ListKind, f: ExportFilters): string {
   if (list === "voters" && f.tab === "pending") bits.push("pending");
   if (list === "donations") bits.push(f.kind.toLowerCase().replace("_", "-"), f.year ? String(f.year) : "", f.show.toLowerCase());
   if (list === "duplicates" && f.dupKind) bits.push(f.dupKind.toLowerCase().replace(/_/g, "-"));
+  if (f.panth && list !== "donations" && list !== "duplicates") bits.push(f.panth.toLowerCase());
   if (f.q) bits.push("search");
   return bits.filter(Boolean).map((b) => `-${b}`).join("");
 }
@@ -230,6 +235,7 @@ export function describe(list: ListKind, f: ExportFilters, t: Dict): string {
   if (list === "families") bits.push(t.headList, f.toVerify ? `${t.panth}: ${t.toVerify}` : "", f.moved ? t.MOVED_OUT : "");
   if (list === "donations") bits.push(`${t.dl_donationList}: ${t[f.kind]} ${f.year ?? ""}`.trim(), t[f.show]);
   if (list === "duplicates") bits.push(t.dup_title, f.dupKind ? t[`dup_${f.dupKind}`] : "");
+  if (f.panth && list !== "donations" && list !== "duplicates") bits.push(`${t.panth}: ${t[f.panth]}`);
   if (f.q) bits.push(`${t.dl_search}: ${f.q}`);
   return bits.filter(Boolean).join(" · ");
 }
@@ -239,7 +245,7 @@ async function buildFamilyExport(fields: Field[], lang: Lang, f: ExportFilters):
   const t = exportDictFor(lang);
   const english = lang === "en";
   const labels = fieldLabels(t);
-  const families = filterFamilies(await loadFamilies({ moved: f.moved, toVerify: f.toVerify }), f.q);
+  const families = filterFamilies(await loadFamilies({ moved: f.moved, toVerify: f.toVerify }), f.q, f.panth);
   const head = (x: (typeof families)[number]) => (english ? x.headNameEn || toEnglishName(x.headName) : x.headName);
   const sorted = [...families].sort((a, b) => (english ? enCollator.compare(head(a), head(b)) : collator.compare(a.headName, b.headName)));
   const rows = sorted.map((x, i) => {
@@ -251,7 +257,7 @@ async function buildFamilyExport(fields: Field[], lang: Lang, f: ExportFilters):
       area: x.area,
       phone: familyPhone(x.members),
       memberCount: x.members.length,
-      panth: x.panthStatus === "CONFIRMED" ? t[x.panth] : t.toVerify,
+      panth: x.panthStatus === "CONFIRMED" ? t[x.panth] : x.panth === "UNKNOWN" ? t.toVerify : `${t[x.panth]} (${t.toVerify})`,
     };
     return fields.map((k) => value[k] ?? "");
   });
@@ -323,7 +329,7 @@ export async function buildExport(list: ListKind, fields: Field[], lang: Lang = 
   if (list === "voters") {
     const all = await evaluateAll();
     ageDate = all.ageDate;
-    picked = voterTab(all.rows, f.tab, f.q);
+    picked = voterTab(all.rows, f.tab, f.q, f.panth);
   } else {
     picked = filterMembers(await loadMembers(f.memberMode), f).map((m) => ({ member: m, family: m.family }));
   }
@@ -347,7 +353,7 @@ export async function buildExport(list: ListKind, fields: Field[], lang: Lang = 
       education: m.education,
       occupation: m.occupation,
       bloodGroup: m.bloodGroup,
-      panth: fam.panthStatus === "CONFIRMED" ? t[fam.panth] : t.toVerify,
+      panth: fam.panthStatus === "CONFIRMED" ? t[fam.panth] : fam.panth === "UNKNOWN" ? t.toVerify : `${t[fam.panth]} (${t.toVerify})`,
       status: t[m.status],
       kyc: hasAadhaarImage(m) ? t.aadhaarUploaded : hasGap(m, "noaadhaar") ? t.noaadhaar : "",
       reasons: r.result ? r.result.reasons.map((x) => t[x]).join(", ") : "",
