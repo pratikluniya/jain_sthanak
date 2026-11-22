@@ -1,6 +1,7 @@
 "use client";
 // Turns the print view into a PDF file in the browser (no server work, Marathi letters stay correct).
-// Each A4 page is captured separately as a picture, cutting only between table rows,
+// Each A4 page is captured separately as a picture, cutting only between table rows (column widths fixed and each
+// page filled by its real height on screen, so no row can run past the paper: 22 Nov 2026),
 // so long lists never hit the browser's canvas size limit. The text in the PDF is a picture (not searchable).
 import { startTask } from "@/lib/loader";
 import { useEffect, useRef, useState } from "react";
@@ -37,32 +38,50 @@ export default function PdfMaker(props: {
       const pageHeightPx = contentHmm * pxPerMm;
 
       const head = root.querySelector<HTMLElement>("[data-pdf-head]");
-      const thead = root.querySelector<HTMLElement>("thead");
+      const table = root.querySelector<HTMLElement>("table");
+      const ths = Array.from(root.querySelectorAll<HTMLElement>("thead th"));
       const rows = Array.from(root.querySelectorAll<HTMLElement>("tbody tr"));
-      const headH = head?.offsetHeight ?? 0;
-      const theadH = thead?.offsetHeight ?? 0;
 
-      // group rows into pages: title block on page 1 only, table header on every page
+      // Fix the column widths as laid out with every row (22 Nov 2026). With automatic widths, a page showing only
+      // its own rows got different widths, names wrapped onto more lines, the picture grew taller than the paper
+      // and the last rows of the page were cut off (e.g. 1400-1402 missing from a voter list).
+      const widths = ths.map((th) => th.getBoundingClientRect().width);
+      ths.forEach((th, k) => (th.style.width = `${widths[k]}px`));
+      if (table) table.style.tableLayout = "fixed";
+
+      const showOnly = (pageRows: HTMLElement[], first: boolean) => {
+        if (head) head.style.display = first ? "" : "none";
+        const keep = new Set(pageRows);
+        rows.forEach((r) => (r.style.display = keep.has(r) ? "" : "none"));
+      };
+
+      // Fill each page row by row and check the real height on screen, so nothing can run past the paper.
+      const overflow: number[] = []; // pages still taller than the paper (only if one row alone is taller)
       const pages: HTMLElement[][] = [];
-      let current: HTMLElement[] = [];
-      let used = headH + theadH;
-      for (const r of rows) {
-        if (used + r.offsetHeight > pageHeightPx && current.length) {
-          pages.push(current);
-          current = [];
-          used = theadH;
+      rows.forEach((r) => (r.style.display = "none"));
+      let next = 0;
+      do {
+        const first = pages.length === 0;
+        if (head) head.style.display = first ? "" : "none";
+        const page: HTMLElement[] = [];
+        while (next < rows.length) {
+          const r = rows[next];
+          r.style.display = "";
+          if (page.length > 0 && root.offsetHeight > pageHeightPx) {
+            r.style.display = "none"; // starts the next page
+            break;
+          }
+          page.push(r);
+          next++;
         }
-        current.push(r);
-        used += r.offsetHeight;
-      }
-      pages.push(current);
+        page.forEach((r) => (r.style.display = "none"));
+        pages.push(page);
+      } while (next < rows.length);
 
       for (let i = 0; i < pages.length; i++) {
         setProgress(`${i + 1} / ${pages.length}`);
         busy.progress(i / pages.length);
-        if (head) head.style.display = i === 0 ? "" : "none";
-        const keep = new Set(pages[i]);
-        rows.forEach((r) => (r.style.display = keep.has(r) ? "" : "none"));
+        showOnly(pages[i], i === 0);
         const canvas = await html2canvas(root, {
           scale: 2,
           backgroundColor: "#ffffff",
@@ -76,14 +95,25 @@ export default function PdfMaker(props: {
             doc.head.appendChild(st);
           },
         });
-        const hMm = canvas.height / 2 / pxPerMm;
+        let hMm = canvas.height / 2 / pxPerMm;
+        let wMm = contentWmm;
+        if (hMm > contentHmm + 0.5) {
+          // safety net: shrink the picture to fit the paper rather than lose rows
+          overflow.push(i + 1);
+          wMm = (contentWmm * contentHmm) / hMm;
+          hMm = contentHmm;
+        }
         if (i > 0) pdf.addPage();
-        pdf.addImage(canvas.toDataURL("image/jpeg", 0.9), "JPEG", margin, margin, contentWmm, hMm);
+        pdf.addImage(canvas.toDataURL("image/jpeg", 0.9), "JPEG", margin, margin, wMm, hMm);
         pdf.setFontSize(8);
         pdf.text(`${i + 1} / ${pages.length}`, pageW / 2, pageH - margin / 2, { align: "center" });
       }
       if (head) head.style.display = "";
       rows.forEach((r) => (r.style.display = ""));
+      ths.forEach((th) => (th.style.width = ""));
+      if (table) table.style.tableLayout = "";
+      root.dataset.pdfOverflow = overflow.join(",");
+      root.dataset.pdfPages = String(pages.length);
       pdf.save(props.fileName);
       setState("ready");
     })()
