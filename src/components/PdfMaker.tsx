@@ -2,10 +2,52 @@
 // Turns the print view into a PDF file in the browser (no server work, Marathi letters stay correct).
 // Each A4 page is captured separately as a picture, cutting only between table rows (column widths fixed and each
 // page filled by its real height on screen, so no row can run past the paper: 22 Nov 2026),
-// so long lists never hit the browser's canvas size limit. The text in the PDF is a picture (not searchable).
+// so long lists never hit the browser's canvas size limit. The page is a picture; invisible text behind it makes
+// search and copy work (22 Nov 2026, src/lib/pdfText.ts).
 import { startTask } from "@/lib/loader";
+import { DEV_FONT, DEV_FONT_URL, cellText, scriptRuns } from "@/lib/pdfText";
 import { useEffect, useRef, useState } from "react";
 
+
+type Pdf = InstanceType<typeof import("jspdf").jsPDF>;
+
+/** Invisible text over every cell of this page (title on page 1, table header, the page's rows), where the picture shows it. */
+function addHiddenText(pdf: Pdf, root: HTMLElement, head: HTMLElement | null, pageRows: HTMLElement[], margin: number, mmPerPx: number, devFont: boolean) {
+  const box = root.getBoundingClientRect();
+  const cells: HTMLElement[] = [
+    ...(head ? Array.from(head.querySelectorAll<HTMLElement>("h1, p")) : []),
+    ...Array.from(root.querySelectorAll<HTMLElement>("thead th")),
+    ...pageRows.flatMap((r) => Array.from(r.querySelectorAll<HTMLElement>("td"))),
+  ];
+  for (const el of cells) {
+    const text = cellText(el.innerText || el.textContent || "");
+    if (!text) continue;
+    const r = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    const padL = parseFloat(cs.paddingLeft) || 0;
+    const padT = parseFloat(cs.paddingTop) || 0;
+    const sizePx = parseFloat(cs.fontSize) || 12;
+    const x0 = margin + (r.left - box.left + padL) * mmPerPx;
+    const y = margin + (r.top - box.top + padT) * mmPerPx;
+    const room = Math.max(1, (r.width - 2 * padL) * mmPerPx);
+    const sizePt = sizePx * mmPerPx * 2.8346;
+    const runs = scriptRuns(text).filter((x) => !x.dev || devFont);
+    pdf.setFontSize(sizePt);
+    const widths = runs.map((x) => {
+      pdf.setFont(x.dev ? DEV_FONT : "helvetica", "normal");
+      return pdf.getTextWidth(x.text);
+    });
+    const total = widths.reduce((a, b) => a + b, 0);
+    const scale = total > room ? room / total : 1; // squeeze a long cell into its own width so cells do not overlap
+    let x = x0;
+    runs.forEach((run, k) => {
+      pdf.setFont(run.dev ? DEV_FONT : "helvetica", "normal");
+      pdf.text(run.text, x, y, { baseline: "top", renderingMode: "invisible", horizontalScale: scale });
+      x += widths[k] * scale;
+    });
+  }
+  pdf.setFont("helvetica", "normal");
+}
 
 export default function PdfMaker(props: {
   rootId: string;
@@ -28,6 +70,18 @@ export default function PdfMaker(props: {
       await document.fonts.ready;
 
       const pdf = new jsPDF({ orientation: props.landscape ? "landscape" : "portrait", unit: "mm", format: "a4" });
+      // font for the hidden Devanagari text; without it the PDF is still made, only not searchable in Marathi
+      let devFont = false;
+      try {
+        const buf = new Uint8Array(await (await fetch(DEV_FONT_URL)).arrayBuffer());
+        let bin = "";
+        for (let k = 0; k < buf.length; k += 0x8000) bin += String.fromCharCode(...buf.subarray(k, k + 0x8000));
+        pdf.addFileToVFS("dev-search.ttf", btoa(bin));
+        pdf.addFont("dev-search.ttf", DEV_FONT, "normal");
+        devFont = true;
+      } catch {
+        /* picture only */
+      }
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
       const margin = 10;
@@ -105,6 +159,7 @@ export default function PdfMaker(props: {
         }
         if (i > 0) pdf.addPage();
         pdf.addImage(canvas.toDataURL("image/jpeg", 0.9), "JPEG", margin, margin, wMm, hMm);
+        addHiddenText(pdf, root, i === 0 ? head : null, pages[i], margin, (wMm / contentWmm) / pxPerMm, devFont);
         pdf.setFontSize(8);
         pdf.text(`${i + 1} / ${pages.length}`, pageW / 2, pageH - margin / 2, { align: "center" });
       }
