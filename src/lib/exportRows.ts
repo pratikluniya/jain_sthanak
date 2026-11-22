@@ -240,19 +240,35 @@ export function describe(list: ListKind, f: ExportFilters, t: Dict): string {
   return bits.filter(Boolean).join(" · ");
 }
 
-/** One row per family, as on the Families screen for the same tab and search. */
+/** One row per family, as on the Families screen for the same tab and search; sorted by the head's surname (22 Nov 2026). */
 async function buildFamilyExport(fields: Field[], lang: Lang, f: ExportFilters): Promise<ExportData> {
   const t = exportDictFor(lang);
   const english = lang === "en";
   const labels = fieldLabels(t);
   const families = filterFamilies(await loadFamilies({ moved: f.moved, toVerify: f.toVerify }), f.q, f.panth);
-  const head = (x: (typeof families)[number]) => (english ? x.headNameEn || toEnglishName(x.headName) : x.headName);
-  const sorted = [...families].sort((a, b) => (english ? enCollator.compare(head(a), head(b)) : collator.compare(a.headName, b.headName)));
-  const rows = sorted.map((x, i) => {
+  // the head's name parts, so the list can be written and sorted surname first like the voter list
+  const heads = await prisma.member.findMany({
+    where: { familyId: { in: families.map((x) => x.id) }, isHead: true, deletedAt: null },
+    select: { familyId: true, title: true, firstName: true, middleName: true, surname: true, firstNameEn: true, middleNameEn: true, surnameEn: true },
+  });
+  const headOf = new Map(heads.map((h) => [h.familyId, h]));
+  const rowsWithKey = families.map((x) => {
+    const h = headOf.get(x.id);
+    if (h) {
+      const surname = english ? h.surnameEn || toEnglishName(h.surname) : h.surname;
+      const first = english ? h.firstNameEn || toEnglishName(h.firstName) : h.firstName;
+      return { x, name: surnameFirstName(h, english), surname, first };
+    }
+    const p = headNameParts(english ? x.headNameEn || toEnglishName(x.headName) : x.headName);
+    return { x, name: [p.surname, p.rest].filter(Boolean).join(" "), surname: p.surname, first: p.rest };
+  });
+  const cmp = english ? enCollator : collator;
+  rowsWithKey.sort((a, b) => cmp.compare(a.surname, b.surname) || cmp.compare(a.first, b.first) || collator.compare(a.x.code, b.x.code));
+  const rows = rowsWithKey.map(({ x, name }, i) => {
     const value: Partial<Record<Field, string | number>> = {
       serial: i + 1,
       familyCode: x.code,
-      headName: head(x),
+      headName: name,
       address: familyAddress(x, english),
       area: x.area,
       phone: familyPhone(x.members),
@@ -262,6 +278,17 @@ async function buildFamilyExport(fields: Field[], lang: Lang, f: ExportFilters):
     return fields.map((k) => value[k] ?? "");
   });
   return { title: describe("families", f, t), subtitle: `${t.sangh} · ${t.total}: ${rows.length}`, headers: fields.map((k) => labels[k]), rows };
+}
+
+const HEAD_TITLES = new Set(["श्री", "श्री.", "सौ", "सौ.", "श्रीमती", "कु", "कु.", "चि", "चि.", "डॉ", "डॉ.", "स्व.", "shri", "shri.", "smt", "smt.", "mr", "mr.", "mrs", "mrs.", "dr", "dr.", "kum.", "chi."]);
+
+/** A head name as written ("श्री नीरज बबनलाल अजमेरा (जैन)") split into surname and the rest, without the title. */
+export function headNameParts(full: string): { surname: string; rest: string } {
+  const words = full.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  while (words.length && HEAD_TITLES.has(words[0].toLowerCase())) words.shift();
+  const bracket = words.length > 1 && /^\(.*\)$/.test(words[words.length - 1]) ? words.pop()! : "";
+  const surname = words.pop() ?? "";
+  return { surname: [surname, bracket].filter(Boolean).join(" "), rest: words.join(" ") };
 }
 
 /** Donations screen rows for the chosen donation, year, status tab and search. */

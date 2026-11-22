@@ -45,3 +45,10 @@ test("panth filter goes into the download link, file name and back (19 Nov 2026)
   assert.equal(from({ panth: "xyz" }).panth, null);
   assert.equal(fileTag("members", from({ panth: "TERAPANTH" })), "-terapanth");
 });
+
+test("family download: head name split into surname (22 Nov 2026)", async () => {
+  const { headNameParts } = await import("./exportRows");
+  assert.deepEqual(headNameParts("श्री नीरज बबनलाल अजमेरा"), { surname: "अजमेरा", rest: "नीरज बबनलाल" });
+  assert.deepEqual(headNameParts("सौ. नीता विनय जैन (कोचर)"), { surname: "जैन (कोचर)", rest: "नीता विनय" });
+  assert.deepEqual(headNameParts("Shri Neeraj Ajmera"), { surname: "Ajmera", rest: "Neeraj" });
+});
